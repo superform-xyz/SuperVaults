@@ -4,6 +4,17 @@ pragma solidity ^0.8.23;
 import {BaseStrategy} from "./vendor/BaseStrategy.sol";
 
 contract SuperVault is BaseStrategy {
+    //
+    // Examples:
+    // 1 - USDC SuperVault: Morpho + Euler + Aave USDC (3 vaults total to start)) -> ETH
+    // 2 - Stablecoins SuperVault: Morpho + Euler + Aave (USDC, DAI, USDT (9 vaults total)) -> ETH
+    //
+    // Requirements:
+    // 1 - Management can set %s for each vault (done also at launch)
+    // 2 - Factory: input superform ids + weights and deploy - anyone can create a super vault
+    // 3 - Auto-Rebalancing: who will be rebalancing? A fireblocks keeper
+    // 4 - There is an algorithm to tell the weights for the keeper to rebalance (TBD, function will allow any weights to be set)
+
     constructor(address _asset, string memory _name) BaseStrategy(_asset, _name) {}
     function _deployFunds(uint256 _amount) internal override {
         /// take amount

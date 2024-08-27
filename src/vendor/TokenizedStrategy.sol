@@ -52,8 +52,8 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {IFactory} from "tokenized-strategy/interfaces/IFactory.sol";
-import {IBaseStrategy} from "tokenized-strategy/interfaces/IBaseStrategy.sol";
+import {IFactory} from "./interfaces/IFactory.sol";
+import {IBaseStrategy} from "./interfaces/IBaseStrategy.sol";
 
 /**
  * @title Yearn Tokenized Strategy
@@ -92,10 +92,9 @@ contract TokenizedStrategy {
 
     /**
      * @notice Emitted when the strategy reports `profit` or `loss` and
-     * `performanceFees`
-     * @dev changed from yearn
+     * `performanceFees` and `protocolFees` are paid out.
      */
-    event Reported(uint256 profit, uint256 loss, uint256 performanceFees);
+    event Reported(uint256 profit, uint256 loss, uint256 protocolFees, uint256 performanceFees);
 
     /**
      * @notice Emitted when the 'performanceFeeRecipient' address is
@@ -431,7 +430,7 @@ contract TokenizedStrategy {
         require(_performanceFeeRecipient != address(this), "self");
         S.performanceFeeRecipient = _performanceFeeRecipient;
         // Default to a 0% performance fee.
-        /// @dev changed from yearn
+        // @dev changed from yearn
         S.performanceFee = 0;
         // Set last report to this block.
         S.lastReport = uint96(block.timestamp);
@@ -964,7 +963,7 @@ contract TokenizedStrategy {
 
         // Initialize variables needed throughout.
         uint256 totalFees;
-        /// @dev changed from yearn (deleted protocolFees)
+        uint256 protocolFees;
         uint256 sharesToLock;
         uint256 _profitMaxUnlockTime = S.profitMaxUnlockTime;
         // Calculate profit/loss.
@@ -991,9 +990,26 @@ contract TokenizedStrategy {
                     totalFeeShares = (sharesToLock * fee) / MAX_BPS;
                 }
 
+                // Get the protocol fee config from the factory.
+                (uint16 protocolFeeBps, address protocolFeesRecipient) = IFactory(FACTORY).protocol_fee_config();
+
+                uint256 protocolFeeShares;
+                // Check if there is a protocol fee to charge.
+                if (protocolFeeBps != 0) {
+                    unchecked {
+                        // Calculate protocol fees based on the performance Fees.
+                        protocolFeeShares = (totalFeeShares * protocolFeeBps) / MAX_BPS;
+                        // Need amount in underlying for event.
+                        protocolFees = (totalFees * protocolFeeBps) / MAX_BPS;
+                    }
+
+                    // Mint the protocol fees to the recipient.
+                    _mint(S, protocolFeesRecipient, protocolFeeShares);
+                }
+
                 // Mint the difference to the strategy fee recipient.
                 unchecked {
-                    _mint(S, S.performanceFeeRecipient, totalFeeShares);
+                    _mint(S, S.performanceFeeRecipient, totalFeeShares - protocolFeeShares);
                 }
             }
 
@@ -1076,12 +1092,12 @@ contract TokenizedStrategy {
         S.totalAssets = newTotalAssets;
         S.lastReport = uint96(block.timestamp);
 
-        /// @dev changed from yearn
         // Emit event with info
         emit Reported(
             profit,
             loss,
-            totalFees // Performance Fees
+            protocolFees, // Protocol fees
+            totalFees - protocolFees // Performance Fees
         );
     }
 
