@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0
-pragma solidity ^0.8.18;
+pragma solidity >=0.8.18;
 
 /**
  * $$$$$$$$$$$$$$$$$$$$$$$$$$$&Mr/|1+~>>iiiiiiiiiii>~+{|tuMW$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$
@@ -52,8 +52,8 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {IFactory} from "./interfaces/IFactory.sol";
-import {IBaseStrategy} from "./interfaces/IBaseStrategy.sol";
+import {IFactory} from "tokenized-strategy/interfaces/IFactory.sol";
+import {IBaseStrategy} from "tokenized-strategy/interfaces/IBaseStrategy.sol";
 
 /**
  * @title Yearn Tokenized Strategy
@@ -92,9 +92,10 @@ contract TokenizedStrategy {
 
     /**
      * @notice Emitted when the strategy reports `profit` or `loss` and
-     * `performanceFees` and `protocolFees` are paid out.
+     * `performanceFees`
+     * @dev changed from yearn
      */
-    event Reported(uint256 profit, uint256 loss, uint256 protocolFees, uint256 performanceFees);
+    event Reported(uint256 profit, uint256 loss, uint256 performanceFees);
 
     /**
      * @notice Emitted when the 'performanceFeeRecipient' address is
@@ -346,6 +347,14 @@ contract TokenizedStrategy {
     bytes32 internal constant BASE_STRATEGY_STORAGE = bytes32(uint256(keccak256("yearn.base.strategy.storage")) - 1);
 
     /*//////////////////////////////////////////////////////////////
+                               IMMUTABLE
+    //////////////////////////////////////////////////////////////*/
+
+    /// @notice Address of the previously deployed Vault factory that the
+    // protocol fee config is retrieved from.
+    address public immutable FACTORY;
+
+    /*//////////////////////////////////////////////////////////////
                             STORAGE GETTER
     //////////////////////////////////////////////////////////////*/
 
@@ -422,7 +431,7 @@ contract TokenizedStrategy {
         require(_performanceFeeRecipient != address(this), "self");
         S.performanceFeeRecipient = _performanceFeeRecipient;
         // Default to a 0% performance fee.
-        /// @dev notice changed from yearn
+        /// @dev changed from yearn
         S.performanceFee = 0;
         // Set last report to this block.
         S.lastReport = uint96(block.timestamp);
@@ -955,7 +964,7 @@ contract TokenizedStrategy {
 
         // Initialize variables needed throughout.
         uint256 totalFees;
-        uint256 protocolFees;
+        /// @dev changed from yearn (deleted protocolFees)
         uint256 sharesToLock;
         uint256 _profitMaxUnlockTime = S.profitMaxUnlockTime;
         // Calculate profit/loss.
@@ -981,8 +990,6 @@ contract TokenizedStrategy {
                     // And in shares for the payment.
                     totalFeeShares = (sharesToLock * fee) / MAX_BPS;
                 }
-
-                /// @dev notice changed from yearn
 
                 // Mint the difference to the strategy fee recipient.
                 unchecked {
@@ -1069,12 +1076,12 @@ contract TokenizedStrategy {
         S.totalAssets = newTotalAssets;
         S.lastReport = uint96(block.timestamp);
 
+        /// @dev changed from yearn
         // Emit event with info
         emit Reported(
             profit,
             loss,
-            protocolFees, // Protocol fees
-            totalFees - protocolFees // Performance Fees
+            totalFees // Performance Fees
         );
     }
 
@@ -1804,8 +1811,10 @@ contract TokenizedStrategy {
     /**
      * @dev On contract creation we set `asset` for this contract to address(1).
      * This prevents it from ever being initialized in the future.
+     * @param _factory Address of the factory of the same version for protocol fees.
      */
-    constructor() {
+    constructor(address _factory) {
+        FACTORY = _factory;
         _strategyStorage().asset = ERC20(address(1));
     }
 }
