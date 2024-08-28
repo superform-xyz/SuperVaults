@@ -110,6 +110,23 @@ contract SuperVault is BaseStrategy, IERC1155Receiver {
     }
 
     //////////////////////////////////////////////////////////////
+    //                  EXTERNAL  FUNCTIONS                     //
+    //////////////////////////////////////////////////////////////
+
+    function rebalance(uint256[] memory newWeights_) external onlySuperVaultsStrategist {
+        uint256[] memory currentWeights = SV.weights;
+
+        uint256 totalWeight;
+
+        for (uint256 i; i < newWeights_.length; ++i) {
+            totalWeight += newWeights_[i];
+        }
+        if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
+
+        SV.weights = newWeights_;
+    }
+
+    //////////////////////////////////////////////////////////////
     //                  EXTERNAL PURE FUNCTIONS                //
     //////////////////////////////////////////////////////////////
 
