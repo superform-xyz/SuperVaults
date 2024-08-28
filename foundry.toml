@@ -19,5 +19,18 @@ gas_limit = "18446744073709551615" # see https://t.me/foundry_rs/36706
 remappings = [
     'forge-std/=lib/forge-std/src/',
     '@openzeppelin/=lib/tokenized-strategy/lib/openzeppelin-contracts/',
+    'openzeppelin-contracts/contracts=lib/tokenized-strategy/lib/openzeppelin-contracts/contracts',
     'tokenized-strategy=lib/tokenized-strategy/src/',
+    'superform-core=lib/superform-core/src/',
 ]
+
+
+[fmt]
+bracket_spacing = true
+int_types = "long"
+line_length = 120
+multiline_func_header = "all"
+number_underscore = "thousands"
+quote_style = "double"
+tab_width = 4
+wrap_comments = true
