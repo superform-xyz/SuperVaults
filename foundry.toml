@@ -22,6 +22,7 @@ remappings = [
     'openzeppelin-contracts/contracts=lib/tokenized-strategy/lib/openzeppelin-contracts/contracts',
     'tokenized-strategy=lib/tokenized-strategy/src/',
     'superform-core=lib/superform-core/src/',
+    'ERC1155A=lib/superform-core/lib/ERC1155A/src/',
 ]
 
 

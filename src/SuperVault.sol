@@ -6,7 +6,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import { IERC1155 } from "@openzeppelin/contracts/interfaces/IERC1155.sol";
+import { ISuperPositions } from "superform-core/interfaces/ISuperPositions.sol";
 import { IERC1155Receiver } from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import { BaseStrategy } from "./vendor/BaseStrategy.sol";
 import { SingleDirectMultiVaultStateReq, MultiVaultSFData, LiqRequest } from "superform-core/types/DataTypes.sol";
@@ -28,7 +28,6 @@ contract SuperVault is BaseStrategy, IERC1155Receiver {
 
     error ZERO_ADDRESS();
 
-    error INVALID_SUPER_POSITIONS_OUTPUT();
     //
     // Examples:
     // 1 - USDC SuperVault: Morpho + Euler + Aave USDC (3 vaults total to start)) -> ETH
@@ -56,7 +55,6 @@ contract SuperVault is BaseStrategy, IERC1155Receiver {
 
     uint256 public constant TOTAL_WEIGHT = 10_000;
     uint256 public constant MAX_SLIPPAGE = 100; // 1%
-    uint256 public constant SP_SLIPPAGE = 200; // 2%
 
     /// TODO who will be the refunds receiver? A superform controlled address
     address public REFUNDS_RECEIVER;
@@ -172,50 +170,79 @@ contract SuperVault is BaseStrategy, IERC1155Receiver {
     function _deployFunds(uint256 amount_) internal override {
         MultiVaultSFData memory mvData;
 
+        uint256 numberOfSuperforms = SV.numberOfSuperforms;
+
         mvData.superformIds = SV.superformIds;
-        mvData.amounts = new uint256[](SV.numberOfSuperforms);
-        mvData.maxSlippages = new uint256[](SV.numberOfSuperforms);
-        mvData.liqRequests = new LiqRequest[](SV.numberOfSuperforms);
-        mvData.hasDstSwaps = new bool[](SV.numberOfSuperforms);
+        mvData.amounts = new uint256[](numberOfSuperforms);
+        mvData.maxSlippages = new uint256[](numberOfSuperforms);
+        mvData.liqRequests = new LiqRequest[](numberOfSuperforms);
+        mvData.hasDstSwaps = new bool[](numberOfSuperforms);
         mvData.retain4626s = mvData.hasDstSwaps;
         mvData.receiverAddress = REFUNDS_RECEIVER;
         mvData.receiverAddressSP = address(this);
 
-        address[] memory thisAddress = new address[](SV.numberOfSuperforms);
-        for (uint256 i; i < SV.numberOfSuperforms; ++i) {
+        for (uint256 i; i < numberOfSuperforms; ++i) {
             mvData.amounts[i] = amount_.mulDiv(SV.weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
             (address superform,,) = mvData.superformIds[i].getSuperform();
             mvData.outputAmounts[i] = IBaseForm(superform).previewDepositTo(mvData.amounts[i]);
             mvData.maxSlippages[i] = MAX_SLIPPAGE;
-            mvData.liqRequests[i] = LiqRequest("", address(asset), address(0), 0, 0, 0);
-            thisAddress[i] = address(this);
         }
 
         bytes memory callData = abi.encodeWithSelector(
             IBaseRouter.singleDirectMultiVaultDeposit.selector, SingleDirectMultiVaultStateReq(mvData)
         );
         address router = _getAddress(keccak256("SUPERFORM_ROUTER"));
-        address superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
-        asset.approve(router, amount_);
 
-        uint256[] memory spBalanceBefore = IERC1155(superPositions).balanceOfBatch(thisAddress, mvData.superformIds);
+        asset.safeApprove(router, amount_);
+
         /// @dev this call has to be enforced with 0 msg.value not to break the 4626 standard
         (bool success, bytes memory returndata) = router.call(callData);
 
         Address.verifyCallResult(success, returndata, "CallRevertWithNoReturnData");
 
         if (asset.allowance(address(this), router) > 0) asset.forceApprove(router, 0);
-
-        uint256[] memory spBalanceAfter = IERC1155(superPositions).balanceOfBatch(thisAddress, mvData.superformIds);
-
-        for (uint256 i; i < SV.numberOfSuperforms; ++i) {
-            if (spBalanceAfter[i] - spBalanceBefore[i] != mvData.outputAmounts[i]) {
-                revert INVALID_SUPER_POSITIONS_OUTPUT();
-            }
-        }
     }
 
-    function _freeFunds(uint256 amount_) internal override { }
+    function _freeFunds(uint256 amount_) internal override {
+        MultiVaultSFData memory mvData;
+
+        uint256 numberOfSuperforms = SV.numberOfSuperforms;
+
+        mvData.superformIds = SV.superformIds;
+        mvData.amounts = new uint256[](numberOfSuperforms);
+        mvData.maxSlippages = new uint256[](numberOfSuperforms);
+        mvData.liqRequests = new LiqRequest[](numberOfSuperforms);
+        mvData.hasDstSwaps = new bool[](numberOfSuperforms);
+        mvData.retain4626s = mvData.hasDstSwaps;
+        mvData.receiverAddress = REFUNDS_RECEIVER;
+        mvData.receiverAddressSP = address(this);
+
+        for (uint256 i; i < numberOfSuperforms; ++i) {
+            mvData.outputAmounts[i] = amount_.mulDiv(SV.weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
+            (address superform,,) = mvData.superformIds[i].getSuperform();
+            mvData.amounts[i] = IBaseForm(superform).previewWithdrawFrom(mvData.outputAmounts[i]);
+            mvData.maxSlippages[i] = MAX_SLIPPAGE;
+        }
+
+        bytes memory callData = abi.encodeWithSelector(
+            IBaseRouter.singleDirectMultiVaultWithdraw.selector, SingleDirectMultiVaultStateReq(mvData)
+        );
+        address router = _getAddress(keccak256("SUPERFORM_ROUTER"));
+
+        ISuperPositions(_getAddress(keccak256("SUPER_POSITIONS"))).setApprovalForMany(
+            router, mvData.superformIds, mvData.amounts
+        );
+
+        /// @dev this call has to be enforced with 0 msg.value not to break the 4626 standard
+        (bool success, bytes memory returndata) = router.call(callData);
+
+        Address.verifyCallResult(success, returndata, "CallRevertWithNoReturnData");
+
+        /// @dev reset approvals
+        ISuperPositions(_getAddress(keccak256("SUPER_POSITIONS"))).setApprovalForMany(
+            router, mvData.superformIds, new uint256[](numberOfSuperforms)
+        );
+    }
 
     function _harvestAndReport() internal override returns (uint256 totalAssets) {
         /// call harvest on all superPositions
