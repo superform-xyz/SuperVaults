@@ -12,18 +12,26 @@ out = "out"
 script = "script"
 src = "src"
 test = "test"
-auto_detect_remappings = false
-assertions_revert = false # see https://t.me/foundry_rs/36706
-legacy_assertions = true # see https://t.me/foundry_rs/36706
-gas_limit = "18446744073709551615" # see https://t.me/foundry_rs/36706
+auto_detect_remappings = true
+assertions_revert = true # see https://t.me/foundry_rs/36706
+legacy_assertions = false # see https://t.me/foundry_rs/36706
 remappings = [
     'forge-std/=lib/forge-std/src/',
-    '@openzeppelin/=lib/tokenized-strategy/lib/openzeppelin-contracts/',
-    'openzeppelin-contracts/contracts=lib/tokenized-strategy/lib/openzeppelin-contracts/contracts',
-    'tokenized-strategy=lib/tokenized-strategy/src/',
-    'superform-core=lib/superform-core/src/',
-    'ERC1155A=lib/superform-core/lib/ERC1155A/src/',
+    'openzeppelin/=lib/tokenized-strategy/lib/openzeppelin-contracts/',
+    '@openzeppelin/=lib/superform-core/lib/ERC1155A/lib/openzeppelin-contracts/',
+    'openzeppelin-contracts/=lib/superform-core/lib/ERC1155A/lib/openzeppelin-contracts/',
+    'tokenized-strategy/=lib/tokenized-strategy/src/',
+    'superform-core/=lib/superform-core/',
+    'ERC1155A/=lib/superform-core/lib/ERC1155A/src/',
+    'pigeon/=lib/superform-core/lib/pigeon/src/',
+    'solady/=lib/superform-core/lib/pigeon/lib/solady/',
 ]
+
+[profile.production]
+out = 'out'       # separates optimized build folder (default profile) from localdev folder. Faster to build and deploy
+src = 'src'
+test = 'src'
+script = 'script'
 
 
 [fmt]

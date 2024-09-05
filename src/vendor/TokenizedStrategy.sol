@@ -48,12 +48,12 @@ pragma solidity >=0.8.18;
  * $$$$$$$$$$$$$$$$$$$$$$$$$%zt-+>iiiiiiiiiiiiiiiiiiiiiiiiiiiii+_tc%$$$$$$$$$$$$$$$$$$$$$$$$$
  * $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$W#u/|{+~>iiiiiiiiiiii><+{|/n#W$$$$$$$$$$$$$$$$$$$$$$$$$$$$
  */
-import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
+import { ERC20 } from "openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { SafeERC20 } from "openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {IFactory} from "tokenized-strategy/interfaces/IFactory.sol";
-import {IBaseStrategy} from "tokenized-strategy/interfaces/IBaseStrategy.sol";
+import { IFactory } from "tokenized-strategy/interfaces/IFactory.sol";
+import { IBaseStrategy } from "tokenized-strategy/interfaces/IBaseStrategy.sol";
 
 /**
  * @title Yearn Tokenized Strategy
@@ -193,7 +193,8 @@ contract TokenizedStrategy {
         bytes32 INITIAL_DOMAIN_SEPARATOR; // The domain separator used for permits on the initial chain.
         mapping(address => uint256) nonces; // Mapping of nonces used for permit functions.
         mapping(address => uint256) balances; // Mapping to track current balances for each account that holds shares.
-        mapping(address => mapping(address => uint256)) allowances; // Mapping to track the allowances for the strategies shares.
+        mapping(address => mapping(address => uint256)) allowances; // Mapping to track the allowances for the
+            // strategies shares.
         // We manually track `totalAssets` to prevent PPS manipulation through airdrops.
         uint256 totalAssets;
         // Variables for profit reporting and locking.
@@ -318,7 +319,7 @@ contract TokenizedStrategy {
     uint8 internal constant NOT_ENTERED = 1;
 
     /// @notice Maximum in Basis Points the Performance Fee can be set to.
-    uint16 public constant MAX_FEE = 5_000; // 50%
+    uint16 public constant MAX_FEE = 5000; // 50%
 
     /// @notice Used for fee calculations.
     uint256 internal constant MAX_BPS = 10_000;
@@ -402,7 +403,9 @@ contract TokenizedStrategy {
         address _management,
         address _performanceFeeRecipient,
         address _keeper
-    ) external {
+    )
+        external
+    {
         // Cache storage pointer.
         StrategyData storage S = _strategyStorage();
 
@@ -508,7 +511,12 @@ contract TokenizedStrategy {
      * @param maxLoss The amount of acceptable loss in Basis points.
      * @return shares The actual amount of shares burnt.
      */
-    function withdraw(uint256 assets, address receiver, address owner, uint256 maxLoss)
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner,
+        uint256 maxLoss
+    )
         public
         nonReentrant
         returns (uint256 shares)
@@ -547,7 +555,12 @@ contract TokenizedStrategy {
      * @param maxLoss The amount of acceptable loss in Basis points.
      * @return . The actual amount of underlying withdrawn.
      */
-    function redeem(uint256 shares, address receiver, address owner, uint256 maxLoss)
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner,
+        uint256 maxLoss
+    )
         public
         nonReentrant
         returns (uint256)
@@ -735,7 +748,11 @@ contract TokenizedStrategy {
     }
 
     /// @dev Internal implementation of {convertToShares}.
-    function _convertToShares(StrategyData storage S, uint256 assets, Math.Rounding _rounding)
+    function _convertToShares(
+        StrategyData storage S,
+        uint256 assets,
+        Math.Rounding _rounding
+    )
         internal
         view
         returns (uint256)
@@ -751,7 +768,11 @@ contract TokenizedStrategy {
     }
 
     /// @dev Internal implementation of {convertToAssets}.
-    function _convertToAssets(StrategyData storage S, uint256 shares, Math.Rounding _rounding)
+    function _convertToAssets(
+        StrategyData storage S,
+        uint256 shares,
+        Math.Rounding _rounding
+    )
         internal
         view
         returns (uint256)
@@ -863,7 +884,10 @@ contract TokenizedStrategy {
         uint256 assets,
         uint256 shares,
         uint256 maxLoss
-    ) internal returns (uint256) {
+    )
+        internal
+        returns (uint256)
+    {
         require(receiver != address(0), "ZERO ADDRESS");
         require(maxLoss <= MAX_BPS, "exceeds MAX_BPS");
 
@@ -1746,7 +1770,15 @@ contract TokenizedStrategy {
      * https://eips.ethereum.org/EIPS/eip-2612#specification[relevant EIP
      * section].
      */
-    function permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)
+    function permit(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    )
         external
     {
         require(deadline >= block.timestamp, "ERC20: PERMIT_DEADLINE_EXPIRED");

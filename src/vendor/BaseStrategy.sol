@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity >=0.8.18;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { ERC20 } from "openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 // TokenizedStrategy interface used for internal view delegateCalls.
-import {ITokenizedStrategy} from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
+import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 
 /**
  * @title YearnV3 Base Strategy
@@ -246,7 +246,7 @@ abstract contract BaseStrategy {
      *
      * @param _totalIdle The current amount of idle funds that are available to deploy.
      */
-    function _tend(uint256 _totalIdle) internal virtual {}
+    function _tend(uint256 _totalIdle) internal virtual { }
 
     /**
      * @dev Optional trigger to override if tend() will be used by the strategy.
@@ -341,7 +341,7 @@ abstract contract BaseStrategy {
      *
      * @param _amount The amount of asset to attempt to free.
      */
-    function _emergencyWithdraw(uint256 _amount) internal virtual {}
+    function _emergencyWithdraw(uint256 _amount) internal virtual { }
 
     /*//////////////////////////////////////////////////////////////
                         TokenizedStrategy HOOKS
