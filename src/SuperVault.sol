@@ -7,7 +7,6 @@ import { SafeERC20 } from "openzeppelin/contracts/token/ERC20/utils/SafeERC20.so
 import { ERC20 } from "openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { IERC165 } from "openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IERC4626 } from "openzeppelin/contracts/interfaces/IERC4626.sol";
-import { IERC1155Receiver } from "openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import { SingleDirectMultiVaultStateReq, MultiVaultSFData, LiqRequest } from "superform-core/src/types/DataTypes.sol";
 import { ISuperPositions } from "superform-core/src/interfaces/ISuperPositions.sol";
 import { DataLib } from "superform-core/src/libraries/DataLib.sol";
@@ -16,19 +15,12 @@ import { IBaseRouter } from "superform-core/src/interfaces/IBaseRouter.sol";
 import { ISuperformRouterPlus } from "superform-core/src/interfaces/ISuperformRouterPlus.sol";
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
 import { BaseStrategy } from "./vendor/BaseStrategy.sol";
+import { ISuperVault, IERC1155Receiver } from "./ISuperVault.sol";
 
-contract SuperVault is BaseStrategy, IERC1155Receiver {
+contract SuperVault is BaseStrategy, ISuperVault {
     using Math for uint256;
     using DataLib for uint256;
     using SafeERC20 for ERC20;
-
-    error ARRAY_LENGTH_MISMATCH();
-
-    error INVALID_WEIGHTS();
-
-    error NOT_SUPER_VAULTS_STRATEGIST();
-
-    error ZERO_ADDRESS();
 
     //
     // Examples:
@@ -46,12 +38,6 @@ contract SuperVault is BaseStrategy, IERC1155Receiver {
     //////////////////////////////////////////////////////////////
     //                     STATE VARIABLES                      //
     //////////////////////////////////////////////////////////////
-
-    struct SuperVaultStrategyData {
-        uint256 numberOfSuperforms;
-        uint256[] superformIds;
-        uint256[] weights;
-    }
 
     SuperVaultStrategyData private SV;
 
@@ -80,17 +66,19 @@ contract SuperVault is BaseStrategy, IERC1155Receiver {
     constructor(
         address superRegistry_,
         address asset_,
+        address refundsReceiver_,
         string memory name_,
         uint256[] memory superformIds_,
         uint256[] memory startingWeights_
     )
         BaseStrategy(asset_, name_)
     {
-        if (superRegistry_ == address(0)) {
+        if (superRegistry_ == address(0) || refundsReceiver_ == address(0)) {
             revert ZERO_ADDRESS();
         }
 
         superRegistry = ISuperRegistry(superRegistry_);
+        REFUNDS_RECEIVER = refundsReceiver_;
 
         uint256 numberOfSuperforms = superformIds_.length;
         if (numberOfSuperforms != startingWeights_.length) {
@@ -112,11 +100,14 @@ contract SuperVault is BaseStrategy, IERC1155Receiver {
     //////////////////////////////////////////////////////////////
     //                  EXTERNAL  FUNCTIONS                     //
     //////////////////////////////////////////////////////////////
-    // 3 superformsIds in this vault
-    // 2 rebalanceFrom
-    // 1 rebalanceTo
-    // 1000 USDC
 
+    function setRefundsReceiver(address refundReceiver_) external onlySuperVaultsStrategist {
+        REFUNDS_RECEIVER = refundReceiver_;
+
+        emit RefundsReceiverSet(refundReceiver_);
+    }
+
+    // @inheritdoc ISuperVault
     function rebalance(
         uint256[] memory superformIdsRebalanceFrom,
         uint256[] memory amountsRebalanceFrom,
@@ -127,6 +118,8 @@ contract SuperVault is BaseStrategy, IERC1155Receiver {
         uint256 slippage
     )
         external
+        payable
+        override
         onlySuperVaultsStrategist
     {
         // Validate input arrays
@@ -160,7 +153,9 @@ contract SuperVault is BaseStrategy, IERC1155Receiver {
         ISuperPositions(superPositions).setApprovalForMany(routerPlus, args.ids, new uint256[](args.ids.length));
 
         // Step 3: Update SV data
-        _updateSVData(superPositions);
+        uint256[] memory newWeights = _updateSVData(superPositions);
+
+        emit Rebalanced(newWeights);
     }
 
     //////////////////////////////////////////////////////////////
@@ -199,7 +194,7 @@ contract SuperVault is BaseStrategy, IERC1155Receiver {
     }
 
     function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
-        return interfaceId == type(IERC165).interfaceId;
+        return interfaceId == type(IERC165).interfaceId || interfaceId == type(IERC1155Receiver).interfaceId;
     }
     //////////////////////////////////////////////////////////////
     //                     BASESTRATEGY OVERRIDES               //
@@ -244,9 +239,19 @@ contract SuperVault is BaseStrategy, IERC1155Receiver {
         );
     }
 
-    function _harvestAndReport() internal override returns (uint256 totalAssets) {
-        /// call harvest on all superPositions
-        /// call report on all superPositions
+    function _harvestAndReport() internal view override returns (uint256 totalAssets) {
+        /// @dev we will be using reward distributor and transfer rewards to users directly
+        /// @dev thus this function we will be unused (we just report full assets)
+        uint256 totalAssetsInVaults;
+        uint256 numberOfSuperforms = SV.numberOfSuperforms;
+        uint256[] memory superformIds = SV.superformIds;
+        for (uint256 i = 0; i < numberOfSuperforms; i++) {
+            (address superform,,) = superformIds[i].getSuperform();
+            address vault = IBaseForm(superform).getVaultAddress();
+            totalAssetsInVaults += IERC4626(vault).balanceOf(address(this));
+        }
+
+        totalAssets = totalAssetsInVaults + asset.balanceOf(address(this));
     }
 
     //////////////////////////////////////////////////////////////
@@ -274,6 +279,8 @@ contract SuperVault is BaseStrategy, IERC1155Receiver {
         mvData.outputAmounts = new uint256[](numberOfSuperforms);
 
         for (uint256 i; i < numberOfSuperforms; ++i) {
+            mvData.liqRequests[i].token = address(asset);
+
             (address superform,,) = mvData.superformIds[i].getSuperform();
             if (isDeposit) {
                 mvData.amounts[i] = amount_.mulDiv(SV.weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
@@ -387,10 +394,10 @@ contract SuperVault is BaseStrategy, IERC1155Receiver {
         }
     }
 
-    function _updateSVData(address superPositions) internal {
+    function _updateSVData(address superPositions) internal returns (uint256[] memory newWeights) {
         uint256 totalValue = 0;
         uint256 length = SV.numberOfSuperforms;
-        uint256[] memory newWeights = new uint256[](length);
+        newWeights = new uint256[](length);
         uint256[] memory superformIds = SV.superformIds;
 
         // Calculate total value and individual values

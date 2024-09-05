@@ -6,21 +6,95 @@ import { ISuperformRouterPlus } from "superform-core/src/interfaces/ISuperformRo
 import { ISuperformRouterPlusAsync } from "superform-core/src/interfaces/ISuperformRouterPlusAsync.sol";
 import { IBaseRouter } from "superform-core/src/interfaces/IBaseRouter.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
+import { SuperVault } from "../src/SuperVault.sol";
 
 contract SuperVaultTest is ProtocolActions {
+    using Math for uint256;
+
     using DataLib for uint256;
 
     address SUPER_POSITIONS_SOURCE;
 
     uint64 SOURCE_CHAIN;
 
+    uint256 SUPER_VAULT_ID1;
+    uint256[] underlyingSuperformIds;
+
     function setUp() public override {
+        chainIds = [ETH];
         super.setUp();
 
-        SOURCE_CHAIN = ARBI;
+        SOURCE_CHAIN = ETH;
 
         SUPER_POSITIONS_SOURCE = getContract(SOURCE_CHAIN, "SuperPositions");
+
+        // Setup
+        vm.selectFork(FORKS[SOURCE_CHAIN]);
+        vm.startPrank(deployer);
+        address morphoVault = 0x8eB67A509616cd6A7c1B3c8C21D48FF57df3d458;
+        address aaveUsdcVault = 0x73edDFa87C71ADdC275c2b9890f5c3a8480bC9E6;
+        address eulerUsdcVault = 0x797DD80692c3b2dAdabCe8e30C07fDE5307D48a9;
+
+        address[] memory vaultAddresses = new address[](3);
+        vaultAddresses[0] = morphoVault;
+        vaultAddresses[1] = aaveUsdcVault;
+        vaultAddresses[2] = eulerUsdcVault;
+        // Get the SuperformFactory
+        SuperformFactory superformFactory = SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory"));
+        underlyingSuperformIds = new uint256[](vaultAddresses.length);
+        for (uint256 i = 0; i < vaultAddresses.length; i++) {
+            (underlyingSuperformIds[i],) = superformFactory.createSuperform(1, vaultAddresses[i]);
+        }
+
+        uint256[] memory weights = new uint256[](vaultAddresses.length);
+        for (uint256 i = 0; i < vaultAddresses.length; i++) {
+            weights[i] = uint256(10_000) / 3;
+            if (i == 2) {
+                weights[i] += 1;
+            }
+        }
+
+        // Deploy SuperVault
+        SuperVault superVault = new SuperVault(
+            getContract(SOURCE_CHAIN, "SuperRegistry"),
+            getContract(ETH, "USDC"),
+            deployer,
+            "USDCSuperVaultMorphoEulerAave",
+            underlyingSuperformIds,
+            weights
+        );
+        address superVaultAddress = address(superVault);
+
+        // Deploy Superform
+        (SUPER_VAULT_ID1,) = superformFactory.createSuperform(1, superVaultAddress);
+
+        assertTrue(superformFactory.isSuperform(SUPER_VAULT_ID1), "Superform should be registered");
+
+        vm.stopPrank();
     }
+
+    function test_superVault_assertSuperPositions_splitAccordingToWeights() public {
+        vm.startPrank(deployer);
+
+        // Perform a direct deposit to the SuperVault
+        _directDeposit(SUPER_VAULT_ID1);
+        (address superVault,,) = SUPER_VAULT_ID1.getSuperform();
+        // Assert that the SuperPositions minted are split evenly according to the weights
+        for (uint256 i = 0; i < underlyingSuperformIds.length; i++) {
+            uint256 balance = SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(superVault, underlyingSuperformIds[i]);
+            assertEq(
+                balance,
+                1e18 / underlyingSuperformIds.length,
+                "SuperPositions should be split evenly according to the weights"
+            );
+        }
+
+        vm.stopPrank();
+    }
+    //////////////////////////////////////////////////////////////
+    //               INTERNAL HELPERS                           //
+    //////////////////////////////////////////////////////////////
 
     function _directDeposit(uint256 superformId) internal {
         vm.selectFork(FORKS[SOURCE_CHAIN]);
