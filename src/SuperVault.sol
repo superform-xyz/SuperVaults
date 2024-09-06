@@ -158,6 +158,14 @@ contract SuperVault is BaseStrategy, ISuperVault {
         emit Rebalanced(newWeights);
     }
 
+    function getSuperVaultData()
+        external
+        view
+        returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights)
+    {
+        return (SV.numberOfSuperforms, SV.superformIds, SV.weights);
+    }
+
     //////////////////////////////////////////////////////////////
     //                  EXTERNAL PURE FUNCTIONS                //
     //////////////////////////////////////////////////////////////

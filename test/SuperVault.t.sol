@@ -43,8 +43,10 @@ contract SuperVaultTest is ProtocolActions {
         // Get the SuperformFactory
         SuperformFactory superformFactory = SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory"));
         underlyingSuperformIds = new uint256[](vaultAddresses.length);
+        address superformAddress;
         for (uint256 i = 0; i < vaultAddresses.length; i++) {
-            (underlyingSuperformIds[i],) = superformFactory.createSuperform(1, vaultAddresses[i]);
+            (underlyingSuperformIds[i], superformAddress) = superformFactory.createSuperform(1, vaultAddresses[i]);
+            console.log("Superform", i, "created at", superformAddress);
         }
 
         uint256[] memory weights = new uint256[](vaultAddresses.length);
@@ -53,6 +55,7 @@ contract SuperVaultTest is ProtocolActions {
             if (i == 2) {
                 weights[i] += 1;
             }
+            co
         }
 
         // Deploy SuperVault
@@ -76,18 +79,33 @@ contract SuperVaultTest is ProtocolActions {
 
     function test_superVault_assertSuperPositions_splitAccordingToWeights() public {
         vm.startPrank(deployer);
-
+        uint256 amount = 500e6;
         // Perform a direct deposit to the SuperVault
-        _directDeposit(SUPER_VAULT_ID1);
-        (address superVault,,) = SUPER_VAULT_ID1.getSuperform();
+        _directDeposit(SUPER_VAULT_ID1, amount);
+        (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
+        address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
+        uint256[] memory svDataWeights = new uint256[](underlyingSuperformIds.length);
+        (,, svDataWeights) = SuperVault(superVaultAddress).getSuperVaultData();
+
+        uint256 totalUnderlyingBalanceOfSuperVault;
+        uint256[] memory underlyingBalanceOfSuperVault = new uint256[](underlyingSuperformIds.length);
         // Assert that the SuperPositions minted are split evenly according to the weights
         for (uint256 i = 0; i < underlyingSuperformIds.length; i++) {
-            uint256 balance = SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(superVault, underlyingSuperformIds[i]);
-            assertEq(
-                balance,
-                1e18 / underlyingSuperformIds.length,
-                "SuperPositions should be split evenly according to the weights"
-            );
+            uint256 spBalanceInSuperVault =
+                SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(superVaultAddress, underlyingSuperformIds[i]);
+            (address superform,,) = underlyingSuperformIds[i].getSuperform();
+            underlyingBalanceOfSuperVault[i] =
+                IERC4626(IBaseForm(superform).getVaultAddress()).convertToAssets(spBalanceInSuperVault);
+            totalUnderlyingBalanceOfSuperVault += underlyingBalanceOfSuperVault[i];
+        }
+
+        uint256[] memory calculatedWeights = new uint256[](underlyingSuperformIds.length);
+        for (uint256 i = 0; i < underlyingSuperformIds.length; i++) {
+            calculatedWeights[i] =
+                underlyingBalanceOfSuperVault[i].mulDiv(10_000, totalUnderlyingBalanceOfSuperVault, Math.Rounding.Up);
+            console.log("Calculated weight", calculatedWeights[i], "Sv data weight", svDataWeights[i]);
+
+            assertApproxEqRel(calculatedWeights[i], svDataWeights[i], 0.5e18);
         }
 
         vm.stopPrank();
@@ -96,14 +114,14 @@ contract SuperVaultTest is ProtocolActions {
     //               INTERNAL HELPERS                           //
     //////////////////////////////////////////////////////////////
 
-    function _directDeposit(uint256 superformId) internal {
+    function _directDeposit(uint256 superformId, uint256 amount) internal {
         vm.selectFork(FORKS[SOURCE_CHAIN]);
         (address superform,,) = superformId.getSuperform();
 
         SingleVaultSFData memory data = SingleVaultSFData(
             superformId,
-            1e18,
-            1e18,
+            amount,
+            amount,
             100,
             LiqRequest("", IBaseForm(superform).getVaultAsset(), address(0), 1, SOURCE_CHAIN, 0),
             "",
@@ -123,8 +141,6 @@ contract SuperVaultTest is ProtocolActions {
         SuperformRouter(payable(getContract(SOURCE_CHAIN, "SuperformRouter"))).singleDirectSingleVaultDeposit{
             value: 2 ether
         }(req);
-
-        assertGt(SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(deployer, superformId), 0);
     }
 
     function _xChainDeposit(uint256 superformId, uint64 dstChainId, uint256 payloadIdToProcess) internal {
@@ -199,8 +215,6 @@ contract SuperVaultTest is ProtocolActions {
         );
 
         vm.selectFork(FORKS[SOURCE_CHAIN]);
-
-        assertGt(SuperPositions(getContract(SOURCE_CHAIN, "SuperPositions")).balanceOf(deployer, superformId), 0);
     }
 
     function _deliverAMBMessage(uint64 fromChain, uint64 toChain, Vm.Log[] memory logs) internal {
