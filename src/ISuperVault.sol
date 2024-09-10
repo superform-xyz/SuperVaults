@@ -33,6 +33,9 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Error thrown when a zero address is provided
     error ZERO_ADDRESS();
 
+    /// @notice Error thrown when a superform does not support the asset
+    error SUPERFORM_DOES_NOT_SUPPORT_ASSET();
+
     //////////////////////////////////////////////////////////////
     //                  EVENTS                                   //
     //////////////////////////////////////////////////////////////

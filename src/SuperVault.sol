@@ -89,6 +89,11 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         for (uint256 i; i < numberOfSuperforms; ++i) {
             totalWeight += startingWeights_[i];
+            /// @dev this superVault only supports superforms that have the same asset as the vault
+            (address superform,,) = superformIds_[i].getSuperform();
+            if (IBaseForm(superform).getVaultAsset() != asset_) {
+                revert SUPERFORM_DOES_NOT_SUPPORT_ASSET();
+            }
         }
         if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
 
