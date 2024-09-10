@@ -86,6 +86,10 @@ contract SuperVaultTest is ProtocolActions {
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
+        _directWithdraw(SUPER_VAULT_ID1, ETH);
+
+        _assertSuperPositionsAfterWithdraw(ETH);
+
         vm.stopPrank();
     }
 
@@ -131,6 +135,37 @@ contract SuperVaultTest is ProtocolActions {
 
         /// @dev msg sender is wallet, tx origin is deployer
         SuperformRouter(payable(getContract(SOURCE_CHAIN, "SuperformRouter"))).singleDirectSingleVaultDeposit{
+            value: 2 ether
+        }(req);
+    }
+
+    function _directWithdraw(uint256 superformId, uint64 dstChain) internal {
+        vm.selectFork(FORKS[dstChain]);
+        (address superform,,) = superformId.getSuperform();
+        uint256 amountToWithdraw = SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(deployer, superformId);
+
+        SingleVaultSFData memory data = SingleVaultSFData(
+            superformId,
+            amountToWithdraw,
+            IBaseForm(superform).previewWithdrawFrom(amountToWithdraw),
+            100,
+            LiqRequest("", IBaseForm(superform).getVaultAsset(), address(0), 1, dstChain, 0),
+            "",
+            false,
+            false,
+            deployer,
+            deployer,
+            ""
+        );
+
+        SingleDirectSingleVaultStateReq memory req = SingleDirectSingleVaultStateReq(data);
+
+        SuperPositions(SUPER_POSITIONS_SOURCE).setApprovalForOne(
+            address(getContract(dstChain, "SuperformRouter")), superformId, amountToWithdraw
+        );
+
+        /// @dev msg sender is wallet, tx origin is deployer
+        SuperformRouter(payable(getContract(dstChain, "SuperformRouter"))).singleDirectSingleVaultWithdraw{
             value: 2 ether
         }(req);
     }
@@ -360,6 +395,23 @@ contract SuperVaultTest is ProtocolActions {
             console.log("Calculated weight", calculatedWeights[i], "Sv data weight", svDataWeights[i]);
 
             assertApproxEqRel(calculatedWeights[i], svDataWeights[i], 0.5e18);
+        }
+    }
+
+    function _assertSuperPositionsAfterWithdraw(uint64 dstChain) internal {
+        vm.selectFork(FORKS[dstChain]);
+
+        (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
+        address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
+
+        // Assert that the SuperPositions are 0 after full withdrawal
+        for (uint256 i = 0; i < underlyingSuperformIds.length; i++) {
+            uint256 spBalanceInSuperVault =
+                SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(superVaultAddress, underlyingSuperformIds[i]);
+
+            console.log("SuperPosition balance for underlying Superform", i, ":", spBalanceInSuperVault);
+
+            assertEq(spBalanceInSuperVault, 0, "SuperPosition balance should be 0 after full withdrawal");
         }
     }
 }

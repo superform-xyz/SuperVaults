@@ -15,6 +15,7 @@ test = "test"
 auto_detect_remappings = true
 assertions_revert = true # see https://t.me/foundry_rs/36706
 legacy_assertions = false # see https://t.me/foundry_rs/36706
+gas_limit = "18446744073709551615" # see https://t.me/foundry_rs/36706
 remappings = [
     'forge-std/=lib/forge-std/src/',
     'openzeppelin/=lib/tokenized-strategy/lib/openzeppelin-contracts/',
