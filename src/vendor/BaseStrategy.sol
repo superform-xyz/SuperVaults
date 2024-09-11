@@ -84,7 +84,7 @@ abstract contract BaseStrategy {
     /*//////////////////////////////////////////////////////////////
                             CONSTANTS
     //////////////////////////////////////////////////////////////*/
-
+    /// @dev TODO Change this in production
     /**
      * @dev This is the address of the TokenizedStrategy implementation
      * contract that will be used by all strategies to handle the
@@ -97,7 +97,7 @@ abstract contract BaseStrategy {
      * This address should be the same for every strategy, never be adjusted
      * and always be checked before any integration with the Strategy.
      */
-    address public constant tokenizedStrategyAddress = 0xBB51273D6c746910C7C06fe718f30c936170feD0;
+    address public constant tokenizedStrategyAddress = 0xcb54683c13D5BF40FD64257317530DF84ba13812;
 
     /*//////////////////////////////////////////////////////////////
                             IMMUTABLES

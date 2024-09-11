@@ -8,6 +8,7 @@ import { IBaseRouter } from "superform-core/src/interfaces/IBaseRouter.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
 import { SuperVault } from "../src/SuperVault.sol";
+import { TokenizedStrategy } from "../src/vendor/TokenizedStrategy.sol";
 
 contract SuperVaultTest is ProtocolActions {
     using Math for uint256;
@@ -21,6 +22,9 @@ contract SuperVaultTest is ProtocolActions {
     uint256 SUPER_VAULT_ID1;
 
     uint256[] underlyingSuperformIds;
+
+    /// @dev yearn address factory on ETH
+    address constant FACTORY = 0x444045c5C13C246e117eD36437303cac8E250aB0;
 
     function setUp() public override {
         chainIds = [ETH, ARBI];
@@ -59,6 +63,9 @@ contract SuperVaultTest is ProtocolActions {
             }
         }
 
+        address tokenizedStrategyAddress = address(new TokenizedStrategy(FACTORY));
+
+        console.log("TokenizedStrategy", tokenizedStrategyAddress);
         // Deploy SuperVault
         SuperVault superVault = new SuperVault(
             getContract(SOURCE_CHAIN, "SuperRegistry"),
@@ -80,13 +87,15 @@ contract SuperVaultTest is ProtocolActions {
 
     function test_superVault_assertSuperPositions_splitAccordingToWeights() public {
         vm.startPrank(deployer);
+        SOURCE_CHAIN = ETH;
+
         uint256 amount = 500e6;
         // Perform a direct deposit to the SuperVault
         _directDeposit(SUPER_VAULT_ID1, amount);
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
-        _directWithdraw(SUPER_VAULT_ID1, ETH);
+        _directWithdraw(SUPER_VAULT_ID1);
 
         _assertSuperPositionsAfterWithdraw(ETH);
 
@@ -102,6 +111,12 @@ contract SuperVaultTest is ProtocolActions {
         _xChainDeposit(SUPER_VAULT_ID1, amount, ETH, 1);
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
+
+        vm.startPrank(deployer);
+
+        _xChainWithdraw(SUPER_VAULT_ID1, ETH, 2);
+
+        _assertSuperPositionsAfterWithdraw(ETH);
 
         vm.stopPrank();
     }
@@ -139,17 +154,18 @@ contract SuperVaultTest is ProtocolActions {
         }(req);
     }
 
-    function _directWithdraw(uint256 superformId, uint64 dstChain) internal {
-        vm.selectFork(FORKS[dstChain]);
+    function _directWithdraw(uint256 superformId) internal {
+        vm.selectFork(FORKS[SOURCE_CHAIN]);
         (address superform,,) = superformId.getSuperform();
-        uint256 amountToWithdraw = SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(deployer, superformId);
+        address superPositions = getContract(SOURCE_CHAIN, "SuperPositions");
+        uint256 amountToWithdraw = SuperPositions(superPositions).balanceOf(deployer, superformId);
 
         SingleVaultSFData memory data = SingleVaultSFData(
             superformId,
             amountToWithdraw,
             IBaseForm(superform).previewWithdrawFrom(amountToWithdraw),
             100,
-            LiqRequest("", IBaseForm(superform).getVaultAsset(), address(0), 1, dstChain, 0),
+            LiqRequest("", IBaseForm(superform).getVaultAsset(), address(0), 1, SOURCE_CHAIN, 0),
             "",
             false,
             false,
@@ -159,15 +175,11 @@ contract SuperVaultTest is ProtocolActions {
         );
 
         SingleDirectSingleVaultStateReq memory req = SingleDirectSingleVaultStateReq(data);
-
-        SuperPositions(SUPER_POSITIONS_SOURCE).setApprovalForOne(
-            address(getContract(dstChain, "SuperformRouter")), superformId, amountToWithdraw
-        );
+        address superformRouter = getContract(SOURCE_CHAIN, "SuperformRouter");
+        SuperPositions(superPositions).setApprovalForOne(superformRouter, superformId, amountToWithdraw);
 
         /// @dev msg sender is wallet, tx origin is deployer
-        SuperformRouter(payable(getContract(dstChain, "SuperformRouter"))).singleDirectSingleVaultWithdraw{
-            value: 2 ether
-        }(req);
+        SuperformRouter(payable(superformRouter)).singleDirectSingleVaultWithdraw{ value: 2 ether }(req);
     }
 
     function _xChainDeposit(
@@ -246,6 +258,42 @@ contract SuperVaultTest is ProtocolActions {
         _processXChainDepositOneVault(
             SOURCE_CHAIN, dstChainId, vm.getRecordedLogs(), underlyingToken, totalAmountToDeposit, payloadIdToProcess
         );
+
+        vm.selectFork(FORKS[SOURCE_CHAIN]);
+    }
+
+    function _xChainWithdraw(uint256 superformId, uint64 dstChainId, uint256 payloadIdToProcess) internal {
+        vm.selectFork(FORKS[SOURCE_CHAIN]);
+        (address superform,,) = superformId.getSuperform();
+        address superPositions = getContract(SOURCE_CHAIN, "SuperPositions");
+        uint256 amountToWithdraw = SuperPositions(superPositions).balanceOf(deployer, superformId);
+        vm.selectFork(FORKS[dstChainId]);
+
+        SingleVaultSFData memory data = SingleVaultSFData(
+            superformId,
+            amountToWithdraw,
+            IBaseForm(superform).previewWithdrawFrom(amountToWithdraw),
+            100,
+            LiqRequest("", address(0), address(0), 1, dstChainId, 0),
+            "",
+            false,
+            false,
+            deployer,
+            deployer,
+            ""
+        );
+
+        vm.selectFork(FORKS[SOURCE_CHAIN]);
+
+        SingleXChainSingleVaultStateReq memory req = SingleXChainSingleVaultStateReq(AMBs, dstChainId, data);
+        address superformRouter = getContract(SOURCE_CHAIN, "SuperformRouter");
+        SuperPositions(superPositions).setApprovalForOne(superformRouter, superformId, amountToWithdraw);
+
+        vm.recordLogs();
+        /// @dev msg sender is wallet, tx origin is deployer
+        SuperformRouter(payable(superformRouter)).singleXChainSingleVaultWithdraw{ value: 2 ether }(req);
+
+        _processXChainWithdrawOneVault(SOURCE_CHAIN, dstChainId, vm.getRecordedLogs(), payloadIdToProcess);
 
         vm.selectFork(FORKS[SOURCE_CHAIN]);
     }

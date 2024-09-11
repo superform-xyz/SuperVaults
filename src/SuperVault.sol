@@ -17,8 +17,6 @@ import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol
 import { BaseStrategy } from "./vendor/BaseStrategy.sol";
 import { ISuperVault, IERC1155Receiver } from "./ISuperVault.sol";
 
-import "forge-std/console.sol";
-
 contract SuperVault is BaseStrategy, ISuperVault {
     using Math for uint256;
     using DataLib for uint256;
@@ -288,32 +286,23 @@ contract SuperVault is BaseStrategy, ISuperVault {
         mvData.liqRequests = new LiqRequest[](numberOfSuperforms);
         mvData.hasDstSwaps = new bool[](numberOfSuperforms);
         mvData.retain4626s = mvData.hasDstSwaps;
-        mvData.receiverAddress = REFUNDS_RECEIVER;
+        mvData.receiverAddress = isDeposit ? REFUNDS_RECEIVER : address(this);
         mvData.receiverAddressSP = address(this);
         mvData.outputAmounts = new uint256[](numberOfSuperforms);
-
-        bool fullFinalWithdraw;
-        console.log("amount_", amount_);
-        uint256 totalSupply =
-            abi.decode(_delegateCall(abi.encodeWithSelector(bytes4(keccak256("totalSupply()")))), (uint256));
-
-        console.log("totalSupply", totalSupply);
-        if (amount_ == totalSupply) {
-            fullFinalWithdraw = true;
-        }
 
         for (uint256 i; i < numberOfSuperforms; ++i) {
             mvData.liqRequests[i].token = address(asset);
 
             (address superform,,) = mvData.superformIds[i].getSuperform();
+            IBaseForm superformContract = IBaseForm(superform);
             if (isDeposit) {
                 mvData.amounts[i] = amount_.mulDiv(SV.weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
-                mvData.outputAmounts[i] = IBaseForm(superform).previewDepositTo(mvData.amounts[i]);
+                mvData.outputAmounts[i] = superformContract.previewDepositTo(mvData.amounts[i]);
             } else {
                 mvData.outputAmounts[i] = amount_.mulDiv(SV.weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
-                mvData.amounts[i] = !fullFinalWithdraw
-                    ? IBaseForm(superform).previewWithdrawFrom(mvData.outputAmounts[i])
-                    : IERC4626(IBaseForm(superform).getVaultAddress()).maxWithdraw(address(this));
+                /// @dev using convertToShares here to avoid round up issues
+                mvData.amounts[i] =
+                    IERC4626(superformContract.getVaultAddress()).convertToShares(mvData.outputAmounts[i]);
             }
             mvData.maxSlippages[i] = MAX_SLIPPAGE;
         }
