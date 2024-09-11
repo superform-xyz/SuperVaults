@@ -41,6 +41,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
     SuperVaultStrategyData private SV;
 
+    uint64 public immutable CHAIN_ID;
+
     uint256 public constant TOTAL_WEIGHT = 10_000;
     uint256 public constant MAX_SLIPPAGE = 100; // 1%
 
@@ -76,6 +78,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
         if (superRegistry_ == address(0) || refundsReceiver_ == address(0)) {
             revert ZERO_ADDRESS();
         }
+
+        if (block.chainid > type(uint64).max) {
+            revert BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
+        }
+
+        CHAIN_ID = uint64(block.chainid);
 
         superRegistry = ISuperRegistry(superRegistry_);
         REFUNDS_RECEIVER = refundsReceiver_;
@@ -372,7 +380,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
         MultiVaultSFData memory data;
         data.superformIds = superformIds;
         data.amounts = amounts;
-        for (uint256 i = 0; i < superformIds.length; i++) {
+        uint256 length = superformIds.length;
+        data.outputAmounts = new uint256[](length);
+        data.maxSlippages = new uint256[](length);
+        data.liqRequests = new LiqRequest[](length);
+
+        for (uint256 i = 0; i < length; i++) {
             (address superform,,) = superformIds[i].getSuperform();
 
             if (isWithdraw) {
@@ -385,8 +398,11 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
             /// TODO: decide on slippage if per vault or global
             data.maxSlippages[i] = slippage;
+            data.liqRequests[i].token = address(asset);
+            data.liqRequests[i].liqDstChainId = CHAIN_ID;
         }
-        data.retain4626s = new bool[](superformIds.length);
+        data.hasDstSwaps = new bool[](length);
+        data.retain4626s = data.hasDstSwaps;
         /// @dev routerPlus receives assets to continue the rebalance
         data.receiverAddress = routerPlus;
         /// @dev in case of withdraw failure, this vault receives the superPositions back

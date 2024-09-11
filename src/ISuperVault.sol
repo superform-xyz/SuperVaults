@@ -36,6 +36,9 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Error thrown when a superform does not support the asset
     error SUPERFORM_DOES_NOT_SUPPORT_ASSET();
 
+    /// @notice Error thrown when the block chain ID is out of bounds
+    error BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
+
     //////////////////////////////////////////////////////////////
     //                  EVENTS                                   //
     //////////////////////////////////////////////////////////////
