@@ -143,6 +143,15 @@ contract SuperVault is BaseStrategy, ISuperVault {
             revert ARRAY_LENGTH_MISMATCH();
         }
 
+        // Check if any ID in rebalanceFrom is present in rebalanceTo
+        for (uint256 i = 0; i < superformIdsRebalanceFrom.length; i++) {
+            for (uint256 j = 0; j < superformIdsRebalanceTo.length; j++) {
+                if (superformIdsRebalanceFrom[i] == superformIdsRebalanceTo[j]) {
+                    revert DUPLICATE_SUPERFORM_ID();
+                }
+            }
+        }
+
         // Step 1: Prepare rebalance arguments
         (ISuperformRouterPlus.RebalanceMultiPositionsSyncArgs memory args, address routerPlus) = _prepareRebalanceArgs(
             superformIdsRebalanceFrom,
@@ -426,7 +435,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     }
 
     function _updateSVData(address superPositions) internal returns (uint256[] memory newWeights) {
-        uint256 totalValue = 0;
+        uint256 totalWeight = 0;
         uint256 length = SV.numberOfSuperforms;
         newWeights = new uint256[](length);
         uint256[] memory superformIds = SV.superformIds;
@@ -436,14 +445,18 @@ contract SuperVault is BaseStrategy, ISuperVault {
             uint256 balance = ISuperPositions(superPositions).balanceOf(address(this), superformIds[i]);
             (address superform,,) = superformIds[i].getSuperform();
             uint256 value = IERC4626(IBaseForm(superform).getVaultAddress()).convertToAssets(balance);
-            totalValue += value;
+            totalWeight += value;
             newWeights[i] = value;
         }
 
         // Calculate new weights as percentages
-        for (uint256 i = 0; i < length; i++) {
-            newWeights[i] = newWeights[i].mulDiv(TOTAL_WEIGHT, totalValue, Math.Rounding.Down);
+        uint256 totalAssignedWeight = 0;
+        for (uint256 i = 0; i < length - 1; i++) {
+            newWeights[i] = newWeights[i].mulDiv(TOTAL_WEIGHT, totalWeight, Math.Rounding.Down);
+            totalAssignedWeight += newWeights[i];
         }
+        // Assign remaining weight to the last index
+        newWeights[length - 1] = TOTAL_WEIGHT - totalAssignedWeight;
 
         // Update SV weights
         SV.weights = newWeights;

@@ -126,17 +126,10 @@ contract SuperVaultTest is ProtocolActions {
     struct RebalanceLocalVars {
         uint256[] indexesToRebalanceTo;
         uint256[] finalWeightsTargets;
-        uint256 targetMorphoWeight;
-        uint256 indexRebalanceFrom;
-        uint256 totalSharesMorphoRebalanceFrom;
+        uint256[] indexesRebalanceFrom;
         uint256 nIndexesToRebalanceTo;
         address superFormSuperVault;
         address superVaultAddress;
-        uint256[] realWeights;
-        uint256 weightDiff;
-        uint256 amountSharesToRebalance;
-        address morphoSuperform;
-        uint256 amountUSDCToRebalance;
         uint256 totalUSDCValue;
         uint256[] targetUSDC;
         uint256[] currentUSDC;
@@ -159,87 +152,124 @@ contract SuperVaultTest is ProtocolActions {
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
+        // Test case 1
+        uint256[] memory indexesToRebalanceTo = new uint256[](2);
+        indexesToRebalanceTo[0] = 1;
+        indexesToRebalanceTo[1] = 2;
+        uint256[] memory finalWeightsTargets = new uint256[](2);
+        finalWeightsTargets[0] = 4000;
+        finalWeightsTargets[1] = 3500;
+        uint256[] memory indexesRebalanceFrom = new uint256[](1);
+        indexesRebalanceFrom[0] = 0;
+
+        _performRebalance(indexesToRebalanceTo, finalWeightsTargets, indexesRebalanceFrom);
+
+        /*
+        // Test case 2
+        indexesToRebalanceTo = new uint256[](2);
+        indexesToRebalanceTo[0] = 0;
+        indexesToRebalanceTo[1] = 2;
+        finalWeightsTargets = new uint256[](2);
+        finalWeightsTargets[0] = 5000;
+        finalWeightsTargets[1] = 3000;
+        indexesRebalanceFrom = new uint256[](1);
+        indexesRebalanceFrom[0] = 1;
+
+        _performRebalance(indexesToRebalanceTo, finalWeightsTargets, indexesRebalanceFrom);
+        */
+    }
+
+    function _performRebalance(
+        uint256[] memory indexesToRebalanceTo,
+        uint256[] memory finalWeightsTargets,
+        uint256[] memory indexesRebalanceFrom
+    )
+        internal
+    {
         RebalanceLocalVars memory vars;
 
-        // Settings
-        vars.indexesToRebalanceTo = new uint256[](2);
-        vars.indexesToRebalanceTo[0] = 1;
-        vars.indexesToRebalanceTo[1] = 2;
-        vars.finalWeightsTargets = new uint256[](2);
-        vars.finalWeightsTargets[0] = 4000;
-        vars.finalWeightsTargets[1] = 3500;
-        vars.targetMorphoWeight = 2500;
-        vars.indexRebalanceFrom = 0;
-        vars.superformIdsRebalanceFrom = new uint256[](1);
-        vars.superformIdsRebalanceFrom[0] = underlyingSuperformIds[vars.indexRebalanceFrom];
-        vars.amountsRebalanceFrom = new uint256[](1);
-        vars.totalSharesMorphoRebalanceFrom = 3_236_857_661_219_947_784_513;
-        vars.nIndexesToRebalanceTo = vars.indexesToRebalanceTo.length;
-
-        // Calculations
         (vars.superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
         vars.superVaultAddress = IBaseForm(vars.superFormSuperVault).getVaultAddress();
 
-        vars.realWeights = _calculateRealWeights(vars.superVaultAddress);
-        vars.weightDiff = vars.realWeights[vars.indexRebalanceFrom] - vars.targetMorphoWeight;
+        vars.nIndexesToRebalanceTo = indexesToRebalanceTo.length;
+        vars.indexesToRebalanceTo = indexesToRebalanceTo;
+        vars.finalWeightsTargets = finalWeightsTargets;
+        vars.indexesRebalanceFrom = indexesRebalanceFrom;
 
-        vars.amountSharesToRebalance = vars.totalSharesMorphoRebalanceFrom * vars.weightDiff / 10_000;
-        vars.amountsRebalanceFrom[0] = vars.amountSharesToRebalance;
-        (vars.morphoSuperform,,) = vars.superformIdsRebalanceFrom[0].getSuperform();
-
-        vars.amountUSDCToRebalance = IBaseForm(vars.morphoSuperform).previewRedeemFrom(vars.amountSharesToRebalance);
+        vars.superformIdsRebalanceFrom = new uint256[](indexesRebalanceFrom.length);
+        for (uint256 i = 0; i < indexesRebalanceFrom.length; i++) {
+            vars.superformIdsRebalanceFrom[i] = underlyingSuperformIds[indexesRebalanceFrom[i]];
+        }
+        vars.amountsRebalanceFrom = new uint256[](indexesRebalanceFrom.length);
+        vars.superformIdsRebalanceTo = new uint256[](vars.nIndexesToRebalanceTo);
 
         // Calculate total USDC value of all positions
         vars.totalUSDCValue = 0;
+        uint256[] memory currentUSDC = new uint256[](underlyingSuperformIds.length);
         for (uint256 i = 0; i < underlyingSuperformIds.length; i++) {
             (address superform,,) = underlyingSuperformIds[i].getSuperform();
             uint256 superformShares =
                 SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(vars.superVaultAddress, underlyingSuperformIds[i]);
-            vars.totalUSDCValue += IBaseForm(superform).previewRedeemFrom(superformShares);
+            currentUSDC[i] = IBaseForm(superform).previewRedeemFrom(superformShares);
+            vars.totalUSDCValue += currentUSDC[i];
+            console.log("currentUSDC", i, ":", currentUSDC[i]);
         }
 
-        // Calculate target USDC amounts for the other two positions
+        console.log("totalUSDCValue", vars.totalUSDCValue);
+
+        // Calculate target USDC amounts for positions to rebalance to
         vars.targetUSDC = new uint256[](vars.nIndexesToRebalanceTo);
-        for (uint256 i = 0; i < vars.nIndexesToRebalanceTo; i++) {
-            vars.targetUSDC[i] = vars.totalUSDCValue.mulDiv(vars.finalWeightsTargets[i], 10_000, Math.Rounding.Down);
-        }
-
-        // Calculate current USDC amounts for the other two positions
         vars.currentUSDC = new uint256[](vars.nIndexesToRebalanceTo);
         vars.currentShares = new uint256[](vars.nIndexesToRebalanceTo);
-        vars.superformIdsRebalanceTo = new uint256[](vars.nIndexesToRebalanceTo);
+        vars.additionalUSDC = new uint256[](vars.nIndexesToRebalanceTo);
+        vars.totalAdditionalUSDC = 0;
+
         for (uint256 i = 0; i < vars.nIndexesToRebalanceTo; i++) {
-            vars.superformIdsRebalanceTo[i] = underlyingSuperformIds[vars.indexesToRebalanceTo[i]];
+            uint256 index = vars.indexesToRebalanceTo[i];
+
+            vars.superformIdsRebalanceTo[i] = underlyingSuperformIds[index];
+
+            vars.targetUSDC[i] = vars.totalUSDCValue * vars.finalWeightsTargets[i] / 10_000;
             (address superform,,) = vars.superformIdsRebalanceTo[i].getSuperform();
             vars.currentShares[i] = SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(
                 vars.superVaultAddress, vars.superformIdsRebalanceTo[i]
             );
             vars.currentUSDC[i] = IBaseForm(superform).previewRedeemFrom(vars.currentShares[i]);
-        }
-
-        // Calculate additional USDC needed for the other two positions
-        vars.additionalUSDC = new uint256[](vars.nIndexesToRebalanceTo);
-        vars.totalAdditionalUSDC = 0;
-        for (uint256 i = 0; i < vars.nIndexesToRebalanceTo; i++) {
             vars.additionalUSDC[i] =
                 vars.targetUSDC[i] > vars.currentUSDC[i] ? vars.targetUSDC[i] - vars.currentUSDC[i] : 0;
+            console.log("additionalUSDC", i, ":", vars.additionalUSDC[i]);
             vars.totalAdditionalUSDC += vars.additionalUSDC[i];
         }
-        console.log("amountUSDCToRebalance", vars.amountUSDCToRebalance);
 
-        // Calculate weights of redistribution
+        // Calculate amounts to rebalance from each source
+        uint256 totalCurrentUSDCFromSources = 0;
+        for (uint256 i = 0; i < vars.indexesRebalanceFrom.length; i++) {
+            uint256 index = vars.indexesRebalanceFrom[i];
+            totalCurrentUSDCFromSources += currentUSDC[index];
+        }
+
+        for (uint256 i = 0; i < vars.indexesRebalanceFrom.length; i++) {
+            uint256 index = vars.indexesRebalanceFrom[i];
+            (address superform,,) = vars.superformIdsRebalanceFrom[i].getSuperform();
+            uint256 amountUSDCToRebalance = vars.totalAdditionalUSDC * currentUSDC[index] / totalCurrentUSDCFromSources;
+            vars.amountsRebalanceFrom[i] = IBaseForm(superform).previewDepositTo(amountUSDCToRebalance);
+            console.log("amountsRebalanceFrom", i, ":", vars.amountsRebalanceFrom[i]);
+        }
+
+        // Calculate weights for redistribution
+        console.log("Weights of redistribution:");
         vars.weightsOfRedistribution = new uint256[](vars.nIndexesToRebalanceTo);
-        uint256 totalWeight = 0;
+        uint256 totalWeights = 0;
         for (uint256 i = 0; i < vars.nIndexesToRebalanceTo; i++) {
-            if (i == vars.nIndexesToRebalanceTo - 1) {
-                // For the last index, assign the remaining weight
-                vars.weightsOfRedistribution[i] = 10_000 - totalWeight;
+            if (i != vars.nIndexesToRebalanceTo - 1) {
+                vars.weightsOfRedistribution[i] = vars.totalAdditionalUSDC > 0
+                    ? vars.additionalUSDC[i].mulDiv(10_000, vars.totalAdditionalUSDC, Math.Rounding.Down)
+                    : 0;
+                totalWeights += vars.weightsOfRedistribution[i];
             } else {
-                vars.weightsOfRedistribution[i] =
-                    vars.additionalUSDC[i].mulDiv(10_000, vars.totalAdditionalUSDC, Math.Rounding.Down);
-                totalWeight += vars.weightsOfRedistribution[i];
+                vars.weightsOfRedistribution[i] = 10_000 - totalWeights;
             }
-            console.log("Weight of redistribution", i, ":", vars.weightsOfRedistribution[i]);
+            console.log(vars.weightsOfRedistribution[i]);
         }
 
         SuperVault(payable(IBaseForm(vars.superFormSuperVault).getVaultAddress())).rebalance{ value: 4 ether }(
@@ -564,7 +594,7 @@ contract SuperVaultTest is ProtocolActions {
         }
     }
 
-    function _calculateRealWeights(address superVaultAddress) internal returns (uint256[] memory) {
+    function _calculateRealWeights(address superVaultAddress) internal view returns (uint256[] memory) {
         uint256 totalUnderlyingBalanceOfSuperVault;
         uint256[] memory underlyingBalanceOfSuperVault = new uint256[](underlyingSuperformIds.length);
 

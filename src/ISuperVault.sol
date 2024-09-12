@@ -39,6 +39,9 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Error thrown when the block chain ID is out of bounds
     error BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
 
+    /// @notice Error thrown when a duplicate superform ID is provided
+    error DUPLICATE_SUPERFORM_ID();
+
     //////////////////////////////////////////////////////////////
     //                  EVENTS                                   //
     //////////////////////////////////////////////////////////////
@@ -48,8 +51,8 @@ interface ISuperVault is IERC1155Receiver {
     event RefundsReceiverSet(address refundReceiver);
 
     /// @notice Emitted when the SuperVault is rebalanced
-    /// @param weightsOfRedestribution Array of weights for redistribution
-    event Rebalanced(uint256[] weightsOfRedestribution);
+    /// @param finalWeights Array of final weights of the SuperVault
+    event Rebalanced(uint256[] finalWeights);
 
     //////////////////////////////////////////////////////////////
     //                  EXTERNAL  FUNCTIONS                     //
