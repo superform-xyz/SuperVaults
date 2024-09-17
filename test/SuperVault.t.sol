@@ -7,6 +7,8 @@ import { ISuperformRouterPlusAsync } from "superform-core/src/interfaces/ISuperf
 import { IBaseRouter } from "superform-core/src/interfaces/IBaseRouter.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
+import { ISuperVault } from "../src/ISuperVault.sol";
+
 import { SuperVault } from "../src/SuperVault.sol";
 import { TokenizedStrategy } from "../src/vendor/TokenizedStrategy.sol";
 
@@ -34,6 +36,8 @@ contract SuperVaultTest is ProtocolActions {
         SOURCE_CHAIN = ETH;
 
         SUPER_POSITIONS_SOURCE = getContract(SOURCE_CHAIN, "SuperPositions");
+        // 1 - USDC SuperVault: Morpho + Euler + Aave USDC (3 vaults total to start)) -> ETH
+        //      Asset: USDC
 
         // Setup
         vm.selectFork(FORKS[SOURCE_CHAIN]);
@@ -72,6 +76,7 @@ contract SuperVaultTest is ProtocolActions {
             getContract(ETH, "USDC"),
             deployer,
             "USDCSuperVaultMorphoEulerAave",
+            type(uint256).max,
             underlyingSuperformIds,
             weights
         );
@@ -85,6 +90,51 @@ contract SuperVaultTest is ProtocolActions {
         SuperRegistry(getContract(ETH, "SuperRegistry")).setAddress(keccak256("SUPER_VAULTS_STRATEGIST"), deployer, ETH);
 
         vm.stopPrank();
+    }
+
+    function testSuperVaultConstructorReverts() public {
+        address superRegistry = getContract(ETH, "SuperRegistry");
+        address asset = getContract(ETH, "USDC");
+        string memory name = "TestSuperVault";
+        uint256 depositLimit = type(uint256).max;
+        uint256[] memory superformIds = underlyingSuperformIds;
+        uint256[] memory startingWeights = new uint256[](3);
+
+        // Setup valid parameters
+        startingWeights[0] = 3334;
+        startingWeights[1] = 3333;
+        startingWeights[2] = 3333;
+
+        // Test 1: ZERO_ADDRESS revert
+        vm.expectRevert(abi.encodeWithSignature("ZERO_ADDRESS()"));
+        new SuperVault(address(0), asset, deployer, name, depositLimit, superformIds, startingWeights);
+
+        vm.expectRevert(abi.encodeWithSignature("ZERO_ADDRESS()"));
+        new SuperVault(superRegistry, asset, address(0), name, depositLimit, superformIds, startingWeights);
+
+        // Test 2: ARRAY_LENGTH_MISMATCH revert
+        uint256[] memory mismatchedWeights = new uint256[](2);
+        mismatchedWeights[0] = 5000;
+        mismatchedWeights[1] = 5000;
+
+        vm.expectRevert(abi.encodeWithSignature("ARRAY_LENGTH_MISMATCH()"));
+        new SuperVault(superRegistry, asset, deployer, name, depositLimit, superformIds, mismatchedWeights);
+
+        // Test 3: SUPERFORM_DOES_NOT_SUPPORT_ASSET revert
+
+        vm.expectRevert(abi.encodeWithSignature("SUPERFORM_DOES_NOT_SUPPORT_ASSET()"));
+        new SuperVault(
+            superRegistry, getContract(ETH, "DAI"), deployer, name, depositLimit, superformIds, startingWeights
+        );
+
+        // Test 4: INVALID_WEIGHTS revert
+        uint256[] memory invalidWeights = new uint256[](3);
+        invalidWeights[0] = 3000;
+        invalidWeights[1] = 3000;
+        invalidWeights[2] = 3000;
+
+        vm.expectRevert(abi.encodeWithSignature("INVALID_WEIGHTS()"));
+        new SuperVault(superRegistry, asset, deployer, name, depositLimit, superformIds, invalidWeights);
     }
 
     function test_superVault_assertSuperPositions_splitAccordingToWeights() public {
@@ -102,6 +152,24 @@ contract SuperVaultTest is ProtocolActions {
         _assertSuperPositionsAfterWithdraw(ETH);
 
         vm.stopPrank();
+    }
+
+    function testOnERC1155Received() public {
+        // Arrange
+        address operator = address(0x1);
+        address from = address(0x2);
+        uint256 id = 1;
+        uint256 value = 100;
+        bytes memory data = "";
+        (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
+        address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
+
+        // Act
+        bytes4 result = SuperVault(superVaultAddress).onERC1155Received(operator, from, id, value, data);
+
+        // Assert
+        bytes4 expectedSelector = SuperVault.onERC1155Received.selector;
+        assertEq(result, expectedSelector, "onERC1155Received should return the correct selector");
     }
 
     function test_superVault_xChainDeposit_assertSuperPositions_splitAccordingToWeights() public {
@@ -248,11 +316,48 @@ contract SuperVaultTest is ProtocolActions {
         address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
 
         // Call report() function
-        (bool success, bytes memory result) = superVaultAddress.call(abi.encodeWithSignature("report()"));
+        (bool success,) = superVaultAddress.call(abi.encodeWithSignature("report()"));
         require(success, "report() call failed");
 
         vm.stopPrank();
     }
+
+    function testSetDepositLimit() public {
+        uint256 newDepositLimit = 2000 ether;
+        (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
+        address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
+
+        // Expect the DepositLimitSet event to be emitted
+        vm.expectEmit(true, true, true, true);
+        emit ISuperVault.DepositLimitSet(newDepositLimit);
+
+        // Call setDepositLimit as the superVaultsStrategist
+        vm.prank(deployer);
+        SuperVault(payable(superVaultAddress)).setDepositLimit(newDepositLimit);
+
+        // Verify the new deposit limit
+        assertEq(SuperVault(payable(superVaultAddress)).availableDepositLimit(address(0)), newDepositLimit);
+    }
+
+    function testSetRefundsReceiver() public {
+        (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
+        address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
+
+        // Ensure the caller is not the strategist
+        vm.prank(address(0xdead));
+        vm.expectRevert(ISuperVault.NOT_SUPER_VAULTS_STRATEGIST.selector);
+        SuperVault(payable(superVaultAddress)).setRefundsReceiver(deployer);
+
+        // Set the new refunds receiver as the strategist
+        vm.prank(deployer);
+        vm.expectEmit(true, true, true, true);
+        emit ISuperVault.RefundsReceiverSet(deployer);
+        SuperVault(payable(superVaultAddress)).setRefundsReceiver(deployer);
+
+        // Assert
+        assertEq(SuperVault(payable(superVaultAddress)).REFUNDS_RECEIVER(), deployer);
+    }
+
     //////////////////////////////////////////////////////////////
     //               INTERNAL HELPERS                           //
     //////////////////////////////////////////////////////////////

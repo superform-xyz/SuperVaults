@@ -22,19 +22,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
     using DataLib for uint256;
     using SafeERC20 for ERC20;
 
-    //
-    // Examples:
-    // 1 - USDC SuperVault: Morpho + Euler + Aave USDC (3 vaults total to start)) -> ETH
-    //      Asset: USDC
-    // 2 - Stablecoins SuperVault: Morpho + Euler + Aave (USDC, DAI, USDT (9 vaults total)) -> ETH
-    //
-    // Requirements:
-    // 1 - Management can set %s for each Superform (done also at launch)
-    // 2 - Factory: input superform ids + weights and deploy - anyone can create a super vault
-    // 3 - Auto-Rebalancing: who will be rebalancing? A fireblocks keeper
-    // 4 - There is an algorithm to tell the weights for the keeper to rebalance (TBD, function will allow any weights
-    // to be set)
-
     //////////////////////////////////////////////////////////////
     //                     STATE VARIABLES                      //
     //////////////////////////////////////////////////////////////
@@ -70,6 +57,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         address asset_,
         address refundsReceiver_,
         string memory name_,
+        uint256 depositLimit_,
         uint256[] memory superformIds_,
         uint256[] memory startingWeights_
     )
@@ -108,11 +96,18 @@ contract SuperVault is BaseStrategy, ISuperVault {
         SV.numberOfSuperforms = numberOfSuperforms;
         SV.superformIds = superformIds_;
         SV.weights = startingWeights_;
+        SV.depositLimit = depositLimit_;
     }
 
     //////////////////////////////////////////////////////////////
     //                  EXTERNAL  FUNCTIONS                     //
     //////////////////////////////////////////////////////////////
+
+    function setDepositLimit(uint256 depositLimit_) external onlySuperVaultsStrategist {
+        SV.depositLimit = depositLimit_;
+
+        emit DepositLimitSet(depositLimit_);
+    }
 
     function setRefundsReceiver(address refundReceiver_) external onlySuperVaultsStrategist {
         REFUNDS_RECEIVER = refundReceiver_;
@@ -226,6 +221,13 @@ contract SuperVault is BaseStrategy, ISuperVault {
     function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
         return interfaceId == type(IERC165).interfaceId || interfaceId == type(IERC1155Receiver).interfaceId;
     }
+
+    function availableDepositLimit(address /*_owner*/ ) public view override returns (uint256) {
+        uint256 totalAssets = TokenizedStrategy.totalAssets();
+        uint256 depositLimit = SV.depositLimit;
+        return totalAssets >= depositLimit ? 0 : depositLimit - totalAssets;
+    }
+
     //////////////////////////////////////////////////////////////
     //                     BASESTRATEGY OVERRIDES               //
     //////////////////////////////////////////////////////////////
@@ -293,6 +295,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         bool isDeposit
     )
         internal
+        view
         returns (MultiVaultSFData memory mvData, address router)
     {
         uint256 numberOfSuperforms = SV.numberOfSuperforms;

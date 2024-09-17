@@ -13,6 +13,7 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Struct to hold SuperVault strategy data
     struct SuperVaultStrategyData {
         uint256 numberOfSuperforms;
+        uint256 depositLimit;
         uint256[] superformIds;
         uint256[] weights;
     }
@@ -53,6 +54,10 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Emitted when the SuperVault is rebalanced
     /// @param finalWeights Array of final weights of the SuperVault
     event Rebalanced(uint256[] finalWeights);
+
+    /// @notice Emitted when the deposit limit is set
+    /// @param depositLimit The new deposit limit
+    event DepositLimitSet(uint256 depositLimit);
 
     //////////////////////////////////////////////////////////////
     //                  EXTERNAL  FUNCTIONS                     //
