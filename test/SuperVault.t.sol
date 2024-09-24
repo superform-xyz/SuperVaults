@@ -8,9 +8,8 @@ import { IBaseRouter } from "superform-core/src/interfaces/IBaseRouter.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
 import { ISuperVault } from "../src/ISuperVault.sol";
-
 import { SuperVault } from "../src/SuperVault.sol";
-import { TokenizedStrategy } from "../src/vendor/TokenizedStrategy.sol";
+import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 
 contract SuperVaultTest is ProtocolActions {
     using Math for uint256;
@@ -67,9 +66,6 @@ contract SuperVaultTest is ProtocolActions {
             }
         }
 
-        address tokenizedStrategyAddress = address(new TokenizedStrategy(FACTORY));
-
-        console.log("TokenizedStrategy", tokenizedStrategyAddress);
         // Deploy SuperVault
         SuperVault superVault = new SuperVault(
             getContract(SOURCE_CHAIN, "SuperRegistry"),
@@ -80,6 +76,15 @@ contract SuperVaultTest is ProtocolActions {
             underlyingSuperformIds,
             weights
         );
+        (bool success,) =
+            address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.setPerformanceFee.selector, 0));
+        require(success, "Failed to set performance fee to 0");
+
+        (bool success2, bytes memory data) =
+            address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.performanceFee.selector));
+        require(success2, "Failed to get performance fee");
+        uint256 performanceFee = abi.decode(data, (uint256));
+        assertEq(performanceFee, 0, "Performance fee should be 0");
         address superVaultAddress = address(superVault);
 
         // Deploy Superform
@@ -154,7 +159,7 @@ contract SuperVaultTest is ProtocolActions {
         vm.stopPrank();
     }
 
-    function testOnERC1155Received() public {
+    function testOnERC1155Received() public view {
         // Arrange
         address operator = address(0x1);
         address from = address(0x2);
