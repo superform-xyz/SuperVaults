@@ -3,8 +3,8 @@ pragma solidity ^0.8.23;
 
 import { Address } from "openzeppelin/contracts/utils/Address.sol";
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
-import { SafeERC20 } from "openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ERC20 } from "openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { IERC165 } from "openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IERC4626 } from "openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SingleDirectMultiVaultStateReq, MultiVaultSFData, LiqRequest } from "superform-core/src/types/DataTypes.sol";
@@ -14,7 +14,7 @@ import { IBaseForm } from "superform-core/src/interfaces/IBaseForm.sol";
 import { IBaseRouter } from "superform-core/src/interfaces/IBaseRouter.sol";
 import { ISuperformRouterPlus } from "superform-core/src/interfaces/ISuperformRouterPlus.sol";
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
-import { BaseStrategy } from "./vendor/BaseStrategy.sol";
+import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
 import { ISuperVault, IERC1155Receiver } from "./ISuperVault.sol";
 
 contract SuperVault is BaseStrategy, ISuperVault {
@@ -239,7 +239,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             IBaseRouter.singleDirectMultiVaultDeposit.selector, SingleDirectMultiVaultStateReq(mvData)
         );
 
-        asset.safeApprove(router, amount_);
+        asset.safeIncreaseAllowance(router, amount_);
 
         /// @dev this call has to be enforced with 0 msg.value not to break the 4626 standard
         (bool success, bytes memory returndata) = router.call(callData);
