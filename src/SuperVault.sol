@@ -18,8 +18,6 @@ import { ISuperformFactory } from "superform-core/src/interfaces/ISuperformFacto
 import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
 import { ISuperVault, IERC1155Receiver } from "./ISuperVault.sol";
 
-import "forge-std/console.sol";
-
 contract SuperVault is BaseStrategy, ISuperVault {
     using Math for uint256;
     using DataLib for uint256;
@@ -132,7 +130,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
             revert ARRAY_LENGTH_MISMATCH();
         }
         uint256 numberOfSuperforms = SV.numberOfSuperforms;
-        // Check if superformIdsRebalanceFrom is contained within SV Data and save the indexes of the found ids
+
+        // Check if superformIdsRebalanceFrom existin SVData and save the indexes of the found ids
         uint256 foundCount = 0;
         bool[] memory foundInSV = new bool[](lenRebalanceFrom);
         for (uint256 i; i < lenRebalanceFrom; ++i) {
@@ -366,7 +365,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     function _prepareRebalanceArgs(
         uint256[] memory superformIdsRebalanceFrom,
         uint256[] memory amountsRebalanceFrom,
-        uint256[] memory superformIdsRebalanceTo,
+        uint256[] memory finalSuperformIds,
         uint256[] memory weightsOfRedestribution,
         uint256 rebalanceFromMsgValue,
         uint256 rebalanceToMsgValue,
@@ -391,13 +390,11 @@ contract SuperVault is BaseStrategy, ISuperVault {
         );
         // Prepare callData for rebalance from
         args.callData = abi.encodeWithSelector(IBaseRouter.singleDirectMultiVaultWithdraw.selector, req);
-
+        // Create a filtered version of superformIdsRebalanceTo
+        (uint256[] memory filteredSuperformIds, uint256[] memory filteredWeights) =
+            _filterNonZeroWeights(finalSuperformIds, weightsOfRedestribution);
         (req,) = _prepareSingleDirectMultiVaultStateReq(
-            superformIdsRebalanceTo,
-            _calculateAmounts(totalOutputAmount, weightsOfRedestribution),
-            routerPlus,
-            slippage,
-            false
+            filteredSuperformIds, _calculateAmounts(totalOutputAmount, filteredWeights), routerPlus, slippage, false
         );
 
         // Prepare rebalanceToCallData
@@ -465,6 +462,34 @@ contract SuperVault is BaseStrategy, ISuperVault {
         }
     }
 
+    function _filterNonZeroWeights(
+        uint256[] memory superformIds,
+        uint256[] memory weights
+    )
+        internal
+        pure
+        returns (uint256[] memory filteredIds, uint256[] memory filteredWeights)
+    {
+        uint256 count;
+        for (uint256 i; i < weights.length; ++i) {
+            if (weights[i] != 0) {
+                count++;
+            }
+        }
+
+        filteredIds = new uint256[](count);
+        filteredWeights = new uint256[](count);
+
+        uint256 j;
+        for (uint256 i; i < weights.length; ++i) {
+            if (weights[i] != 0) {
+                filteredIds[j] = superformIds[i];
+                filteredWeights[j] = weights[i];
+                j++;
+            }
+        }
+    }
+
     function _updateSVData(
         address superPositions,
         uint256[] memory finalSuperformIds
@@ -490,11 +515,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
         for (uint256 i; i < length - 1; ++i) {
             newWeights[i] = newWeights[i].mulDiv(TOTAL_WEIGHT, totalWeight, Math.Rounding.Down);
             totalAssignedWeight += newWeights[i];
-            console.log("newWeights", i, ":", newWeights[i]);
         }
         // Assign remaining weight to the last index
         newWeights[length - 1] = TOTAL_WEIGHT - totalAssignedWeight;
-        console.log("newWeights", length - 1, ":", newWeights[length - 1]);
         // Update SV weights
         SV.weights = newWeights;
         SV.superformIds = finalSuperformIds;

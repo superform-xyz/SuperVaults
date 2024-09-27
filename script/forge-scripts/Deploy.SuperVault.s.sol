@@ -36,6 +36,8 @@ contract MainnetDeploySuperVault is Script {
         uint256[] memory startingWeights = new uint256[](1);
         startingWeights[0] = 10_000;
 
+        /// TODO WARNING!: Change this before making it the oficial SuperVault
+        address refundsReceiver = 0x48aB8AdF869Ba9902Ad483FB1Ca2eFDAb6eabe92;
         new SuperVault(
             superRegistry,
             0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913, // USDC
