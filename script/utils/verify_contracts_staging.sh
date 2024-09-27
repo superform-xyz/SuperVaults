@@ -20,4 +20,4 @@ export OPTIMISM_RPC_URL=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/OPTIMISM_RPC_U
 export BASE_RPC_URL=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/BASE_RPC_URL/credential)
 export FANTOM_RPC_URL=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/FANTOM_RPC_URL/credential)
 
-forge verify-contract 0x3392F08d93de2e1675C2e0D19f3Ed021746F742c "src/SuperVault.sol:SuperVault" --chain-id 8453 --num-of-optimizations 200 --watch --compiler-version v0.8.23+commit.f704f362 --guess-constructor-args --rpc-url $BASE_RPC_URL --etherscan-api-key "$BASESCAN_API_KEY"
+forge verify-contract 0xd8ba05abcbe0baf1ee748104da11fb8f717fd291 "src/SuperVault.sol:SuperVault" --chain-id 8453 --num-of-optimizations 200 --watch --compiler-version v0.8.23+commit.f704f362 --guess-constructor-args --rpc-url $BASE_RPC_URL --etherscan-api-key "$BASESCAN_API_KEY"

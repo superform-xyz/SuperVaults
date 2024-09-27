@@ -31,7 +31,7 @@ contract MainnetDeploySuperVault is Script {
 
         /// 100% in the morpho moonwell USDC
         uint256[] memory superformIds = new uint256[](1);
-        superformIds[0] = 53_060_340_969_226_234_633_364_492_417_650_658_771_681_951_352_098_198_744_034_590;
+        superformIds[0] = 53_060_340_969_225_424_123_272_122_895_191_053_251_498_236_784_870_936_252_229_868;
 
         uint256[] memory startingWeights = new uint256[](1);
         startingWeights[0] = 10_000;
