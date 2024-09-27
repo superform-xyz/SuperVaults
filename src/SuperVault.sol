@@ -14,6 +14,7 @@ import { IBaseForm } from "superform-core/src/interfaces/IBaseForm.sol";
 import { IBaseRouter } from "superform-core/src/interfaces/IBaseRouter.sol";
 import { ISuperformRouterPlus } from "superform-core/src/interfaces/ISuperformRouterPlus.sol";
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
+import { ISuperformFactory } from "superform-core/src/interfaces/ISuperformFactory.sol";
 import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
 import { ISuperVault, IERC1155Receiver } from "./ISuperVault.sol";
 
@@ -76,26 +77,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         superRegistry = ISuperRegistry(superRegistry_);
         REFUNDS_RECEIVER = refundsReceiver_;
 
-        uint256 numberOfSuperforms = superformIds_.length;
-        if (numberOfSuperforms != startingWeights_.length) {
-            revert ARRAY_LENGTH_MISMATCH();
-        }
-
-        uint256 totalWeight;
-
-        for (uint256 i; i < numberOfSuperforms; ++i) {
-            totalWeight += startingWeights_[i];
-            /// @dev this superVault only supports superforms that have the same asset as the vault
-            (address superform,,) = superformIds_[i].getSuperform();
-            if (IBaseForm(superform).getVaultAsset() != asset_) {
-                revert SUPERFORM_DOES_NOT_SUPPORT_ASSET();
-            }
-        }
-        if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
-
-        SV.numberOfSuperforms = numberOfSuperforms;
-        SV.superformIds = superformIds_;
-        SV.weights = startingWeights_;
+        _updateSVData(superformIds_, startingWeights_);
         SV.depositLimit = depositLimit_;
     }
 
@@ -170,7 +152,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         ISuperPositions(superPositions).setApprovalForMany(routerPlus, args.ids, new uint256[](args.ids.length));
 
         // Step 3: Update SV data
-        uint256[] memory newWeights = _updateSVData(superPositions);
+        uint256[] memory newWeights = _updateSVData(superformIdsRebalanceTo, weightsOfRedestribution);
 
         emit Rebalanced(newWeights);
     }
@@ -437,31 +419,67 @@ contract SuperVault is BaseStrategy, ISuperVault {
         }
     }
 
-    function _updateSVData(address superPositions) internal returns (uint256[] memory newWeights) {
-        uint256 totalWeight = 0;
-        uint256 length = SV.numberOfSuperforms;
-        newWeights = new uint256[](length);
-        uint256[] memory superformIds = SV.superformIds;
-
-        // Calculate total value and individual values
-        for (uint256 i = 0; i < length; i++) {
-            uint256 balance = ISuperPositions(superPositions).balanceOf(address(this), superformIds[i]);
-            (address superform,,) = superformIds[i].getSuperform();
-            uint256 value = IERC4626(IBaseForm(superform).getVaultAddress()).convertToAssets(balance);
-            totalWeight += value;
-            newWeights[i] = value;
+    function _updateSVData(
+        uint256[] memory superformIds_,
+        uint256[] memory weights_
+    )
+        internal
+        returns (uint256[] memory newWeights)
+    {
+        uint256 numberOfSuperforms = superformIds_.length;
+        if (numberOfSuperforms != weights_.length) {
+            revert ARRAY_LENGTH_MISMATCH();
         }
 
-        // Calculate new weights as percentages
-        uint256 totalAssignedWeight = 0;
-        for (uint256 i = 0; i < length - 1; i++) {
-            newWeights[i] = newWeights[i].mulDiv(TOTAL_WEIGHT, totalWeight, Math.Rounding.Down);
-            totalAssignedWeight += newWeights[i];
-        }
-        // Assign remaining weight to the last index
-        newWeights[length - 1] = TOTAL_WEIGHT - totalAssignedWeight;
+        uint256 totalWeight;
 
-        // Update SV weights
-        SV.weights = newWeights;
+        for (uint256 i; i < numberOfSuperforms; ++i) {
+            totalWeight += weights_[i];
+            /// @dev validate superform id
+            if (
+                !ISuperformFactory(superRegistry.getAddress(keccak256("SUPERFORM_FACTORY"))).isSuperform(
+                    superformIds_[i]
+                )
+            ) {
+                revert();
+            }
+
+            /// @dev this superVault only supports superforms that have the same asset as the vault
+            (address superform,,) = superformIds_[i].getSuperform();
+            if (IBaseForm(superform).getVaultAsset() != address(asset)) {
+                revert SUPERFORM_DOES_NOT_SUPPORT_ASSET();
+            }
+        }
+        if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
+
+        SV.numberOfSuperforms = numberOfSuperforms;
+        SV.superformIds = superformIds_;
+        SV.weights = weights_;
+
+        // uint256 totalWeight = 0;
+        // uint256 length = SV.numberOfSuperforms;
+        // newWeights = new uint256[](length);
+        // uint256[] memory superformIds = SV.superformIds;
+
+        // // Calculate total value and individual values
+        // for (uint256 i = 0; i < length; i++) {
+        //     uint256 balance = ISuperPositions(superPositions).balanceOf(address(this), superformIds[i]);
+        //     (address superform,,) = superformIds[i].getSuperform();
+        //     uint256 value = IERC4626(IBaseForm(superform).getVaultAddress()).convertToAssets(balance);
+        //     totalWeight += value;
+        //     newWeights[i] = value;
+        // }
+
+        // // Calculate new weights as percentages
+        // uint256 totalAssignedWeight = 0;
+        // for (uint256 i = 0; i < length - 1; i++) {
+        //     newWeights[i] = newWeights[i].mulDiv(TOTAL_WEIGHT, totalWeight, Math.Rounding.Down);
+        //     totalAssignedWeight += newWeights[i];
+        // }
+        // // Assign remaining weight to the last index
+        // newWeights[length - 1] = TOTAL_WEIGHT - totalAssignedWeight;
+
+        // // Update SV weights
+        // SV.weights = newWeights;
     }
 }
