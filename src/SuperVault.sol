@@ -14,8 +14,11 @@ import { IBaseForm } from "superform-core/src/interfaces/IBaseForm.sol";
 import { IBaseRouter } from "superform-core/src/interfaces/IBaseRouter.sol";
 import { ISuperformRouterPlus } from "superform-core/src/interfaces/ISuperformRouterPlus.sol";
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
+import { ISuperformFactory } from "superform-core/src/interfaces/ISuperformFactory.sol";
 import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
 import { ISuperVault, IERC1155Receiver } from "./ISuperVault.sol";
+
+import "forge-std/console.sol";
 
 contract SuperVault is BaseStrategy, ISuperVault {
     using Math for uint256;
@@ -81,12 +84,17 @@ contract SuperVault is BaseStrategy, ISuperVault {
             revert ARRAY_LENGTH_MISMATCH();
         }
 
+        ISuperformFactory factory = ISuperformFactory(_getAddress(keccak256("SUPERFORM_FACTORY")));
+
         uint256 totalWeight;
 
         for (uint256 i; i < numberOfSuperforms; ++i) {
             totalWeight += startingWeights_[i];
             /// @dev this superVault only supports superforms that have the same asset as the vault
             (address superform,,) = superformIds_[i].getSuperform();
+            if (!factory.isSuperform(superformIds_[i])) {
+                revert SUPERFORM_DOES_NOT_EXIST(superformIds_[i]);
+            }
             if (IBaseForm(superform).getVaultAsset() != asset_) {
                 revert SUPERFORM_DOES_NOT_SUPPORT_ASSET();
             }
@@ -116,46 +124,66 @@ contract SuperVault is BaseStrategy, ISuperVault {
     }
 
     // @inheritdoc ISuperVault
-    function rebalance(
-        uint256[] memory superformIdsRebalanceFrom,
-        uint256[] memory amountsRebalanceFrom,
-        uint256[] memory superformIdsRebalanceTo,
-        uint256[] memory weightsOfRedestribution,
-        uint256 rebalanceFromMsgValue,
-        uint256 rebalanceToMsgValue,
-        uint256 slippage
-    )
-        external
-        payable
-        override
-        onlySuperVaultsStrategist
-    {
+    function rebalance(RebalanceArgs memory a) external payable override onlySuperVaultsStrategist {
+        uint256 lenRebalanceFrom = a.superformIdsRebalanceFrom.length;
+        uint256 lenFinal = a.finalSuperformIds.length;
         // Validate input arrays
-        if (
-            superformIdsRebalanceFrom.length != amountsRebalanceFrom.length
-                || superformIdsRebalanceTo.length != weightsOfRedestribution.length
-        ) {
+        if (lenRebalanceFrom != a.amountsRebalanceFrom.length || lenFinal != a.weightsOfRedestribution.length) {
             revert ARRAY_LENGTH_MISMATCH();
         }
-
-        // Check if any ID in rebalanceFrom is present in rebalanceTo
-        for (uint256 i = 0; i < superformIdsRebalanceFrom.length; i++) {
-            for (uint256 j = 0; j < superformIdsRebalanceTo.length; j++) {
-                if (superformIdsRebalanceFrom[i] == superformIdsRebalanceTo[j]) {
-                    revert DUPLICATE_SUPERFORM_ID();
+        uint256 numberOfSuperforms = SV.numberOfSuperforms;
+        // Check if superformIdsRebalanceFrom is contained within SV Data and save the indexes of the found ids
+        uint256 foundCount = 0;
+        bool[] memory foundInSV = new bool[](lenRebalanceFrom);
+        for (uint256 i; i < lenRebalanceFrom; ++i) {
+            for (uint256 j; j < numberOfSuperforms; ++j) {
+                if (a.superformIdsRebalanceFrom[i] == SV.superformIds[j]) {
+                    foundCount++;
+                    foundInSV[i] = true;
+                    break;
                 }
+            }
+        }
+        if (foundCount != lenRebalanceFrom) {
+            revert INVALID_SUPERFORM_ID_REBALANCE_FROM();
+        }
+        // Check if not found superformIdsRebalanceFrom are in finalSuperformIds
+        for (uint256 i; i < lenRebalanceFrom; ++i) {
+            if (!foundInSV[i]) {
+                bool foundInRebalanceTo = false;
+                for (uint256 j; j < lenFinal; ++j) {
+                    if (a.superformIdsRebalanceFrom[i] == a.finalSuperformIds[j]) {
+                        foundInRebalanceTo = true;
+                        break;
+                    }
+                }
+                if (!foundInRebalanceTo) {
+                    revert REBALANCE_FROM_ID_NOT_FOUND_IN_FINAL_IDS();
+                }
+            }
+        }
+
+        // Check if finalSuperformIds are present in superform factory and support the asset
+        ISuperformFactory factory = ISuperformFactory(_getAddress(keccak256("SUPERFORM_FACTORY")));
+        for (uint256 i; i < lenFinal; ++i) {
+            if (!factory.isSuperform(a.finalSuperformIds[i])) {
+                revert SUPERFORM_DOES_NOT_EXIST(a.finalSuperformIds[i]);
+            }
+            (address superform,,) = a.finalSuperformIds[i].getSuperform();
+            if (IBaseForm(superform).getVaultAsset() != address(asset)) {
+                revert SUPERFORM_DOES_NOT_SUPPORT_ASSET();
             }
         }
 
         // Step 1: Prepare rebalance arguments
         (ISuperformRouterPlus.RebalanceMultiPositionsSyncArgs memory args, address routerPlus) = _prepareRebalanceArgs(
-            superformIdsRebalanceFrom,
-            amountsRebalanceFrom,
-            superformIdsRebalanceTo,
-            weightsOfRedestribution,
-            rebalanceFromMsgValue,
-            rebalanceToMsgValue,
-            slippage
+            a.superformIdsRebalanceFrom,
+            a.amountsRebalanceFrom,
+            a.finalSuperformIds,
+            a.weightsOfRedestribution,
+            a.rebalanceFromMsgValue,
+            a.rebalanceToMsgValue,
+            a.slippage
         );
 
         address superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
@@ -170,9 +198,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
         ISuperPositions(superPositions).setApprovalForMany(routerPlus, args.ids, new uint256[](args.ids.length));
 
         // Step 3: Update SV data
-        uint256[] memory newWeights = _updateSVData(superPositions);
+        uint256[] memory newWeights = _updateSVData(superPositions, a.finalSuperformIds);
 
-        emit Rebalanced(newWeights);
+        emit RebalanceComplete(a.finalSuperformIds, newWeights);
     }
 
     function getSuperVaultData()
@@ -277,7 +305,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         uint256 totalAssetsInVaults;
         uint256 numberOfSuperforms = SV.numberOfSuperforms;
         uint256[] memory superformIds = SV.superformIds;
-        for (uint256 i = 0; i < numberOfSuperforms; i++) {
+        for (uint256 i; i < numberOfSuperforms; ++i) {
             (address superform,,) = superformIds[i].getSuperform();
             address vault = IBaseForm(superform).getVaultAddress();
             totalAssetsInVaults += IERC4626(vault).balanceOf(address(this));
@@ -397,7 +425,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         data.maxSlippages = new uint256[](length);
         data.liqRequests = new LiqRequest[](length);
 
-        for (uint256 i = 0; i < length; i++) {
+        for (uint256 i; i < length; ++i) {
             (address superform,,) = superformIds[i].getSuperform();
 
             if (isWithdraw) {
@@ -437,16 +465,21 @@ contract SuperVault is BaseStrategy, ISuperVault {
         }
     }
 
-    function _updateSVData(address superPositions) internal returns (uint256[] memory newWeights) {
+    function _updateSVData(
+        address superPositions,
+        uint256[] memory finalSuperformIds
+    )
+        internal
+        returns (uint256[] memory newWeights)
+    {
         uint256 totalWeight = 0;
-        uint256 length = SV.numberOfSuperforms;
+        uint256 length = finalSuperformIds.length;
         newWeights = new uint256[](length);
-        uint256[] memory superformIds = SV.superformIds;
 
         // Calculate total value and individual values
-        for (uint256 i = 0; i < length; i++) {
-            uint256 balance = ISuperPositions(superPositions).balanceOf(address(this), superformIds[i]);
-            (address superform,,) = superformIds[i].getSuperform();
+        for (uint256 i; i < length; ++i) {
+            uint256 balance = ISuperPositions(superPositions).balanceOf(address(this), finalSuperformIds[i]);
+            (address superform,,) = finalSuperformIds[i].getSuperform();
             uint256 value = IERC4626(IBaseForm(superform).getVaultAddress()).convertToAssets(balance);
             totalWeight += value;
             newWeights[i] = value;
@@ -454,14 +487,17 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         // Calculate new weights as percentages
         uint256 totalAssignedWeight = 0;
-        for (uint256 i = 0; i < length - 1; i++) {
+        for (uint256 i; i < length - 1; ++i) {
             newWeights[i] = newWeights[i].mulDiv(TOTAL_WEIGHT, totalWeight, Math.Rounding.Down);
             totalAssignedWeight += newWeights[i];
+            console.log("newWeights", i, ":", newWeights[i]);
         }
         // Assign remaining weight to the last index
         newWeights[length - 1] = TOTAL_WEIGHT - totalAssignedWeight;
-
+        console.log("newWeights", length - 1, ":", newWeights[length - 1]);
         // Update SV weights
         SV.weights = newWeights;
+        SV.superformIds = finalSuperformIds;
+        SV.numberOfSuperforms = length;
     }
 }
