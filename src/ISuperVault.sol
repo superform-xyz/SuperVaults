@@ -93,5 +93,5 @@ interface ISuperVault is IERC1155Receiver {
     /// select the ids to rebalance from
     /// send an amount to take from those ids
     /// the total underlying asset amount is redestributed according to the desired weights
-    function rebalance(RebalanceArgs memory a) external payable;
+    function rebalance(RebalanceArgs memory rebalanceArgs_) external payable;
 }
