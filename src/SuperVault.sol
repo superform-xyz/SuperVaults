@@ -18,6 +18,10 @@ import { ISuperformFactory } from "superform-core/src/interfaces/ISuperformFacto
 import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
 import { ISuperVault, IERC1155Receiver } from "./ISuperVault.sol";
 
+/// @title SuperVault
+/// @notice A vault contract that manages multiple Superform positions
+/// @dev Inherits from BaseStrategy and implements ISuperVault and IERC1155Receiver
+/// @author Superform Labs
 contract SuperVault is BaseStrategy, ISuperVault {
     using Math for uint256;
     using DataLib for uint256;
@@ -27,22 +31,29 @@ contract SuperVault is BaseStrategy, ISuperVault {
     //                     STATE VARIABLES                      //
     //////////////////////////////////////////////////////////////
 
-    SuperVaultStrategyData private SV;
-
+    /// @notice The chain ID of the network this contract is deployed on
     uint64 public immutable CHAIN_ID;
 
-    uint256 public constant TOTAL_WEIGHT = 10_000;
-    uint256 public constant MAX_SLIPPAGE = 100; // 1%
-
-    /// TODO who will be the refunds receiver? A superform controlled address
-    address public REFUNDS_RECEIVER;
-
+    /// @notice The address of the SuperRegistry contract
     ISuperRegistry public immutable superRegistry;
+
+    /// @notice The total weight used for calculating proportions (10000 = 100%)
+    uint256 public constant TOTAL_WEIGHT = 10_000;
+
+    /// @notice The maximum allowed slippage (1% = 100)
+    uint256 public constant MAX_SLIPPAGE = 100;
+
+    /// @notice The address that receives refunds
+    address public refundReceiver;
+
+    /// @notice Struct containing SuperVault strategy data
+    SuperVaultStrategyData private SV;
 
     //////////////////////////////////////////////////////////////
     //                       MODIFIERS                          //
     //////////////////////////////////////////////////////////////
 
+    /// @notice Ensures that only the Super Vaults Strategist can call the function
     modifier onlySuperVaultsStrategist() {
         if (_getAddress(keccak256("SUPER_VAULTS_STRATEGIST")) != msg.sender) {
             revert NOT_SUPER_VAULTS_STRATEGIST();
@@ -53,6 +64,14 @@ contract SuperVault is BaseStrategy, ISuperVault {
     //////////////////////////////////////////////////////////////
     //                       CONSTRUCTOR                        //
     //////////////////////////////////////////////////////////////
+
+    /// @param superRegistry_ Address of the SuperRegistry contract
+    /// @param asset_ Address of the asset token
+    /// @param refundsReceiver_ Address to receive refunds
+    /// @param name_ Name of the strategy
+    /// @param depositLimit_ Maximum deposit limit
+    /// @param superformIds_ Array of Superform IDs
+    /// @param startingWeights_ Array of starting weights for each Superform
     constructor(
         address superRegistry_,
         address asset_,
@@ -75,7 +94,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         CHAIN_ID = uint64(block.chainid);
 
         superRegistry = ISuperRegistry(superRegistry_);
-        REFUNDS_RECEIVER = refundsReceiver_;
+        refundReceiver = refundsReceiver_;
 
         uint256 numberOfSuperforms = superformIds_.length;
         if (numberOfSuperforms != startingWeights_.length) {
@@ -85,18 +104,23 @@ contract SuperVault is BaseStrategy, ISuperVault {
         ISuperformFactory factory = ISuperformFactory(_getAddress(keccak256("SUPERFORM_FACTORY")));
 
         uint256 totalWeight;
+        address superform;
 
         for (uint256 i; i < numberOfSuperforms; ++i) {
-            totalWeight += startingWeights_[i];
             /// @dev this superVault only supports superforms that have the same asset as the vault
-            (address superform,,) = superformIds_[i].getSuperform();
+            (superform,,) = superformIds_[i].getSuperform();
+
             if (!factory.isSuperform(superformIds_[i])) {
                 revert SUPERFORM_DOES_NOT_EXIST(superformIds_[i]);
             }
+
             if (IBaseForm(superform).getVaultAsset() != asset_) {
                 revert SUPERFORM_DOES_NOT_SUPPORT_ASSET();
             }
+
+            totalWeight += startingWeights_[i];
         }
+
         if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
 
         SV.numberOfSuperforms = numberOfSuperforms;
@@ -109,85 +133,70 @@ contract SuperVault is BaseStrategy, ISuperVault {
     //                  EXTERNAL  FUNCTIONS                     //
     //////////////////////////////////////////////////////////////
 
+    /// @notice Sets the deposit limit for the vault
+    /// @param depositLimit_ The new deposit limi
     function setDepositLimit(uint256 depositLimit_) external onlySuperVaultsStrategist {
         SV.depositLimit = depositLimit_;
 
         emit DepositLimitSet(depositLimit_);
     }
 
+    /// @notice Sets the refunds receiver address
+    /// @param refundReceiver_ The new refunds receiver address
     function setRefundsReceiver(address refundReceiver_) external onlySuperVaultsStrategist {
-        REFUNDS_RECEIVER = refundReceiver_;
+        if (refundReceiver_ == address(0)) revert ZERO_ADDRESS();
+        refundReceiver = refundReceiver_;
 
         emit RefundsReceiverSet(refundReceiver_);
     }
 
-    // @inheritdoc ISuperVault
-    function rebalance(RebalanceArgs memory a) external payable override onlySuperVaultsStrategist {
-        uint256 lenRebalanceFrom = a.superformIdsRebalanceFrom.length;
-        uint256 lenFinal = a.finalSuperformIds.length;
-        // Validate input arrays
-        if (lenRebalanceFrom != a.amountsRebalanceFrom.length || lenFinal != a.weightsOfRedestribution.length) {
+    /// @inheritdoc ISuperVault
+    function rebalance(RebalanceArgs calldata rebalanceArgs) external payable override onlySuperVaultsStrategist {
+        uint256 lenRebalanceFrom = rebalanceArgs.superformIdsRebalanceFrom.length;
+        uint256 lenFinal = rebalanceArgs.finalSuperformIds.length;
+
+        /// @dev sanity check input arrays
+        if (
+            lenRebalanceFrom != rebalanceArgs.amountsRebalanceFrom.length
+                || lenFinal != rebalanceArgs.weightsOfRedestribution.length
+        ) {
             revert ARRAY_LENGTH_MISMATCH();
         }
-        uint256 numberOfSuperforms = SV.numberOfSuperforms;
 
-        // Check if superformIdsRebalanceFrom existin SVData and save the indexes of the found ids
-        uint256 foundCount = 0;
-        bool[] memory foundInSV = new bool[](lenRebalanceFrom);
-        for (uint256 i; i < lenRebalanceFrom; ++i) {
-            for (uint256 j; j < numberOfSuperforms; ++j) {
-                if (a.superformIdsRebalanceFrom[i] == SV.superformIds[j]) {
-                    foundCount++;
-                    foundInSV[i] = true;
-                    break;
-                }
-            }
-        }
-        if (foundCount != lenRebalanceFrom) {
-            revert INVALID_SUPERFORM_ID_REBALANCE_FROM();
-        }
-        // Check if not found superformIdsRebalanceFrom are in finalSuperformIds
-        for (uint256 i; i < lenRebalanceFrom; ++i) {
-            if (!foundInSV[i]) {
-                bool foundInRebalanceTo = false;
-                for (uint256 j; j < lenFinal; ++j) {
-                    if (a.superformIdsRebalanceFrom[i] == a.finalSuperformIds[j]) {
-                        foundInRebalanceTo = true;
+        {
+            /// @dev caching to avoid multiple SLOADs
+            uint256 numberOfSuperforms = SV.numberOfSuperforms;
+            uint256 foundCount;
+
+            for (uint256 i; i < lenRebalanceFrom; ++i) {
+                for (uint256 j; j < numberOfSuperforms; ++j) {
+                    if (rebalanceArgs.superformIdsRebalanceFrom[i] == SV.superformIds[j]) {
+                        foundCount++;
                         break;
                     }
                 }
-                if (!foundInRebalanceTo) {
-                    revert REBALANCE_FROM_ID_NOT_FOUND_IN_FINAL_IDS();
-                }
+            }
+
+            if (foundCount != lenRebalanceFrom) {
+                revert INVALID_SUPERFORM_ID_REBALANCE_FROM();
             }
         }
 
-        // Check if finalSuperformIds are present in superform factory and support the asset
-        ISuperformFactory factory = ISuperformFactory(_getAddress(keccak256("SUPERFORM_FACTORY")));
-        for (uint256 i; i < lenFinal; ++i) {
-            if (!factory.isSuperform(a.finalSuperformIds[i])) {
-                revert SUPERFORM_DOES_NOT_EXIST(a.finalSuperformIds[i]);
-            }
-            (address superform,,) = a.finalSuperformIds[i].getSuperform();
-            if (IBaseForm(superform).getVaultAsset() != address(asset)) {
-                revert SUPERFORM_DOES_NOT_SUPPORT_ASSET();
-            }
-        }
-
-        // Step 1: Prepare rebalance arguments
-        (ISuperformRouterPlus.RebalanceMultiPositionsSyncArgs memory args, address routerPlus) = _prepareRebalanceArgs(
-            a.superformIdsRebalanceFrom,
-            a.amountsRebalanceFrom,
-            a.finalSuperformIds,
-            a.weightsOfRedestribution,
-            a.rebalanceFromMsgValue,
-            a.rebalanceToMsgValue,
-            a.slippage
+        /// @dev step 1: prepare rebalance arguments
+        ISuperformRouterPlus.RebalanceMultiPositionsSyncArgs memory args = _prepareRebalanceArgs(
+            rebalanceArgs.superformIdsRebalanceFrom,
+            rebalanceArgs.amountsRebalanceFrom,
+            rebalanceArgs.finalSuperformIds,
+            rebalanceArgs.weightsOfRedestribution,
+            rebalanceArgs.rebalanceFromMsgValue,
+            rebalanceArgs.rebalanceToMsgValue,
+            rebalanceArgs.slippage
         );
 
+        address routerPlus = _getAddress(keccak256("SUPERFORM_ROUTER_PLUS"));
         address superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
 
-        // Step 2: Execute rebalance
+        /// @dev step 2: execute rebalance
         ISuperPositions(superPositions).setApprovalForMany(routerPlus, args.ids, args.sharesToRedeem);
 
         ISuperformRouterPlus(routerPlus).rebalanceMultiPositions{
@@ -196,12 +205,20 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         ISuperPositions(superPositions).setApprovalForMany(routerPlus, args.ids, new uint256[](args.ids.length));
 
-        // Step 3: Update SV data
-        uint256[] memory newWeights = _updateSVData(superPositions, a.finalSuperformIds);
-
-        emit RebalanceComplete(a.finalSuperformIds, newWeights);
+        /// @dev step 3: update SV data
+        /// @notice no issue about reentrancy as the external contracts are trusted
+        /// @notice updateSV emits rebalance event
+        _updateSVData(superPositions, rebalanceArgs.finalSuperformIds);
     }
 
+    //////////////////////////////////////////////////////////////
+    //                 EXTERNAL VIEW/PURE FUNCTIONS             //
+    //////////////////////////////////////////////////////////////
+
+    /// @notice Returns the SuperVault data
+    /// @return numberOfSuperforms The number of Superforms
+    /// @return superformIds Array of Superform IDs
+    /// @return weights Array of weights for each Superform
     function getSuperVaultData()
         external
         view
@@ -210,11 +227,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         return (SV.numberOfSuperforms, SV.superformIds, SV.weights);
     }
 
-    //////////////////////////////////////////////////////////////
-    //                  EXTERNAL PURE FUNCTIONS                //
-    //////////////////////////////////////////////////////////////
-
-    /// @dev overrides receive functions
+    /// @inheritdoc IERC1155Receiver
     function onERC1155Received(
         address,
         address,
@@ -230,6 +243,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         return this.onERC1155Received.selector;
     }
 
+    /// @inheritdoc IERC1155Receiver
     function onERC1155BatchReceived(
         address,
         address,
@@ -245,10 +259,14 @@ contract SuperVault is BaseStrategy, ISuperVault {
         return this.onERC1155BatchReceived.selector;
     }
 
+    /// @notice Checks if the contract supports a given interface
+    /// @param interfaceId The interface identifier
+    /// @return bool True if the contract supports the interface
     function supportsInterface(bytes4 interfaceId) external pure override returns (bool) {
         return interfaceId == type(IERC165).interfaceId || interfaceId == type(IERC1155Receiver).interfaceId;
     }
 
+    /// @inheritdoc BaseStrategy
     function availableDepositLimit(address /*_owner*/ ) public view override returns (uint256) {
         uint256 totalAssets = TokenizedStrategy.totalAssets();
         uint256 depositLimit = SV.depositLimit;
@@ -259,8 +277,11 @@ contract SuperVault is BaseStrategy, ISuperVault {
     //                     BASESTRATEGY OVERRIDES               //
     //////////////////////////////////////////////////////////////
 
+    /// @notice Deploys funds to the underlying Superforms
+    /// @param amount_ The amount of funds to deploy
     function _deployFunds(uint256 amount_) internal override {
-        (MultiVaultSFData memory mvData, address router) = _prepareMultiVaultData(amount_, true);
+        MultiVaultSFData memory mvData = _prepareMultiVaultData(amount_, true);
+        address router = _getAddress(keccak256("SUPERFORM_ROUTER"));
 
         bytes memory callData = abi.encodeWithSelector(
             IBaseRouter.singleDirectMultiVaultDeposit.selector, SingleDirectMultiVaultStateReq(mvData)
@@ -276,9 +297,11 @@ contract SuperVault is BaseStrategy, ISuperVault {
         if (asset.allowance(address(this), router) > 0) asset.forceApprove(router, 0);
     }
 
+    /// @notice Frees funds from the underlying Superforms
+    /// @param amount_ The amount of funds to free
     function _freeFunds(uint256 amount_) internal override {
-        (MultiVaultSFData memory mvData, address router) = _prepareMultiVaultData(amount_, false);
-
+        (MultiVaultSFData memory mvData) = _prepareMultiVaultData(amount_, false);
+        address router = _getAddress(keccak256("SUPERFORM_ROUTER"));
         bytes memory callData = abi.encodeWithSelector(
             IBaseRouter.singleDirectMultiVaultWithdraw.selector, SingleDirectMultiVaultStateReq(mvData)
         );
@@ -298,6 +321,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
         );
     }
 
+    /// @notice Reports the total assets of the vault
+    /// @return totalAssets The total assets of the vault
     function _harvestAndReport() internal view override returns (uint256 totalAssets) {
         /// @dev we will be using reward distributor and transfer rewards to users directly
         /// @dev thus this function we will be unused (we just report full assets)
@@ -314,16 +339,20 @@ contract SuperVault is BaseStrategy, ISuperVault {
     }
 
     //////////////////////////////////////////////////////////////
-    //                     INTERNAL FUNCTIONS                     //
+    //                     INTERNAL FUNCTIONS                   //
     //////////////////////////////////////////////////////////////
 
+    /// @notice Prepares multi-vault data for deposit or withdrawal
+    /// @param amount_ The amount to deposit or withdraw
+    /// @param isDeposit True if depositing, false if withdrawing
+    /// @return mvData The prepared multi-vault data
     function _prepareMultiVaultData(
         uint256 amount_,
         bool isDeposit
     )
         internal
         view
-        returns (MultiVaultSFData memory mvData, address router)
+        returns (MultiVaultSFData memory mvData)
     {
         uint256 numberOfSuperforms = SV.numberOfSuperforms;
 
@@ -333,47 +362,60 @@ contract SuperVault is BaseStrategy, ISuperVault {
         mvData.liqRequests = new LiqRequest[](numberOfSuperforms);
         mvData.hasDstSwaps = new bool[](numberOfSuperforms);
         mvData.retain4626s = mvData.hasDstSwaps;
-        mvData.receiverAddress = isDeposit ? REFUNDS_RECEIVER : address(this);
+        mvData.receiverAddress = isDeposit ? refundReceiver : address(this);
         mvData.receiverAddressSP = address(this);
         mvData.outputAmounts = new uint256[](numberOfSuperforms);
+
+        /// @dev caching to avoid multiple MLOADs
+        address superform;
+        IBaseForm superformContract;
 
         for (uint256 i; i < numberOfSuperforms; ++i) {
             mvData.liqRequests[i].token = address(asset);
 
-            (address superform,,) = mvData.superformIds[i].getSuperform();
-            IBaseForm superformContract = IBaseForm(superform);
+            (superform,,) = mvData.superformIds[i].getSuperform();
+            superformContract = IBaseForm(superform);
+
             if (isDeposit) {
+                /// @notice rounding down to avoid one-off issue
                 mvData.amounts[i] = amount_.mulDiv(SV.weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
                 mvData.outputAmounts[i] = superformContract.previewDepositTo(mvData.amounts[i]);
             } else {
                 mvData.outputAmounts[i] = amount_.mulDiv(SV.weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
-                /// @dev using convertToShares here to avoid round up issues
+                /// @notice convertToShares here helps avoid round up issue
                 mvData.amounts[i] =
                     IERC4626(superformContract.getVaultAddress()).convertToShares(mvData.outputAmounts[i]);
             }
+
             mvData.maxSlippages[i] = MAX_SLIPPAGE;
         }
-
-        router = _getAddress(keccak256("SUPERFORM_ROUTER"));
     }
 
-    /// @dev returns the address from super registry
+    /// @dev returns the address for id_ from super registry
     function _getAddress(bytes32 id_) internal view returns (address) {
         return superRegistry.getAddress(id_);
     }
 
+    /// @notice Prepares rebalance arguments for Superform Router Plus
+    /// @param superformIdsRebalanceFrom Array of Superform IDs to rebalance from
+    /// @param amountsRebalanceFrom Array of amounts to rebalance from
+    /// @param finalSuperformIds Array of Superform IDs to rebalance to
+    /// @param weightsOfRedestribution Array of weights for redestribution
+    /// @param rebalanceFromMsgValue Value to send with rebalanceFrom call
+    /// @param rebalanceToMsgValue Value to send with rebalanceTo call
+    /// @param slippage Maximum allowed slippage
     function _prepareRebalanceArgs(
-        uint256[] memory superformIdsRebalanceFrom,
-        uint256[] memory amountsRebalanceFrom,
-        uint256[] memory finalSuperformIds,
-        uint256[] memory weightsOfRedestribution,
+        uint256[] calldata superformIdsRebalanceFrom,
+        uint256[] calldata amountsRebalanceFrom,
+        uint256[] calldata finalSuperformIds,
+        uint256[] calldata weightsOfRedestribution,
         uint256 rebalanceFromMsgValue,
         uint256 rebalanceToMsgValue,
         uint256 slippage
     )
         internal
         view
-        returns (ISuperformRouterPlus.RebalanceMultiPositionsSyncArgs memory args, address routerPlus)
+        returns (ISuperformRouterPlus.RebalanceMultiPositionsSyncArgs memory args)
     {
         args.ids = superformIdsRebalanceFrom;
         args.sharesToRedeem = amountsRebalanceFrom;
@@ -383,30 +425,35 @@ contract SuperVault is BaseStrategy, ISuperVault {
         args.slippage = slippage; // 1% slippage, adjust as needed
         args.receiverAddressSP = address(this);
 
-        routerPlus = _getAddress(keccak256("SUPERFORM_ROUTER_PLUS"));
+        (SingleDirectMultiVaultStateReq memory req, uint256 totalOutputAmount) =
+            _prepareSingleDirectMultiVaultStateReq(superformIdsRebalanceFrom, amountsRebalanceFrom, slippage, true);
 
-        (SingleDirectMultiVaultStateReq memory req, uint256 totalOutputAmount) = _prepareSingleDirectMultiVaultStateReq(
-            superformIdsRebalanceFrom, amountsRebalanceFrom, routerPlus, slippage, true
-        );
-        // Prepare callData for rebalance from
+        /// @dev prepare callData for rebalance from
         args.callData = abi.encodeWithSelector(IBaseRouter.singleDirectMultiVaultWithdraw.selector, req);
-        // Create a filtered version of superformIdsRebalanceTo
+
+        /// @dev create a filtered version of superformIdsRebalanceTo
         (uint256[] memory filteredSuperformIds, uint256[] memory filteredWeights) =
             _filterNonZeroWeights(finalSuperformIds, weightsOfRedestribution);
+
         (req,) = _prepareSingleDirectMultiVaultStateReq(
-            filteredSuperformIds, _calculateAmounts(totalOutputAmount, filteredWeights), routerPlus, slippage, false
+            filteredSuperformIds, _calculateAmounts(totalOutputAmount, filteredWeights), slippage, false
         );
 
-        // Prepare rebalanceToCallData
+        /// @dev prepare rebalanceToCallData
         args.rebalanceToCallData = abi.encodeWithSelector(IBaseRouter.singleDirectMultiVaultDeposit.selector, req);
-
         args.expectedAmountToReceivePostRebalanceFrom = totalOutputAmount;
     }
 
+    /// @notice Prepares single direct multi-vault state request
+    /// @param superformIds Array of Superform IDs
+    /// @param amounts Array of amounts
+    /// @param slippage Maximum allowed slippage
+    /// @param isWithdraw True if withdrawing, false if depositing
+    /// @return req The prepared single direct multi-vault state request
+    /// @return totalOutputAmount The total output amount
     function _prepareSingleDirectMultiVaultStateReq(
         uint256[] memory superformIds,
         uint256[] memory amounts,
-        address routerPlus,
         uint256 slippage,
         bool isWithdraw
     )
@@ -417,6 +464,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
         MultiVaultSFData memory data;
         data.superformIds = superformIds;
         data.amounts = amounts;
+
+        address routerPlus = _getAddress(keccak256("SUPERFORM_ROUTER_PLUS"));
+
         uint256 length = superformIds.length;
         data.outputAmounts = new uint256[](length);
         data.maxSlippages = new uint256[](length);
@@ -438,6 +488,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             data.liqRequests[i].token = address(asset);
             data.liqRequests[i].liqDstChainId = CHAIN_ID;
         }
+
         data.hasDstSwaps = new bool[](length);
         data.retain4626s = data.hasDstSwaps;
         /// @dev routerPlus receives assets to continue the rebalance
@@ -448,6 +499,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
         req.superformData = data;
     }
 
+    /// @notice Calculates amounts based on total output amount and weights
+    /// @param totalOutputAmount The total output amount
+    /// @param weights Array of weights
+    /// @return amounts Array of calculated amounts
     function _calculateAmounts(
         uint256 totalOutputAmount,
         uint256[] memory weights
@@ -462,6 +517,11 @@ contract SuperVault is BaseStrategy, ISuperVault {
         }
     }
 
+    /// @notice Filters out zero weights and returns corresponding superform IDs and weights
+    /// @param superformIds Array of Superform IDs
+    /// @param weights Array of weights
+    /// @return filteredIds Array of filtered Superform IDs
+    /// @return filteredWeights Array of filtered weights
     function _filterNonZeroWeights(
         uint256[] memory superformIds,
         uint256[] memory weights
@@ -490,37 +550,55 @@ contract SuperVault is BaseStrategy, ISuperVault {
         }
     }
 
-    function _updateSVData(
-        address superPositions,
-        uint256[] memory finalSuperformIds
-    )
-        internal
-        returns (uint256[] memory newWeights)
-    {
-        uint256 totalWeight = 0;
-        uint256 length = finalSuperformIds.length;
-        newWeights = new uint256[](length);
+    /// @notice Updates the SuperVault data after rebalancing
+    /// @param superPositions Address of the SuperPositions contract
+    /// @param finalSuperformIds Array of Superform IDs to rebalance to
+    function _updateSVData(address superPositions, uint256[] memory finalSuperformIds) internal {
+        uint256 totalWeight;
 
-        // Calculate total value and individual values
+        uint256 length = finalSuperformIds.length;
+        uint256[] memory newWeights = new uint256[](length);
+
+        /// @dev check if finalSuperformIds are present in superform factory and support the asset
+        ISuperformFactory factory = ISuperformFactory(_getAddress(keccak256("SUPERFORM_FACTORY")));
+        address superform;
+        uint256 value;
+        address assetCache = address(asset);
+
+        /// @dev calculate total value and individual values
         for (uint256 i; i < length; ++i) {
+            if (!factory.isSuperform(finalSuperformIds[i])) {
+                revert SUPERFORM_DOES_NOT_EXIST(finalSuperformIds[i]);
+            }
+
+            (superform,,) = finalSuperformIds[i].getSuperform();
+
+            if (IBaseForm(superform).getVaultAsset() != assetCache) {
+                revert SUPERFORM_DOES_NOT_SUPPORT_ASSET();
+            }
+
             uint256 balance = ISuperPositions(superPositions).balanceOf(address(this), finalSuperformIds[i]);
-            (address superform,,) = finalSuperformIds[i].getSuperform();
-            uint256 value = IERC4626(IBaseForm(superform).getVaultAddress()).convertToAssets(balance);
-            totalWeight += value;
+            value = IERC4626(IBaseForm(superform).getVaultAddress()).convertToAssets(balance);
+
             newWeights[i] = value;
+            totalWeight += value;
         }
 
-        // Calculate new weights as percentages
-        uint256 totalAssignedWeight = 0;
+        /// @dev calculate new weights as percentages
+        uint256 totalAssignedWeight;
         for (uint256 i; i < length - 1; ++i) {
             newWeights[i] = newWeights[i].mulDiv(TOTAL_WEIGHT, totalWeight, Math.Rounding.Down);
             totalAssignedWeight += newWeights[i];
         }
-        // Assign remaining weight to the last index
+
+        /// @notice assign remaining weight to the last index
         newWeights[length - 1] = TOTAL_WEIGHT - totalAssignedWeight;
-        // Update SV weights
+
+        /// @dev update SV weights
         SV.weights = newWeights;
         SV.superformIds = finalSuperformIds;
         SV.numberOfSuperforms = length;
+
+        emit RebalanceComplete(finalSuperformIds, newWeights);
     }
 }

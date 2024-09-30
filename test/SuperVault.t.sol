@@ -374,7 +374,7 @@ contract SuperVaultTest is ProtocolActions {
         SuperVault(payable(superVaultAddress)).setRefundsReceiver(deployer);
 
         // Assert
-        assertEq(SuperVault(payable(superVaultAddress)).REFUNDS_RECEIVER(), deployer);
+        assertEq(SuperVault(payable(superVaultAddress)).refundReceiver(), deployer);
     }
 
     //////////////////////////////////////////////////////////////
