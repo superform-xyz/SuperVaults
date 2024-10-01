@@ -18,6 +18,24 @@ interface ISuperVault is IERC1155Receiver {
         uint256[] weights;
     }
 
+    /// @notice Struct to hold rebalance arguments
+    /// @param superformIdsRebalanceFrom Array of superform IDs to rebalance from
+    /// @param amountsRebalanceFrom Array of amounts to rebalance from each superform
+    /// @param superformIdsRebalanceTo Array of superform IDs to rebalance to
+    /// @param weightsOfRedestribution Array of weights for redistribution
+    /// @param rebalanceFromMsgValue Message value for rebalancing from
+    /// @param rebalanceToMsgValue Message value for rebalancing to
+    /// @param slippage Slippage tolerance for the rebalance
+    struct RebalanceArgs {
+        uint256[] superformIdsRebalanceFrom;
+        uint256[] amountsRebalanceFrom;
+        uint256[] finalSuperformIds;
+        uint256[] weightsOfRedestribution;
+        uint256 rebalanceFromMsgValue;
+        uint256 rebalanceToMsgValue;
+        uint256 slippage;
+    }
+
     //////////////////////////////////////////////////////////////
     //                  ERRORS                                   //
     //////////////////////////////////////////////////////////////
@@ -40,8 +58,14 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Error thrown when the block chain ID is out of bounds
     error BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
 
-    /// @notice Error thrown when a duplicate superform ID is provided
-    error DUPLICATE_SUPERFORM_ID();
+    /// @notice Error thrown when a superform does not exist
+    error SUPERFORM_DOES_NOT_EXIST(uint256 superformId);
+
+    /// @notice Error thrown when a superform ID is invalid
+    error INVALID_SUPERFORM_ID_REBALANCE_FROM();
+
+    /// @notice Error thrown when a superform ID is not found in the final superform IDs
+    error REBALANCE_FROM_ID_NOT_FOUND_IN_FINAL_IDS();
 
     //////////////////////////////////////////////////////////////
     //                  EVENTS                                   //
@@ -52,8 +76,9 @@ interface ISuperVault is IERC1155Receiver {
     event RefundsReceiverSet(address refundReceiver);
 
     /// @notice Emitted when the SuperVault is rebalanced
+    /// @param finalSuperformIds Array of final superform IDs of the SuperVault
     /// @param finalWeights Array of final weights of the SuperVault
-    event Rebalanced(uint256[] finalWeights);
+    event RebalanceComplete(uint256[] finalSuperformIds, uint256[] finalWeights);
 
     /// @notice Emitted when the deposit limit is set
     /// @param depositLimit The new deposit limit
@@ -64,23 +89,9 @@ interface ISuperVault is IERC1155Receiver {
     //////////////////////////////////////////////////////////////
 
     /// @notice Rebalances the SuperVault
-    /// @dev TODO slippage per vault?
-    /// @param superformIdsRebalanceFrom Array of superform IDs to rebalance from
-    /// @param amountsRebalanceFrom Array of amounts to rebalance from each superform
-    /// @param superformIdsRebalanceTo Array of superform IDs to rebalance to
-    /// @param weightsOfRedestribution Array of weights for redistribution
-    /// @param rebalanceFromMsgValue Message value for rebalancing from
-    /// @param rebalanceToMsgValue Message value for rebalancing to
-    /// @param slippage Slippage tolerance for the rebalance
-    function rebalance(
-        uint256[] memory superformIdsRebalanceFrom,
-        uint256[] memory amountsRebalanceFrom,
-        uint256[] memory superformIdsRebalanceTo,
-        uint256[] memory weightsOfRedestribution,
-        uint256 rebalanceFromMsgValue,
-        uint256 rebalanceToMsgValue,
-        uint256 slippage
-    )
-        external
-        payable;
+    /// @notice the logic is as follows:
+    /// select the ids to rebalance from
+    /// send an amount to take from those ids
+    /// the total underlying asset amount is redestributed according to the desired weights
+    function rebalance(RebalanceArgs memory rebalanceArgs_) external payable;
 }
