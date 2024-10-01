@@ -506,15 +506,19 @@ contract SuperVaultTest is ProtocolActions {
     //                     FUZZ TESTS                           //
     //////////////////////////////////////////////////////////////
 
-    function testFuzz_superVault_rebalance(uint256 finalWeightsOne) public {
+    function testFuzz_superVault_rebalance(uint256 finalWeightsOne, uint256 amount) public {
+        vm.assume(amount > 0);
+        amount = bound(amount, 1000e6, 100_000e6);
+
         uint256 finalWeightsOne = bound(finalWeightsOne, 1000, 9000);
         uint256 finalWeightsTwo = 10_000 - finalWeightsOne;
 
         vm.startPrank(deployer);
         SOURCE_CHAIN = ETH;
 
-        uint256 amount = 10_000e6;
         // Perform a direct deposit to the SuperVault
+        (address superform,,) = SUPER_VAULT_ID1.getSuperform();
+        deal(IBaseForm(superform).getVaultAsset(), deployer, amount);
         _directDeposit(SUPER_VAULT_ID1, amount);
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
@@ -532,6 +536,7 @@ contract SuperVaultTest is ProtocolActions {
         indexesRebalanceFrom[0] = 0;
 
         _performRebalance(finalIndexes, finalWeightsTargets, indexesRebalanceFrom);
+        // _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
     }
 
     //////////////////////////////////////////////////////////////
