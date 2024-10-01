@@ -507,15 +507,11 @@ contract SuperVaultTest is ProtocolActions {
     //////////////////////////////////////////////////////////////
 
     function testFuzz_superVault_rebalance(uint256 finalWeightsOne, uint256 amount) public {
-        vm.assume(amount > 0);
-        amount = bound(amount, 1000e6, 100_000e6);
-
-        uint256 finalWeightsOne = bound(finalWeightsOne, 1000, 9000);
-        uint256 finalWeightsTwo = 10_000 - finalWeightsOne;
-
         vm.startPrank(deployer);
         SOURCE_CHAIN = ETH;
 
+        vm.assume(amount > 0);
+        amount = bound(amount, 1000e6, 100_000e6);
         // Perform a direct deposit to the SuperVault
         (address superform,,) = SUPER_VAULT_ID1.getSuperform();
         deal(IBaseForm(superform).getVaultAsset(), deployer, amount);
@@ -523,20 +519,34 @@ contract SuperVaultTest is ProtocolActions {
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
-        // Test case 1
+        // determine fuzzed variables
+
+        uint256[] memory underlyingIndexes = _calculateUnderlyingIndexes();
+
+        address superVaultAddress = IBaseForm(superform).getVaultAddress();
+
+        uint256[] memory calculatedWeights = _calculateRealWeights(superVaultAddress, underlyingIndexes);
+
         uint256[] memory finalIndexes = new uint256[](2);
         finalIndexes[0] = 1;
         finalIndexes[1] = 2;
+
+        uint256[] memory indexesRebalanceFrom = new uint256[](1);
+        indexesRebalanceFrom[0] = 0;
+
+        finalWeightsOne = bound(finalWeightsOne, calculatedWeights[finalIndexes[0]], 6600);
+        uint256 finalWeightsTwo = 10_000 - finalWeightsOne;
+
+        console.log("finalWeightsOne", finalWeightsOne);
+        console.log("finalWeightsTwo", finalWeightsTwo);
 
         uint256[] memory finalWeightsTargets = new uint256[](2);
         finalWeightsTargets[0] = finalWeightsOne;
         finalWeightsTargets[1] = finalWeightsTwo;
 
-        uint256[] memory indexesRebalanceFrom = new uint256[](1);
-        indexesRebalanceFrom[0] = 0;
-
+        // perform rebalance and assert
         _performRebalance(finalIndexes, finalWeightsTargets, indexesRebalanceFrom);
-        // _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
+        _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
     }
 
     //////////////////////////////////////////////////////////////
@@ -834,15 +844,8 @@ contract SuperVaultTest is ProtocolActions {
         vm.stopPrank();
     }
 
-    function _assertSuperPositionsSplitAccordingToWeights(uint64 dstChain) internal {
-        vm.selectFork(FORKS[dstChain]);
-
-        (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
-        address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
-        uint256[] memory svDataWeights = new uint256[](underlyingSuperformIds.length);
-        (,, svDataWeights) = SuperVault(superVaultAddress).getSuperVaultData();
-
-        uint256[] memory underlyingIndexes = new uint256[](underlyingSuperformIds.length);
+    function _calculateUnderlyingIndexes() internal view returns (uint256[] memory underlyingIndexes) {
+        underlyingIndexes = new uint256[](underlyingSuperformIds.length);
         for (uint256 i = 0; i < underlyingSuperformIds.length; i++) {
             for (uint256 j = 0; j < allSuperformIds.length; j++) {
                 if (allSuperformIds[j] == underlyingSuperformIds[i]) {
@@ -851,6 +854,16 @@ contract SuperVaultTest is ProtocolActions {
                 }
             }
         }
+    }
+
+    function _assertSuperPositionsSplitAccordingToWeights(uint64 dstChain) internal {
+        vm.selectFork(FORKS[dstChain]);
+
+        (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
+        address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
+        uint256[] memory svDataWeights = new uint256[](underlyingSuperformIds.length);
+        (,, svDataWeights) = SuperVault(superVaultAddress).getSuperVaultData();
+        uint256[] memory underlyingIndexes = _calculateUnderlyingIndexes();
         uint256[] memory calculatedWeights = _calculateRealWeights(superVaultAddress, underlyingIndexes);
 
         for (uint256 i = 0; i < underlyingSuperformIds.length; i++) {
@@ -1031,10 +1044,16 @@ contract SuperVaultTest is ProtocolActions {
 
         // Calculate weights for redistribution
         uint256 totalRedistributionWeight = 0;
+        // 1,2
         for (uint256 i = 0; i < finalSuperformIndexes.length; i++) {
             uint256 index = finalSuperformIndexes[i];
             vars.superformIdsRebalanceTo[i] = allSuperformIds[index];
             uint256 currentWeight = currentWeights[index];
+            // index1 current weight = 33%
+            // final weight = 70%
+            // 36%
+            // index current weight == 33%
+            // final weight = 30% -> Not covered
             if (finalWeights[i] > currentWeight) {
                 vars.weightsOfRedistribution[i] = finalWeights[i] - currentWeight;
                 totalRedistributionWeight += vars.weightsOfRedistribution[i];
