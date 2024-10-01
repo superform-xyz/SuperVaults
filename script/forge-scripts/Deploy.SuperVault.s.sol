@@ -41,7 +41,7 @@ contract MainnetDeploySuperVault is Script {
         new SuperVault(
             superRegistry,
             0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913, // USDC
-            0x48aB8AdF869Ba9902Ad483FB1Ca2eFDAb6eabe92, // deployer
+            refundsReceiver,
             "USDCSuperVaultMoonwellFlagship",
             type(uint256).max,
             superformIds,
