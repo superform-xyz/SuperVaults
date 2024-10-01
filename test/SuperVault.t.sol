@@ -2,14 +2,29 @@
 pragma solidity ^0.8.23;
 
 import "superform-core/test/utils/ProtocolActions.sol";
-import { ISuperformRouterPlus } from "superform-core/src/interfaces/ISuperformRouterPlus.sol";
-import { ISuperformRouterPlusAsync } from "superform-core/src/interfaces/ISuperformRouterPlusAsync.sol";
-import { IBaseRouter } from "superform-core/src/interfaces/IBaseRouter.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
 import { ISuperVault } from "../src/ISuperVault.sol";
 import { SuperVault } from "../src/SuperVault.sol";
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
+
+contract SuperVaultHarness is SuperVault {
+    constructor(
+        address superRegistry_,
+        address asset_,
+        address strategist_,
+        string memory name_,
+        uint256 depositLimit_,
+        uint256[] memory superformIds_,
+        uint256[] memory startingWeights_
+    )
+        SuperVault(superRegistry_, asset_, strategist_, name_, depositLimit_, superformIds_, startingWeights_)
+    { }
+
+    function updateSVData(address superPositions, uint256[] memory finalSuperformIds) public {
+        _updateSVData(superPositions, finalSuperformIds);
+    }
+}
 
 contract SuperVaultTest is ProtocolActions {
     using Math for uint256;
@@ -24,6 +39,9 @@ contract SuperVaultTest is ProtocolActions {
 
     uint256[] underlyingSuperformIds;
     uint256[] allSuperformIds;
+
+    SuperVault superVault;
+    SuperVaultHarness superVaultHarness;
 
     /// @dev yearn address factory on ETH
     address constant FACTORY = 0x444045c5C13C246e117eD36437303cac8E250aB0;
@@ -52,6 +70,7 @@ contract SuperVaultTest is ProtocolActions {
         vaultAddresses[1] = aaveUsdcVault;
         vaultAddresses[2] = eulerUsdcVault;
         vaultAddresses[3] = sandclockUSDCVault;
+
         // Get the SuperformFactory
         SuperformFactory superformFactory = SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory"));
         underlyingSuperformIds = new uint256[](vaultAddresses.length - 1);
@@ -73,7 +92,7 @@ contract SuperVaultTest is ProtocolActions {
         }
 
         // Deploy SuperVault
-        SuperVault superVault = new SuperVault(
+        superVault = new SuperVault(
             getContract(SOURCE_CHAIN, "SuperRegistry"),
             getContract(ETH, "USDC"),
             deployer,
@@ -82,6 +101,16 @@ contract SuperVaultTest is ProtocolActions {
             underlyingSuperformIds,
             weights
         );
+        superVaultHarness = new SuperVaultHarness(
+            getContract(SOURCE_CHAIN, "SuperRegistry"),
+            getContract(ETH, "USDC"),
+            deployer,
+            "USDCSuperVaultMorphoEulerAave",
+            type(uint256).max,
+            underlyingSuperformIds,
+            weights
+        );
+
         (bool success,) =
             address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.setPerformanceFee.selector, 0));
         require(success, "Failed to set performance fee to 0");
@@ -103,7 +132,42 @@ contract SuperVaultTest is ProtocolActions {
         vm.stopPrank();
     }
 
-    function testSuperVaultConstructorReverts() public {
+    function test_constructorIsSuperformCheck() public {
+        uint256 fakeSuperformId = type(uint256).max;
+
+        uint256[] memory superformIds = new uint256[](1);
+        superformIds[0] = fakeSuperformId;
+
+        uint256[] memory weights = new uint256[](1);
+        weights[0] = 10_000;
+
+        vm.expectRevert();
+        new SuperVault(
+            getContract(ETH, "SuperRegistry"),
+            getContract(ETH, "USDC"),
+            deployer,
+            "TestSuperVault",
+            type(uint256).max,
+            superformIds,
+            weights
+        );
+    }
+
+    function test_onlyVaultStrategistCanCall() public {
+        vm.startPrank(address(0xdead));
+        vm.expectRevert(ISuperVault.NOT_SUPER_VAULTS_STRATEGIST.selector);
+        SuperVault(address(superVault)).setDepositLimit(type(uint256).max);
+        vm.stopPrank();
+    }
+
+    function test_zeroAddressSetRefundsReceiver() public {
+        vm.startPrank(deployer);
+        vm.expectRevert(ISuperVault.ZERO_ADDRESS.selector);
+        SuperVault(address(superVault)).setRefundsReceiver(address(0));
+        vm.stopPrank();
+    }
+
+    function test_superVaultConstructorReverts() public {
         address superRegistry = getContract(ETH, "SuperRegistry");
         address asset = getContract(ETH, "USDC");
         string memory name = "TestSuperVault";
@@ -151,6 +215,7 @@ contract SuperVaultTest is ProtocolActions {
     function test_superVault_assertSuperPositions_splitAccordingToWeights() public {
         vm.startPrank(deployer);
         SOURCE_CHAIN = ETH;
+        vm.selectFork(FORKS[SOURCE_CHAIN]);
 
         uint256 amount = 500e6;
         // Perform a direct deposit to the SuperVault
@@ -165,7 +230,7 @@ contract SuperVaultTest is ProtocolActions {
         vm.stopPrank();
     }
 
-    function testOnERC1155Received() public view {
+    function test_onERC1155Received() public view {
         // Arrange
         address operator = address(0x1);
         address from = address(0x2);
@@ -200,6 +265,66 @@ contract SuperVaultTest is ProtocolActions {
         _assertSuperPositionsAfterWithdraw(ETH);
 
         vm.stopPrank();
+    }
+
+    function test_superVault_rebalance_invalidSuperformIdRebalanceFrom() public {
+        uint256[] memory superformIdsRebalanceFrom = new uint256[](1);
+        superformIdsRebalanceFrom[0] = type(uint256).max;
+
+        uint256[] memory amountsRebalanceFrom = new uint256[](1);
+        amountsRebalanceFrom[0] = 1 ether;
+
+        uint256[] memory superformIdsRebalanceTo = new uint256[](1);
+        superformIdsRebalanceTo[0] = underlyingSuperformIds[0];
+
+        uint256[] memory weightsOfRedistribution = new uint256[](1);
+        weightsOfRedistribution[0] = 10_000;
+
+        ISuperVault.RebalanceArgs memory args = ISuperVault.RebalanceArgs(
+            superformIdsRebalanceFrom,
+            amountsRebalanceFrom,
+            superformIdsRebalanceTo,
+            weightsOfRedistribution,
+            1 ether,
+            1 ether,
+            100
+        );
+
+        vm.startPrank(deployer);
+        vm.expectRevert(ISuperVault.INVALID_SUPERFORM_ID_REBALANCE_FROM.selector);
+        SuperVault(address(superVault)).rebalance(args);
+        vm.stopPrank();
+    }
+
+    function test_superVault_rebalance_SuperformDoesNotExist() public {
+        uint256[] memory finalSuperformIds = new uint256[](1);
+        finalSuperformIds[0] = underlyingSuperformIds[0];
+
+        address superPositions = getContract(SOURCE_CHAIN, "SuperPositions");
+
+        vm.mockCall(
+            getContract(SOURCE_CHAIN, "SuperformFactory"),
+            abi.encodeWithSelector(ISuperformFactory.isSuperform.selector, finalSuperformIds[0]),
+            abi.encode(false)
+        );
+
+        vm.expectRevert();
+        superVaultHarness.updateSVData(superPositions, finalSuperformIds);
+    }
+
+    function test_superVault_rebalance_assetNotSupported() public {
+        uint256[] memory finalSuperformIds = new uint256[](1);
+        finalSuperformIds[0] = underlyingSuperformIds[0];
+
+        address superPositions = getContract(SOURCE_CHAIN, "SuperPositions");
+        (address superform,,) = finalSuperformIds[0].getSuperform();
+
+        vm.mockCall(
+            superform, abi.encodeWithSelector(IBaseForm.getVaultAsset.selector), abi.encode(address(0xDEADBEEF))
+        );
+
+        vm.expectRevert(ISuperVault.SUPERFORM_DOES_NOT_SUPPORT_ASSET.selector);
+        superVaultHarness.updateSVData(superPositions, finalSuperformIds);
     }
 
     function test_superVault_rebalance() public {
@@ -282,7 +407,7 @@ contract SuperVaultTest is ProtocolActions {
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
     }
 
-    function testRebalanceArrayLengthMismatch() public {
+    function test_rebalanceArrayLengthMismatch() public {
         vm.startPrank(deployer);
         // Setup
         uint256[] memory superformIdsRebalanceFrom = new uint256[](2);
@@ -322,7 +447,7 @@ contract SuperVaultTest is ProtocolActions {
         vm.stopPrank();
     }
 
-    function testHarvestAndReport() public {
+    function test_harvestAndReport() public {
         vm.startPrank(deployer);
         SOURCE_CHAIN = ETH;
 
@@ -341,7 +466,7 @@ contract SuperVaultTest is ProtocolActions {
         vm.stopPrank();
     }
 
-    function testSetDepositLimit() public {
+    function test_setDepositLimit() public {
         uint256 newDepositLimit = 2000 ether;
         (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
         address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
@@ -358,7 +483,7 @@ contract SuperVaultTest is ProtocolActions {
         assertEq(SuperVault(payable(superVaultAddress)).availableDepositLimit(address(0)), newDepositLimit);
     }
 
-    function testSetRefundsReceiver() public {
+    function test_setRefundsReceiver() public {
         (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
         address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
 
@@ -906,3 +1031,7 @@ contract SuperVaultTest is ProtocolActions {
         );
     }
 }
+
+/// 6277101737636384973675618536828871497951912183157484842190
+/// 6277101737173309020634752399739979797831369743297548592931
+/// 6277101737355135742415595517638754219401933328465331343265
