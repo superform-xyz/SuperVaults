@@ -2,6 +2,8 @@
 pragma solidity ^0.8.23;
 
 import { Script } from "forge-std/Script.sol";
+import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
+import { SuperRBAC } from "superform-core/src/settings/SuperRBAC.sol";
 import { SuperVault } from "src/SuperVault.sol";
 
 contract MainnetDeploySuperVault is Script {
@@ -48,6 +50,17 @@ contract MainnetDeploySuperVault is Script {
             startingWeights
         );
 
+        /// @dev TODO set later the correct address, as this is currently rewards admin
+        address REWARDS_ADMIN =
+            isStaging ? 0x1F05a8Ff6d895Ba04C84c5031c5d63FA1afCDA6F : 0xf82F3D7Df94FC2994315c32322DA6238cA2A2f7f;
+
+        address superRBAC = ISuperRegistry(superRegistry).getAddress(keccak256("SUPER_RBAC"));
+
+        assert(superRBAC != address(0));
+
+        SuperRBAC superRBACC = SuperRBAC(superRBAC);
+        superRBACC.setRoleAdmin(keccak256("SUPER_VAULTS_STRATEGIST"), superRBACC.PROTOCOL_ADMIN_ROLE());
+        superRBACC.grantRole(keccak256("SUPER_VAULTS_STRATEGIST"), REWARDS_ADMIN);
         vm.stopBroadcast();
     }
 }
