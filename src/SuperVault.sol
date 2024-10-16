@@ -523,8 +523,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @return filteredIds Array of filtered Superform IDs
     /// @return filteredWeights Array of filtered weights
     function _filterNonZeroWeights(
-        uint256[] memory superformIds,
-        uint256[] memory weights
+        uint256[] calldata superformIds,
+        uint256[] calldata weights
     )
         internal
         pure
