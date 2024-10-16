@@ -512,7 +512,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         returns (uint256[] memory amounts)
     {
         amounts = new uint256[](weights.length);
-        for (uint256 i = 0; i < weights.length; i++) {
+        for (uint256 i; i < weights.length; ++i) {
             amounts[i] = totalOutputAmount.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
         }
     }
