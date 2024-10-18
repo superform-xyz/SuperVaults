@@ -203,8 +203,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
             value: args.rebalanceFromMsgValue + args.rebalanceToMsgValue
         }(args);
 
-        ISuperPositions(superPositions).setApprovalForMany(routerPlus, args.ids, new uint256[](args.ids.length));
-
         /// @dev step 3: update SV data
         /// @notice no issue about reentrancy as the external contracts are trusted
         /// @notice updateSV emits rebalance event
@@ -314,11 +312,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
         (bool success, bytes memory returndata) = router.call(callData);
 
         Address.verifyCallResult(success, returndata, "CallRevertWithNoReturnData");
-
-        /// @dev reset approvals
-        ISuperPositions(_getAddress(keccak256("SUPER_POSITIONS"))).setApprovalForMany(
-            router, mvData.superformIds, new uint256[](mvData.superformIds.length)
-        );
     }
 
     /// @notice Reports the total assets of the vault
