@@ -325,7 +325,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @return totalAssets The total assets of the vault
     function _harvestAndReport() internal view override returns (uint256 totalAssets) {
         /// @dev we will be using reward distributor and transfer rewards to users directly
-        /// @dev thus this function we will be unused (we just report full assets)
+        /// @dev thus this function will be unused (we just report full assets)
         uint256 totalAssetsInVaults;
         uint256 numberOfSuperforms = SV.numberOfSuperforms;
         uint256[] memory superformIds = SV.superformIds;
