@@ -203,8 +203,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
             value: args.rebalanceFromMsgValue + args.rebalanceToMsgValue
         }(args);
 
-        ISuperPositions(superPositions).setApprovalForMany(routerPlus, args.ids, new uint256[](args.ids.length));
-
         /// @dev step 3: update SV data
         /// @notice no issue about reentrancy as the external contracts are trusted
         /// @notice updateSV emits rebalance event
@@ -314,18 +312,13 @@ contract SuperVault is BaseStrategy, ISuperVault {
         (bool success, bytes memory returndata) = router.call(callData);
 
         Address.verifyCallResult(success, returndata, "CallRevertWithNoReturnData");
-
-        /// @dev reset approvals
-        ISuperPositions(_getAddress(keccak256("SUPER_POSITIONS"))).setApprovalForMany(
-            router, mvData.superformIds, new uint256[](mvData.superformIds.length)
-        );
     }
 
     /// @notice Reports the total assets of the vault
     /// @return totalAssets The total assets of the vault
     function _harvestAndReport() internal view override returns (uint256 totalAssets) {
         /// @dev we will be using reward distributor and transfer rewards to users directly
-        /// @dev thus this function we will be unused (we just report full assets)
+        /// @dev thus this function will be unused (we just report full assets)
         uint256 totalAssetsInVaults;
         uint256 numberOfSuperforms = SV.numberOfSuperforms;
         uint256[] memory superformIds = SV.superformIds;
@@ -512,7 +505,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         returns (uint256[] memory amounts)
     {
         amounts = new uint256[](weights.length);
-        for (uint256 i = 0; i < weights.length; i++) {
+        for (uint256 i; i < weights.length; ++i) {
             amounts[i] = totalOutputAmount.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
         }
     }
@@ -523,8 +516,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @return filteredIds Array of filtered Superform IDs
     /// @return filteredWeights Array of filtered weights
     function _filterNonZeroWeights(
-        uint256[] memory superformIds,
-        uint256[] memory weights
+        uint256[] calldata superformIds,
+        uint256[] calldata weights
     )
         internal
         pure
