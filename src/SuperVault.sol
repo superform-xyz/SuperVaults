@@ -476,7 +476,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
             totalOutputAmount += data.outputAmounts[i];
 
-            /// TODO: decide on slippage if per vault or global
             data.maxSlippages[i] = slippage;
             data.liqRequests[i].token = address(asset);
             data.liqRequests[i].liqDstChainId = CHAIN_ID;
