@@ -84,7 +84,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         BaseStrategy(asset_, name_)
     {   
         require(superformIds_.length > 0, "EMPTY_SUPERFORM_IDS");
-        
+
         if (superRegistry_ == address(0) || refundsReceiver_ == address(0)) {
             revert ZERO_ADDRESS();
         }
@@ -327,7 +327,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         for (uint256 i; i < numberOfSuperforms; ++i) {
             (address superform,,) = superformIds[i].getSuperform();
             address vault = IBaseForm(superform).getVaultAddress();
-            totalAssetsInVaults += IERC4626(vault).balanceOf(address(this));
+            totalAssetsInVaults += IERC4626(vault).convertToAssets(IERC4626(vault).balanceOf(address(this)));
         }
 
         totalAssets = totalAssetsInVaults + asset.balanceOf(address(this));
