@@ -439,8 +439,6 @@ contract SuperVaultTest is ProtocolActions {
                 amountsRebalanceFrom,
                 superformIdsRebalanceTo,
                 weightsOfRedistribution,
-                1 ether,
-                1 ether,
                 100
             )
         );
@@ -1089,8 +1087,6 @@ contract SuperVaultTest is ProtocolActions {
                 vars.amountsRebalanceFrom,
                 vars.superformIdsRebalanceTo,
                 vars.weightsOfRedistribution,
-                2 ether,
-                2 ether,
                 100
             )
         );
