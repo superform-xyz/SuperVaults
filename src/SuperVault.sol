@@ -78,7 +78,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
     )
         BaseStrategy(asset_, name_)
     {   
-        require(superformIds_.length > 0, "EMPTY_SUPERFORM_IDS");
+        if (superformIds_.length == 0) {
+            revert ZERO_SUPERFORMS();
+        }
 
         if (superRegistry_ == address(0)) {
             revert ZERO_ADDRESS();
