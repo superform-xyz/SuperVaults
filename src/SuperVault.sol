@@ -43,9 +43,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice The maximum allowed slippage (1% = 100)
     uint256 public constant MAX_SLIPPAGE = 100;
 
-    /// @notice The address that receives refunds
-    address public refundReceiver;
-
     /// @notice Struct containing SuperVault strategy data
     SuperVaultStrategyData private SV;
 
@@ -67,7 +64,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
     /// @param superRegistry_ Address of the SuperRegistry contract
     /// @param asset_ Address of the asset token
-    /// @param refundsReceiver_ Address to receive refunds
     /// @param name_ Name of the strategy
     /// @param depositLimit_ Maximum deposit limit
     /// @param superformIds_ Array of Superform IDs
@@ -75,7 +71,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
     constructor(
         address superRegistry_,
         address asset_,
-        address refundsReceiver_,
         string memory name_,
         uint256 depositLimit_,
         uint256[] memory superformIds_,
@@ -85,7 +80,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     {   
         require(superformIds_.length > 0, "EMPTY_SUPERFORM_IDS");
 
-        if (superRegistry_ == address(0) || refundsReceiver_ == address(0)) {
+        if (superRegistry_ == address(0)) {
             revert ZERO_ADDRESS();
         }
 
@@ -96,7 +91,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
         CHAIN_ID = uint64(block.chainid);
 
         superRegistry = ISuperRegistry(superRegistry_);
-        refundReceiver = refundsReceiver_;
 
         uint256 numberOfSuperforms = superformIds_.length;
         if (numberOfSuperforms != startingWeights_.length) {
@@ -141,15 +135,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
         SV.depositLimit = depositLimit_;
 
         emit DepositLimitSet(depositLimit_);
-    }
-
-    /// @notice Sets the refunds receiver address
-    /// @param refundReceiver_ The new refunds receiver address
-    function setRefundsReceiver(address refundReceiver_) external onlySuperVaultsStrategist {
-        if (refundReceiver_ == address(0)) revert ZERO_ADDRESS();
-        refundReceiver = refundReceiver_;
-
-        emit RefundsReceiverSet(refundReceiver_);
     }
 
     /// @inheritdoc ISuperVault
@@ -357,7 +342,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         mvData.liqRequests = new LiqRequest[](numberOfSuperforms);
         mvData.hasDstSwaps = new bool[](numberOfSuperforms);
         mvData.retain4626s = mvData.hasDstSwaps;
-        mvData.receiverAddress = isDeposit ? refundReceiver : address(this);
+        mvData.receiverAddress = address(this);
         mvData.receiverAddressSP = address(this);
         mvData.outputAmounts = new uint256[](numberOfSuperforms);
 

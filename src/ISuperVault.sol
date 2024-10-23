@@ -71,10 +71,6 @@ interface ISuperVault is IERC1155Receiver {
     //                  EVENTS                                   //
     //////////////////////////////////////////////////////////////
 
-    /// @notice Emitted when the refunds receiver is set
-    /// @param refundReceiver The address of the refunds receiver
-    event RefundsReceiverSet(address refundReceiver);
-
     /// @notice Emitted when the SuperVault is rebalanced
     /// @param finalSuperformIds Array of final superform IDs of the SuperVault
     /// @param finalWeights Array of final weights of the SuperVault
