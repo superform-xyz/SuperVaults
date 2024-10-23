@@ -21,14 +21,18 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Struct to hold rebalance arguments
     /// @param superformIdsRebalanceFrom Array of superform IDs to rebalance from
     /// @param amountsRebalanceFrom Array of amounts to rebalance from each superform
-    /// @param finalSuperformIds Array of Superform IDs to rebalance to
+    /// @param finalSuperformIds Array of final superform IDs
     /// @param weightsOfRedestribution Array of weights for redistribution
+    /// @param rebalanceFromMsgValue Message value for rebalancing from
+    /// @param rebalanceToMsgValue Message value for rebalancing to
     /// @param slippage Slippage tolerance for the rebalance
     struct RebalanceArgs {
         uint256[] superformIdsRebalanceFrom;
         uint256[] amountsRebalanceFrom;
         uint256[] finalSuperformIds;
         uint256[] weightsOfRedestribution;
+        uint256 rebalanceFromMsgValue;
+        uint256 rebalanceToMsgValue;
         uint256 slippage;
     }
 

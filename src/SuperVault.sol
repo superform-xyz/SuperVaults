@@ -190,6 +190,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
             rebalanceArgs.amountsRebalanceFrom,
             rebalanceArgs.finalSuperformIds,
             rebalanceArgs.weightsOfRedestribution,
+            rebalanceArgs.rebalanceFromMsgValue,
+            rebalanceArgs.rebalanceToMsgValue,
             rebalanceArgs.slippage
         );
 
@@ -200,7 +202,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         ISuperPositions(superPositions).setApprovalForMany(routerPlus, args.ids, args.sharesToRedeem);
 
         ISuperformRouterPlus(routerPlus).rebalanceMultiPositions{
-            value: msg.value
+            value: args.rebalanceFromMsgValue + args.rebalanceToMsgValue
         }(args);
 
         /// @dev step 3: update SV data
@@ -394,12 +396,16 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @param amountsRebalanceFrom Array of amounts to rebalance from
     /// @param finalSuperformIds Array of Superform IDs to rebalance to
     /// @param weightsOfRedestribution Array of weights for redestribution
+    /// @param rebalanceFromMsgValue Value to send with rebalanceFrom call
+    /// @param rebalanceToMsgValue Value to send with rebalanceTo call
     /// @param slippage Maximum allowed slippage
     function _prepareRebalanceArgs(
         uint256[] calldata superformIdsRebalanceFrom,
         uint256[] calldata amountsRebalanceFrom,
         uint256[] calldata finalSuperformIds,
         uint256[] calldata weightsOfRedestribution,
+        uint256 rebalanceFromMsgValue,
+        uint256 rebalanceToMsgValue,
         uint256 slippage
     )
         internal
@@ -408,6 +414,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
     {
         args.ids = superformIdsRebalanceFrom;
         args.sharesToRedeem = amountsRebalanceFrom;
+        args.rebalanceFromMsgValue = rebalanceFromMsgValue;
+        args.rebalanceToMsgValue = rebalanceToMsgValue;
         args.interimAsset = address(asset); // Assuming 'asset' is the interim token
         args.slippage = slippage; // 1% slippage, adjust as needed
         args.receiverAddressSP = address(this);
