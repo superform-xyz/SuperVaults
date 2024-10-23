@@ -40,6 +40,9 @@ interface ISuperVault is IERC1155Receiver {
     //                  ERRORS                                   //
     //////////////////////////////////////////////////////////////
 
+    /// @notice Error thrown when no superforms are provided in constructor
+    error ZERO_SUPERFORMS();
+    
     /// @notice Error thrown when array lengths do not match
     error ARRAY_LENGTH_MISMATCH();
 
