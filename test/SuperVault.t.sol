@@ -415,6 +415,43 @@ contract SuperVaultTest is ProtocolActions {
         vm.stopPrank();
     }
 
+    function test_superVault_rebalance_invalidWeights() public {
+        vm.startPrank(deployer);
+        // Setup
+        uint256[] memory superformIdsRebalanceFrom = new uint256[](1);
+        superformIdsRebalanceFrom[0] = underlyingSuperformIds[0];
+
+        uint256[] memory amountsRebalanceFrom = new uint256[](1); 
+        amountsRebalanceFrom[0] = 1e18;
+
+        uint256[] memory superformIdsRebalanceTo = new uint256[](1);
+        superformIdsRebalanceTo[0] = underlyingSuperformIds[2];
+
+        uint256[] memory weightsOfRedistribution = new uint256[](1);
+        weightsOfRedistribution[0] = 100_000; // > TOTAL_WEIGHT (10_000)
+
+        // Get SuperVault address
+        (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
+        address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
+
+        // Expect revert with ARRAY_LENGTH_MISMATCH error
+        vm.expectRevert(abi.encodeWithSignature("INVALID_WEIGHTS()"));
+
+        // Call rebalance function
+        SuperVault(payable(superVaultAddress)).rebalance(
+            ISuperVault.RebalanceArgs(
+                superformIdsRebalanceFrom,
+                amountsRebalanceFrom,
+                superformIdsRebalanceTo,
+                weightsOfRedistribution,
+                1 ether,
+                1 ether,
+                100
+            )
+        );
+        vm.stopPrank();
+    }
+
     function test_rebalanceArrayLengthMismatch() public {
         vm.startPrank(deployer);
         // Setup

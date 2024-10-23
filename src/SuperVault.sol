@@ -522,13 +522,16 @@ contract SuperVault is BaseStrategy, ISuperVault {
         filteredWeights = new uint256[](count);
 
         uint256 j;
+        uint256 totalWeight;
         for (uint256 i; i < weights.length; ++i) {
             if (weights[i] != 0) {
                 filteredIds[j] = superformIds[i];
                 filteredWeights[j] = weights[i];
+                totalWeight += weights[i];
                 j++;
             }
         }
+        if (totalWeight > TOTAL_WEIGHT) revert INVALID_WEIGHTS();
     }
 
     /// @notice Updates the SuperVault data after rebalancing
