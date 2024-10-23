@@ -533,7 +533,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
                 j++;
             }
         }
-        if (totalWeight > TOTAL_WEIGHT) revert INVALID_WEIGHTS();
+        if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
     }
 
     /// @notice Updates the SuperVault data after rebalancing
