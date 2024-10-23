@@ -395,6 +395,26 @@ contract SuperVaultTest is ProtocolActions {
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
     }
 
+    function test_superVault_rebalance_emptyAmountsRebalanceFrom() public {
+        uint256[] memory superformIdsRebalanceFrom = new uint256[](2);
+        superformIdsRebalanceFrom[0] = underlyingSuperformIds[0];
+        superformIdsRebalanceFrom[1] = underlyingSuperformIds[1];
+
+        uint256[] memory superformIdsRebalanceTo = new uint256[](1);
+        superformIdsRebalanceTo[0] = underlyingSuperformIds[2];
+
+        uint256[] memory finalWeightsTargets = new uint256[](2);
+        finalWeightsTargets[0] = 5000;
+        finalWeightsTargets[1] = 5000;
+
+        uint256[] memory amountsRebalanceFrom = new uint256[](0);
+        vm.startPrank(deployer);
+        vm.expectRevert(ISuperVault.EMPTY_AMOUNTS_REBALANCE_FROM.selector);
+        
+        superVault.rebalance(ISuperVault.RebalanceArgs(superformIdsRebalanceFrom, amountsRebalanceFrom, superformIdsRebalanceTo, finalWeightsTargets, 1 ether, 1 ether, 100));
+        vm.stopPrank();
+    }
+
     function test_rebalanceArrayLengthMismatch() public {
         vm.startPrank(deployer);
         // Setup

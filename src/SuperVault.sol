@@ -142,6 +142,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
         uint256 lenRebalanceFrom = rebalanceArgs.superformIdsRebalanceFrom.length;
         uint256 lenFinal = rebalanceArgs.finalSuperformIds.length;
 
+        if (rebalanceArgs.amountsRebalanceFrom.length == 0) revert EMPTY_AMOUNTS_REBALANCE_FROM();
+
         /// @dev sanity check input arrays
         if (
             lenRebalanceFrom != rebalanceArgs.amountsRebalanceFrom.length
