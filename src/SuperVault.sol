@@ -399,6 +399,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
         view
         returns (ISuperformRouterPlus.RebalanceMultiPositionsSyncArgs memory args)
     {
+        if (superformIdsRebalanceFrom.length == 0 || finalSuperformIds.length == 0) revert ZERO_SUPERFORMS();
+
+        
         args.ids = superformIdsRebalanceFrom;
         args.sharesToRedeem = amountsRebalanceFrom;
         args.interimAsset = address(asset); // Assuming 'asset' is the interim token
