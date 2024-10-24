@@ -25,57 +25,57 @@ contract SuperVaultHarness is SuperVault {
         _updateSVData(superPositions, finalSuperformIds);
     }
 
-    function quickSort(uint256[] memory arr) public pure returns (uint256[] memory) {
-        if (arr.length <= 1) return arr;
-        uint256 pivot = arr[arr.length / 2];
-        uint256[] storage left;
-        uint256[] storage right;
+    // function quickSort(uint256[] memory arr) public pure returns (uint256[] memory) {
+    //     if (arr.length <= 1) return arr;
+    //     uint256 pivot = arr[arr.length / 2];
+    //     uint256[] storage left;
+    //     uint256[] storage right;
 
-        for (uint256 i = 0; i < arr.length; i++) {
-            if (arr[i] < pivot) {
-                left.push(arr[i]);
-            }
-            if (arr[i] > pivot) {
-                right.push(arr[i]);
-            }
-        }
+    //     for (uint256 i = 0; i < arr.length; i++) {
+    //         if (arr[i] < pivot) {
+    //             left.push(arr[i]);
+    //         }
+    //         if (arr[i] > pivot) {
+    //             right.push(arr[i]);
+    //         }
+    //     }
 
-        uint256 leftLen = left.length;
-        uint256 rightLen = right.length;
+    //     uint256 leftLen = left.length;
+    //     uint256 rightLen = right.length;
 
-        uint256[] memory leftMem = new uint256[](leftLen);
-        uint256[] memory rightMem = new uint256[](rightLen);
+    //     uint256[] memory leftMem = new uint256[](leftLen);
+    //     uint256[] memory rightMem = new uint256[](rightLen);
 
-        for (uint256 i = 0; i < leftLen; i++) {
-            if (left[i] != 0) {
-                uint256 leftVal = left[i];
-                leftMem[i] = leftVal;
-            }
-        }
-        for (uint256 i = 0; i < rightLen; i++) {
-            if (right[i] != 0) {
-                uint256 rightVal = right[i];
-                rightMem[i] = rightVal;
-            }
-        }
+    //     for (uint256 i = 0; i < leftLen; i++) {
+    //         if (left[i] != 0) {
+    //             uint256 leftVal = left[i];
+    //             leftMem[i] = leftVal;
+    //         }
+    //     }
+    //     for (uint256 i = 0; i < rightLen; i++) {
+    //         if (right[i] != 0) {
+    //             uint256 rightVal = right[i];
+    //             rightMem[i] = rightVal;
+    //         }
+    //     }
 
-        uint256[] memory sortedLeft = quickSort(leftMem);
-        uint256[] memory sortedRight = quickSort(rightMem);
+    //     uint256[] memory sortedLeft = quickSort(leftMem);
+    //     uint256[] memory sortedRight = quickSort(rightMem);
 
-        uint256[] memory sortedArray = new uint256[](sortedLeft.length + sortedRight.length + 1);
+    //     uint256[] memory sortedArray = new uint256[](sortedLeft.length + sortedRight.length + 1);
 
-        for (uint256 i = 0; i < sortedLeft.length; i++) {
-            sortedArray[i] = sortedLeft[i];
-        }
+    //     for (uint256 i = 0; i < sortedLeft.length; i++) {
+    //         sortedArray[i] = sortedLeft[i];
+    //     }
 
-        sortedArray[sortedLeft.length] = pivot;
+    //     sortedArray[sortedLeft.length] = pivot;
 
-        for (uint256 i = 0; i < sortedRight.length; i++) {
-            sortedArray[i] = sortedRight[i];
-        }
+    //     for (uint256 i = 0; i < sortedRight.length; i++) {
+    //         sortedArray[i] = sortedRight[i];
+    //     }
 
-        return sortedArray;
-    }
+    //     return sortedArray;
+    // }
 }
 
 contract SuperVaultTest is ProtocolActions {
