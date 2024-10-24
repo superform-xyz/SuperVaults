@@ -317,6 +317,27 @@ contract SuperVaultTest is ProtocolActions {
         superVaultHarness.updateSVData(superPositions, finalSuperformIds);
     }
 
+    function test_superVault_rebalance_duplicateSuperformIds() public {
+        uint256[] memory superformIdsRebalanceFrom = new uint256[](2);
+        superformIdsRebalanceFrom[0] = underlyingSuperformIds[0];
+        superformIdsRebalanceFrom[1] = underlyingSuperformIds[0];
+
+        uint256[] memory finalSuperformIds = new uint256[](1);
+        finalSuperformIds[0] = underlyingSuperformIds[0];
+
+        uint256[] memory amountsRebalanceFrom = new uint256[](2);
+        amountsRebalanceFrom[0] = 1 ether;
+        amountsRebalanceFrom[1] = 1 ether;
+
+        uint256[] memory weightsOfRedistribution = new uint256[](1);
+        weightsOfRedistribution[0] = 10_000;
+
+        vm.startPrank(deployer);
+        vm.expectRevert(ISuperVault.DUPLICATE_SUPERFORM_IDS.selector);
+        superVaultHarness.rebalance(ISuperVault.RebalanceArgs(superformIdsRebalanceFrom, amountsRebalanceFrom, finalSuperformIds, weightsOfRedistribution, 100));
+        vm.stopPrank();
+    }
+
     function test_superVault_rebalance() public {
         vm.startPrank(deployer);
         SOURCE_CHAIN = ETH;
