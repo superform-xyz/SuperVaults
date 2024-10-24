@@ -281,13 +281,7 @@ contract SuperVaultTest is ProtocolActions {
         weightsOfRedistribution[0] = 10_000;
 
         ISuperVault.RebalanceArgs memory args = ISuperVault.RebalanceArgs(
-            superformIdsRebalanceFrom,
-            amountsRebalanceFrom,
-            superformIdsRebalanceTo,
-            weightsOfRedistribution,
-            1 ether,
-            1 ether,
-            100
+            superformIdsRebalanceFrom, amountsRebalanceFrom, superformIdsRebalanceTo, weightsOfRedistribution, 100
         );
 
         vm.startPrank(deployer);
@@ -435,13 +429,7 @@ contract SuperVaultTest is ProtocolActions {
         // Call rebalance function
         SuperVault(payable(superVaultAddress)).rebalance(
             ISuperVault.RebalanceArgs(
-                superformIdsRebalanceFrom,
-                amountsRebalanceFrom,
-                superformIdsRebalanceTo,
-                weightsOfRedistribution,
-                1 ether,
-                1 ether,
-                100
+                superformIdsRebalanceFrom, amountsRebalanceFrom, superformIdsRebalanceTo, weightsOfRedistribution, 100
             )
         );
         vm.stopPrank();
@@ -1089,8 +1077,6 @@ contract SuperVaultTest is ProtocolActions {
                 vars.amountsRebalanceFrom,
                 vars.superformIdsRebalanceTo,
                 vars.weightsOfRedistribution,
-                2 ether,
-                2 ether,
                 100
             )
         );
