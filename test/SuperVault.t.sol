@@ -136,6 +136,11 @@ contract SuperVaultTest is ProtocolActions {
                 underlyingSuperformIds[i] = allSuperformIds[i];
             }
         }
+        for (uint256 i = 1; i < underlyingSuperformIds.length + 1; i++) {
+            if (underlyingSuperformIds[i - 1] >= underlyingSuperformIds[i]) {
+                revert("Superform IDs must not contain duplicates");
+            }
+        }
 
         uint256[] memory weights = new uint256[](vaultAddresses.length - 1);
         for (uint256 i = 0; i < vaultAddresses.length - 1; i++) {
@@ -165,11 +170,6 @@ contract SuperVaultTest is ProtocolActions {
         );
 
         //underlyingSuperformIds = superVaultHarness.quickSort(underlyingSuperformIds);
-        for (uint256 i = 1; i < underlyingSuperformIds.length + 1; i++) {
-            if (underlyingSuperformIds[i - 1] >= underlyingSuperformIds[i]) {
-                revert("Superform IDs must not contain duplicates");
-            }
-        }
 
         (bool success,) =
             address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.setPerformanceFee.selector, 0));
