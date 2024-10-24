@@ -173,6 +173,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
             }
         }
 
+        for (uint256 i = 1; i < lenRebalanceFrom; ++i) {
+            if (rebalanceArgs.superformIdsRebalanceFrom[i - 1] == rebalanceArgs.superformIdsRebalanceFrom[i]) {
+                revert DUPLICATE_SUPERFORM_IDS();
+            }
+        }
+
         /// @dev step 1: prepare rebalance arguments
         ISuperformRouterPlus.RebalanceMultiPositionsSyncArgs memory args = _prepareRebalanceArgs(
             rebalanceArgs.superformIdsRebalanceFrom,
