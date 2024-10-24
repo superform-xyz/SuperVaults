@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
 import { IERC1155Receiver } from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155Receiver.sol";
@@ -42,7 +42,7 @@ interface ISuperVault is IERC1155Receiver {
 
     /// @notice Error thrown when no superforms are provided in constructor
     error ZERO_SUPERFORMS();
-    
+
     /// @notice Error thrown when array lengths do not match
     error ARRAY_LENGTH_MISMATCH();
 
