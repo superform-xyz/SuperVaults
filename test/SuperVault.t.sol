@@ -24,6 +24,37 @@ contract SuperVaultHarness is SuperVault {
     function updateSVData(address superPositions, uint256[] memory finalSuperformIds) public {
         _updateSVData(superPositions, finalSuperformIds);
     }
+
+    function quickSort(uint256[] memory arr) external pure returns (uint256[] memory) {
+        if (arr.length <= 1) return arr;
+        uint256 pivot = arr[arr.length / 2];
+        uint256[] memory left;
+        uint256[] memory right;
+
+        for (uint256 i = 0; i < arr.length; i++) {
+            if (arr[i] < pivot) {
+                left.push(arr[i]);
+            }
+            if (arr[i] > pivot) {
+                right.push(arr[i]);
+            }
+        }
+        uint256[] memory sortedLeft = quickSort(left);
+        uint256[] memory sortedRight = quickSort(right);
+        uint256[] memory sortedArray = new uint256[](sortedLeft.length + sortedRight.length + 1);
+
+        for (uint256 i = 0; i < sortedLeft.length; i++) {
+            sortedArray[i] = sortedLeft[i];
+        }
+
+        sortedArray[sortedLeft.length] = pivot;
+
+        for (uint256 i = 0; i < sortedRight.length; i++) {
+            sortedArray[i] = sortedRight[i];
+        }
+
+        return sortedArray;
+    }
 }
 
 contract SuperVaultTest is ProtocolActions {
@@ -82,7 +113,7 @@ contract SuperVaultTest is ProtocolActions {
                 underlyingSuperformIds[i] = allSuperformIds[i];
             }
         }
-        sort(underlyingSuperformIds);
+        underlyingSuperformIds = superVaultHarness.quickSort(underlyingSuperformIds);
         for (uint256 i = 1; i < underlyingSuperformIds.length; i++) {
             if (underlyingSuperformIds[i - 1] >= underlyingSuperformIds[i]) {
                 revert("Superform IDs must not contain duplicates");
