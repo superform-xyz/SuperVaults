@@ -77,7 +77,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         uint256[] memory startingWeights_
     )
         BaseStrategy(asset_, name_)
-    {   
+    {
         uint256 numberOfSuperforms = superformIds_.length;
         if (numberOfSuperforms == 0) {
             revert ZERO_SUPERFORMS();
@@ -544,7 +544,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         uint256 length = finalSuperformIds.length;
         if (length == 0) revert ZERO_SUPERFORMS();
-        
+
         uint256[] memory newWeights = new uint256[](length);
 
         /// @dev check if finalSuperformIds are present in superform factory and support the asset
