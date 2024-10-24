@@ -1,0 +1,93 @@
+name: test
+
+on:
+  push:
+    branches: [main, yAudit]
+  pull_request:
+    branches: [main, yAudit]
+
+env:
+  BSC_RPC_URL: ${{ secrets.BSC_RPC_URL }}
+  ARBITRUM_RPC_URL: ${{ secrets.ARBITRUM_RPC_URL }}
+  OPTIMISM_RPC_URL: ${{ secrets.OPTIMISM_RPC_URL }}
+  ETHEREUM_RPC_URL: ${{ secrets.ETHEREUM_RPC_URL }}
+  POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}
+  AVALANCHE_RPC_URL: ${{ secrets.AVALANCHE_RPC_URL }}
+  BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
+  FANTOM_RPC_URL: ${{ secrets.FANTOM_RPC_URL }}
+  SEPOLIA_RPC_URL: ${{ secrets.SEPOLIA_RPC_URL }}
+  BSC_TESTNET_RPC_URL: ${{ secrets.BSC_TESTNET_RPC_URL }}
+  LINEA_RPC_URL: ${{ secrets.LINEA_RPC_URL }}
+  BLAST_RPC_URL: ${{ secrets.BLAST_RPC_URL }}
+  BARTIO_RPC_URL: ${{ secrets.BARTIO_RPC_URL }}
+  BSC_RPC_URL_QN: ${{ secrets.BSC_RPC_URL }}
+  ARBITRUM_RPC_URL_QN: ${{ secrets.ARBITRUM_RPC_URL }}
+  OPTIMISM_RPC_URL_QN: ${{ secrets.OPTIMISM_RPC_URL }}
+  ETHEREUM_RPC_URL_QN: ${{ secrets.ETHEREUM_RPC_URL }}
+  POLYGON_RPC_URL_QN: ${{ secrets.POLYGON_RPC_URL }}
+  AVALANCHE_RPC_URL_QN: ${{ secrets.AVALANCHE_RPC_URL }}
+  BASE_RPC_URL_QN: ${{ secrets.BASE_RPC_URL }}
+  FANTOM_RPC_URL_QN: ${{ secrets.FANTOM_RPC_URL }}
+  SEPOLIA_RPC_URL_QN: ${{ secrets.SEPOLIA_RPC_URL }}
+  BSC_TESTNET_RPC_URL_QN: ${{ secrets.BSC_TESTNET_RPC_URL }}
+  LINEA_RPC_URL_QN: ${{ secrets.LINEA_RPC_URL }}
+  BLAST_RPC_URL_QN: ${{ secrets.BLAST_RPC_URL }}
+  BARTIO_RPC_URL_QN: ${{ secrets.BARTIO_RPC_URL }}
+  TENDERLY_ACCESS_KEY: ${{ secrets.TENDERLY_ACCESS_KEY }}
+  TENDERLY_PROJECT_SLUG: "v1" # your project slug
+  TENDERLY_ACCOUNT_ID: "superform" # your username or organization name
+  FOUNDRY_EXPORTS_OVERWRITE_LATEST: "true"
+  OWNER_ADDRESS: ${{ secrets.OWNER_ADDRESS }}
+  DEBUG_MODE: "false"
+
+jobs:
+  test:
+    name: Foundry project
+    runs-on: SuperformCore3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+
+      - name: Run Forge Tests
+        run: "make ftest"
+
+      - name: "Add test summary"
+        run: |
+          echo "## Tests result" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Passed" >> $GITHUB_STEP_SUMMARY
+
+  coverage:
+    runs-on: SuperformCore3
+    needs: ["test"]
+    steps:
+      - name: "Check out the repo"
+        uses: "actions/checkout@v4"
+        with:
+          submodules: "recursive"
+
+      - name: "Install Foundry"
+        uses: "foundry-rs/foundry-toolchain@v1"
+
+      - name: "Install Tenderly CLI"
+        run: curl https://raw.githubusercontent.com/Tenderly/tenderly-cli/master/scripts/install-linux.sh | sudo sh
+
+      - name: "Generate the coverage report using unit and integration tests"
+        run: "make coverage"
+
+      - name: "Upload coverage report to Codecov"
+        uses: "codecov/codecov-action@v4"
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        with:
+          files: "./lcov.info"
+
+      - name: "Add coverage summary"
+        run: |
+          echo "## Coverage result" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Uploaded to Codecov" >> $GITHUB_STEP_SUMMARY

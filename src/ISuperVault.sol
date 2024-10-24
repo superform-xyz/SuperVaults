@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
 import { IERC1155Receiver } from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155Receiver.sol";
@@ -21,7 +21,7 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Struct to hold rebalance arguments
     /// @param superformIdsRebalanceFrom Array of superform IDs to rebalance from
     /// @param amountsRebalanceFrom Array of amounts to rebalance from each superform
-    /// @param superformIdsRebalanceTo Array of superform IDs to rebalance to
+    /// @param finalSuperformIds Array of final superform IDs
     /// @param weightsOfRedestribution Array of weights for redistribution
     /// @param slippage Slippage tolerance for the rebalance
     struct RebalanceArgs {
@@ -36,6 +36,9 @@ interface ISuperVault is IERC1155Receiver {
     //                  ERRORS                                   //
     //////////////////////////////////////////////////////////////
 
+    /// @notice Error thrown when no superforms are provided in constructor
+    error ZERO_SUPERFORMS();
+
     /// @notice Error thrown when array lengths do not match
     error ARRAY_LENGTH_MISMATCH();
 
@@ -47,6 +50,9 @@ interface ISuperVault is IERC1155Receiver {
 
     /// @notice Error thrown when a zero address is provided
     error ZERO_ADDRESS();
+
+    /// @notice Error thrown when the amounts to rebalance from array is empty
+    error EMPTY_AMOUNTS_REBALANCE_FROM();
 
     /// @notice Error thrown when a superform does not support the asset
     error SUPERFORM_DOES_NOT_SUPPORT_ASSET();
@@ -66,10 +72,6 @@ interface ISuperVault is IERC1155Receiver {
     //////////////////////////////////////////////////////////////
     //                  EVENTS                                   //
     //////////////////////////////////////////////////////////////
-
-    /// @notice Emitted when the refunds receiver is set
-    /// @param refundReceiver The address of the refunds receiver
-    event RefundsReceiverSet(address refundReceiver);
 
     /// @notice Emitted when the SuperVault is rebalanced
     /// @param finalSuperformIds Array of final superform IDs of the SuperVault
