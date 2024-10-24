@@ -179,6 +179,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
             }
         }
 
+        for (uint256 i = 1; i < lenFinal; ++i) {
+            if (rebalanceArgs.finalSuperformIds[i - 1] == rebalanceArgs.finalSuperformIds[i]) {
+                revert DUPLICATE_SUPERFORM_IDS();
+            }
+        }
+
         /// @dev step 1: prepare rebalance arguments
         ISuperformRouterPlus.RebalanceMultiPositionsSyncArgs memory args = _prepareRebalanceArgs(
             rebalanceArgs.superformIdsRebalanceFrom,
@@ -401,7 +407,18 @@ contract SuperVault is BaseStrategy, ISuperVault {
     {
         if (superformIdsRebalanceFrom.length == 0 || finalSuperformIds.length == 0) revert ZERO_SUPERFORMS();
 
-        
+        for (uint256 i = 1; i < superformIdsRebalanceFrom.length; ++i) {
+            if (superformIdsRebalanceFrom[i - 1] == superformIdsRebalanceFrom[i]) {
+                revert DUPLICATE_SUPERFORM_IDS();
+            }
+        }
+
+        for (uint256 i = 1; i < finalSuperformIds.length; ++i) {
+            if (finalSuperformIds[i - 1] == finalSuperformIds[i]) {
+                revert DUPLICATE_SUPERFORM_IDS();
+            }
+        }
+
         args.ids = superformIdsRebalanceFrom;
         args.sharesToRedeem = amountsRebalanceFrom;
         args.interimAsset = address(asset); // Assuming 'asset' is the interim token
