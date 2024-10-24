@@ -164,7 +164,7 @@ contract SuperVaultTest is ProtocolActions {
             weights
         );
 
-        underlyingSuperformIds = superVaultHarness.quickSort(underlyingSuperformIds);
+        //underlyingSuperformIds = superVaultHarness.quickSort(underlyingSuperformIds);
         // for (uint256 i = 1; i < underlyingSuperformIds.length + 1; i++) {
         //     if (underlyingSuperformIds[i - 1] >= underlyingSuperformIds[i]) {
         //         revert("Superform IDs must not contain duplicates");
