@@ -416,13 +416,7 @@ contract SuperVaultTest is ProtocolActions {
 
         superVault.rebalance(
             ISuperVault.RebalanceArgs(
-                superformIdsRebalanceFrom,
-                amountsRebalanceFrom,
-                superformIdsRebalanceTo,
-                finalWeightsTargets,
-                1 ether,
-                1 ether,
-                100
+                superformIdsRebalanceFrom, amountsRebalanceFrom, superformIdsRebalanceTo, finalWeightsTargets, 100
             )
         );
         vm.stopPrank();
@@ -453,13 +447,7 @@ contract SuperVaultTest is ProtocolActions {
         // Call rebalance function
         SuperVault(payable(superVaultAddress)).rebalance(
             ISuperVault.RebalanceArgs(
-                superformIdsRebalanceFrom,
-                amountsRebalanceFrom,
-                superformIdsRebalanceTo,
-                weightsOfRedistribution,
-                1 ether,
-                1 ether,
-                100
+                superformIdsRebalanceFrom, amountsRebalanceFrom, superformIdsRebalanceTo, weightsOfRedistribution, 100
             )
         );
         vm.stopPrank();
@@ -493,13 +481,7 @@ contract SuperVaultTest is ProtocolActions {
         // Call rebalance function
         SuperVault(payable(superVaultAddress)).rebalance(
             ISuperVault.RebalanceArgs(
-                superformIdsRebalanceFrom,
-                amountsRebalanceFrom,
-                superformIdsRebalanceTo,
-                weightsOfRedistribution,
-                1 ether,
-                1 ether,
-                100
+                superformIdsRebalanceFrom, amountsRebalanceFrom, superformIdsRebalanceTo, weightsOfRedistribution, 100
             )
         );
         vm.stopPrank();
@@ -1134,8 +1116,6 @@ contract SuperVaultTest is ProtocolActions {
                 vars.amountsRebalanceFrom,
                 vars.superformIdsRebalanceTo,
                 vars.weightsOfRedistribution,
-                2 ether,
-                2 ether,
                 100
             )
         );
