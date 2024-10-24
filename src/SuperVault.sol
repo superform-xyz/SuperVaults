@@ -304,15 +304,20 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Reports the total assets of the vault
     /// @return totalAssets The total assets of the vault
     function _harvestAndReport() internal view override returns (uint256 totalAssets) {
-        /// @dev we will be using reward distributor and transfer rewards to users directly
-        /// @dev thus this function will be unused (we just report full assets)
         uint256 totalAssetsInVaults;
         uint256 numberOfSuperforms = SV.numberOfSuperforms;
         uint256[] memory superformIds = SV.superformIds;
+
+        address superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
+
         for (uint256 i; i < numberOfSuperforms; ++i) {
             (address superform,,) = superformIds[i].getSuperform();
             address vault = IBaseForm(superform).getVaultAddress();
-            totalAssetsInVaults += IERC4626(vault).convertToAssets(IERC4626(vault).balanceOf(address(this)));
+            /// @dev This contract holds superPositions, not shares
+            /// @dev Since SuperPositions are 1-1 to shares we can convert these to assets and get total new asset
+            totalAssetsInVaults += IERC4626(vault).convertToAssets(
+                ISuperPositions(superPositions).balanceOf(address(this), superformIds[i])
+            );
         }
 
         totalAssets = totalAssetsInVaults + asset.balanceOf(address(this));
