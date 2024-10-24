@@ -78,8 +78,13 @@ contract SuperVault is BaseStrategy, ISuperVault {
     )
         BaseStrategy(asset_, name_)
     {   
-        if (superformIds_.length == 0) {
+        uint256 numberOfSuperforms = superformIds_.length;
+        if (numberOfSuperforms == 0) {
             revert ZERO_SUPERFORMS();
+        }
+
+        if (numberOfSuperforms != startingWeights_.length) {
+            revert ARRAY_LENGTH_MISMATCH();
         }
 
         if (superRegistry_ == address(0)) {
@@ -93,11 +98,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
         CHAIN_ID = uint64(block.chainid);
 
         superRegistry = ISuperRegistry(superRegistry_);
-
-        uint256 numberOfSuperforms = superformIds_.length;
-        if (numberOfSuperforms != startingWeights_.length) {
-            revert ARRAY_LENGTH_MISMATCH();
-        }
 
         ISuperformFactory factory = ISuperformFactory(_getAddress(keccak256("SUPERFORM_FACTORY")));
 
