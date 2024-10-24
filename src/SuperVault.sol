@@ -172,14 +172,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
                 revert INVALID_SUPERFORM_ID_REBALANCE_FROM();
             }
         }
-        sort(rebalanceArgs.superformIdsRebalanceFrom);
         for (uint256 i = 1; i < lenRebalanceFrom; ++i) {
             if (rebalanceArgs.superformIdsRebalanceFrom[i - 1] == rebalanceArgs.superformIdsRebalanceFrom[i]) {
                 revert DUPLICATE_SUPERFORM_IDS();
             }
         }
 
-        sort(rebalanceArgs.finalSuperformIds);
         for (uint256 i = 1; i < lenFinal; ++i) {
             if (rebalanceArgs.finalSuperformIds[i - 1] == rebalanceArgs.finalSuperformIds[i]) {
                 revert DUPLICATE_SUPERFORM_IDS();
