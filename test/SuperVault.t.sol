@@ -165,11 +165,11 @@ contract SuperVaultTest is ProtocolActions {
         );
 
         //underlyingSuperformIds = superVaultHarness.quickSort(underlyingSuperformIds);
-        // for (uint256 i = 1; i < underlyingSuperformIds.length + 1; i++) {
-        //     if (underlyingSuperformIds[i - 1] >= underlyingSuperformIds[i]) {
-        //         revert("Superform IDs must not contain duplicates");
-        //     }
-        // }
+        for (uint256 i = 1; i < underlyingSuperformIds.length + 1; i++) {
+            if (underlyingSuperformIds[i - 1] >= underlyingSuperformIds[i]) {
+                revert("Superform IDs must not contain duplicates");
+            }
+        }
 
         (bool success,) =
             address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.setPerformanceFee.selector, 0));
