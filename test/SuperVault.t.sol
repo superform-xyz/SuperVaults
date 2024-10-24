@@ -272,13 +272,7 @@ contract SuperVaultTest is ProtocolActions {
         weightsOfRedistribution[0] = 10_000;
 
         ISuperVault.RebalanceArgs memory args = ISuperVault.RebalanceArgs(
-            superformIdsRebalanceFrom,
-            amountsRebalanceFrom,
-            superformIdsRebalanceTo,
-            weightsOfRedistribution,
-            1 ether,
-            1 ether,
-            100
+            superformIdsRebalanceFrom, amountsRebalanceFrom, superformIdsRebalanceTo, weightsOfRedistribution, 100
         );
 
         vm.startPrank(deployer);
