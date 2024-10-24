@@ -25,11 +25,11 @@ contract SuperVaultHarness is SuperVault {
         _updateSVData(superPositions, finalSuperformIds);
     }
 
-    function quickSort(uint256[] memory arr) external pure returns (uint256[] memory) {
+    function quickSort(uint256[] memory arr) public pure returns (uint256[] memory) {
         if (arr.length <= 1) return arr;
         uint256 pivot = arr[arr.length / 2];
-        uint256[] memory left;
-        uint256[] memory right;
+        uint256[] storage left;
+        uint256[] storage right;
 
         for (uint256 i = 0; i < arr.length; i++) {
             if (arr[i] < pivot) {
@@ -39,8 +39,29 @@ contract SuperVaultHarness is SuperVault {
                 right.push(arr[i]);
             }
         }
-        uint256[] memory sortedLeft = quickSort(left);
-        uint256[] memory sortedRight = quickSort(right);
+
+        uint256 leftLen = left.length;
+        uint256 rightLen = right.length;
+
+        uint256[] memory leftMem = new uint256[](leftLen);
+        uint256[] memory rightMem = new uint256[](rightLen);
+
+        for (uint256 i = 0; i < leftLen; i++) {
+            if (left[i] != 0) {
+                uint256 leftVal = left[i];
+                leftMem[i] = leftVal;
+            }
+        }
+        for (uint256 i = 0; i < rightLen; i++) {
+            if (right[i] != 0) {
+                uint256 rightVal = right[i];
+                rightMem[i] = rightVal;
+            }
+        }
+
+        uint256[] memory sortedLeft = quickSort(leftMem);
+        uint256[] memory sortedRight = quickSort(rightMem);
+
         uint256[] memory sortedArray = new uint256[](sortedLeft.length + sortedRight.length + 1);
 
         for (uint256 i = 0; i < sortedLeft.length; i++) {
@@ -85,6 +106,8 @@ contract SuperVaultTest is ProtocolActions {
         SOURCE_CHAIN = ETH;
 
         SUPER_POSITIONS_SOURCE = getContract(SOURCE_CHAIN, "SuperPositions");
+        vm.makePersistent(SUPER_POSITIONS_SOURCE);
+
         // 1 - USDC SuperVault: Morpho + Euler + Aave USDC (3 vaults total to start)) -> ETH
         //      Asset: USDC
 
@@ -111,12 +134,6 @@ contract SuperVaultTest is ProtocolActions {
             (allSuperformIds[i], superformAddress) = superformFactory.createSuperform(1, vaultAddresses[i]);
             if (i < 3) {
                 underlyingSuperformIds[i] = allSuperformIds[i];
-            }
-        }
-        underlyingSuperformIds = superVaultHarness.quickSort(underlyingSuperformIds);
-        for (uint256 i = 1; i < underlyingSuperformIds.length; i++) {
-            if (underlyingSuperformIds[i - 1] >= underlyingSuperformIds[i]) {
-                revert("Superform IDs must not contain duplicates");
             }
         }
 
@@ -146,6 +163,13 @@ contract SuperVaultTest is ProtocolActions {
             underlyingSuperformIds,
             weights
         );
+
+        underlyingSuperformIds = superVaultHarness.quickSort(underlyingSuperformIds);
+        // for (uint256 i = 1; i < underlyingSuperformIds.length + 1; i++) {
+        //     if (underlyingSuperformIds[i - 1] >= underlyingSuperformIds[i]) {
+        //         revert("Superform IDs must not contain duplicates");
+        //     }
+        // }
 
         (bool success,) =
             address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.setPerformanceFee.selector, 0));
