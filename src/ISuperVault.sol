@@ -19,6 +19,7 @@ interface ISuperVault is IERC1155Receiver {
     }
 
     /// @notice Struct to hold rebalance arguments
+    /// @notice superformIdsRebalanceFrom must be an ordered array of superform IDs with no duplicates
     /// @param superformIdsRebalanceFrom Array of superform IDs to rebalance from
     /// @param amountsRebalanceFrom Array of amounts to rebalance from each superform
     /// @param finalSuperformIds Array of final superform IDs
@@ -87,6 +88,7 @@ interface ISuperVault is IERC1155Receiver {
     //////////////////////////////////////////////////////////////
 
     /// @notice Rebalances the SuperVault
+    /// @notice rebalanceArgs_.superformIdsRebalanceFrom must be an ordered array of superform IDs with no duplicates
     /// @notice the logic is as follows:
     /// select the ids to rebalance from
     /// send an amount to take from those ids
