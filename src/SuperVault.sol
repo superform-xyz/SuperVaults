@@ -142,15 +142,14 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @inheritdoc ISuperVault
     function rebalance(RebalanceArgs calldata rebalanceArgs) external payable override onlySuperVaultsStrategist {
         uint256 lenRebalanceFrom = rebalanceArgs.superformIdsRebalanceFrom.length;
+        uint256 lenAmountsRebalanceFrom = rebalanceArgs.amountsRebalanceFrom.length;
         uint256 lenFinal = rebalanceArgs.finalSuperformIds.length;
 
-        if (rebalanceArgs.amountsRebalanceFrom.length == 0) revert EMPTY_AMOUNTS_REBALANCE_FROM();
+        if (lenAmountsRebalanceFrom == 0) revert EMPTY_AMOUNTS_REBALANCE_FROM();
+        if (lenFinal == 0) revert EMPTY_FINAL_SUPERFORM_IDS();
 
         /// @dev sanity check input arrays
-        if (
-            lenRebalanceFrom != rebalanceArgs.amountsRebalanceFrom.length
-                || lenFinal != rebalanceArgs.weightsOfRedestribution.length
-        ) {
+        if (lenRebalanceFrom != lenAmountsRebalanceFrom || lenFinal != rebalanceArgs.weightsOfRedestribution.length) {
             revert ARRAY_LENGTH_MISMATCH();
         }
 
@@ -173,14 +172,14 @@ contract SuperVault is BaseStrategy, ISuperVault {
             }
         }
         for (uint256 i = 1; i < lenRebalanceFrom; ++i) {
-            if (rebalanceArgs.superformIdsRebalanceFrom[i - 1] == rebalanceArgs.superformIdsRebalanceFrom[i]) {
-                revert DUPLICATE_SUPERFORM_IDS();
+            if (rebalanceArgs.superformIdsRebalanceFrom[i] <= rebalanceArgs.superformIdsRebalanceFrom[i - 1]) {
+                revert DUPLICATE_SUPERFORM_IDS_REBALANCE_FROM();
             }
         }
 
         for (uint256 i = 1; i < lenFinal; ++i) {
-            if (rebalanceArgs.finalSuperformIds[i - 1] == rebalanceArgs.finalSuperformIds[i]) {
-                revert DUPLICATE_SUPERFORM_IDS();
+            if (rebalanceArgs.finalSuperformIds[i] <= rebalanceArgs.finalSuperformIds[i - 1]) {
+                revert DUPLICATE_FINAL_SUPERFORM_IDS();
             }
         }
 
@@ -404,20 +403,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
         view
         returns (ISuperformRouterPlus.RebalanceMultiPositionsSyncArgs memory args)
     {
-        if (superformIdsRebalanceFrom.length == 0 || finalSuperformIds.length == 0) revert ZERO_SUPERFORMS();
-
-        for (uint256 i = 1; i < superformIdsRebalanceFrom.length; ++i) {
-            if (superformIdsRebalanceFrom[i - 1] == superformIdsRebalanceFrom[i]) {
-                revert DUPLICATE_SUPERFORM_IDS();
-            }
-        }
-
-        for (uint256 i = 1; i < finalSuperformIds.length; ++i) {
-            if (finalSuperformIds[i - 1] == finalSuperformIds[i]) {
-                revert DUPLICATE_SUPERFORM_IDS();
-            }
-        }
-
         args.ids = superformIdsRebalanceFrom;
         args.sharesToRedeem = amountsRebalanceFrom;
         args.interimAsset = address(asset); // Assuming 'asset' is the interim token
