@@ -514,7 +514,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
         returns (uint256[] memory filteredIds, uint256[] memory filteredWeights)
     {
         uint256 count;
-        for (uint256 i; i < weights.length; ++i) {
+        uint256 length = weights.length;
+        for (uint256 i; i < length; ++i) {
             if (weights[i] != 0) {
                 count++;
             }
@@ -525,7 +526,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         uint256 j;
         uint256 totalWeight;
-        for (uint256 i; i < weights.length; ++i) {
+        for (uint256 i; i < length; ++i) {
             if (weights[i] != 0) {
                 filteredIds[j] = superformIds[i];
                 filteredWeights[j] = weights[i];
