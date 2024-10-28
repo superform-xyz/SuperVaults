@@ -312,12 +312,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         for (uint256 i; i < numberOfSuperforms; ++i) {
             (address superform,,) = superformIds[i].getSuperform();
-            address vault = IBaseForm(superform).getVaultAddress();
+
             /// @dev This contract holds superPositions, not shares
-            /// @dev Since SuperPositions are 1-1 to shares we can convert these to assets and get total new asset
-            totalAssetsInVaults += IERC4626(vault).convertToAssets(
-                ISuperPositions(superPositions).balanceOf(address(this), superformIds[i])
-            );
+            uint256 spBalance = ISuperPositions(superPositions).balanceOf(address(this), superformIds[i]);
+            totalAssetsInVaults += IBaseForm(superform).previewRedeemFrom(spBalance);
         }
 
         totalAssets = totalAssetsInVaults + asset.balanceOf(address(this));
@@ -366,10 +364,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
                 mvData.amounts[i] = amount_.mulDiv(SV.weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
                 mvData.outputAmounts[i] = superformContract.previewDepositTo(mvData.amounts[i]);
             } else {
+                /// @dev assets
                 mvData.outputAmounts[i] = amount_.mulDiv(SV.weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
-                /// @notice convertToShares here helps avoid round up issue
-                mvData.amounts[i] =
-                    IERC4626(superformContract.getVaultAddress()).convertToShares(mvData.outputAmounts[i]);
+                /// @dev shares - in 4626Form this uses convertToShares in 5115Form this uses previewDeposit
+                mvData.amounts[i] = superformContract.previewDepositTo(mvData.outputAmounts[i]);
             }
 
             mvData.maxSlippages[i] = MAX_SLIPPAGE;
@@ -561,7 +559,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             }
 
             uint256 balance = ISuperPositions(superPositions).balanceOf(address(this), finalSuperformIds[i]);
-            value = IERC4626(IBaseForm(superform).getVaultAddress()).convertToAssets(balance);
+            value = IBaseForm(superform).previewRedeemFrom(balance);
 
             newWeights[i] = value;
             totalWeight += value;
