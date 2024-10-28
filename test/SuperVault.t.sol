@@ -49,6 +49,20 @@ contract SuperVaultTest is ProtocolActions {
     address constant KEEPER = address(uint160(uint256(keccak256("KEEPER"))));
     address constant PERFORMANCE_FEE_RECIPIENT = address(uint160(uint256(keccak256("PERFORMANCE_FEE_RECIPIENT"))));
 
+    function sortAllSuperformIds() internal {
+        uint256 n = allSuperformIds.length;
+        for (uint256 i = 0; i < n - 1; i++) {
+            for (uint256 j = 0; j < n - i - 1; j++) {
+                if (allSuperformIds[j] > allSuperformIds[j + 1]) {
+                    // Swap
+                    uint256 temp = allSuperformIds[j];
+                    allSuperformIds[j] = allSuperformIds[j + 1];
+                    allSuperformIds[j + 1] = temp;
+                }
+            }
+        }
+    }
+
     function setUp() public override {
         chainIds = [ETH, ARBI];
         super.setUp();
@@ -57,6 +71,8 @@ contract SuperVaultTest is ProtocolActions {
         SOURCE_CHAIN = ETH;
 
         SUPER_POSITIONS_SOURCE = getContract(SOURCE_CHAIN, "SuperPositions");
+        //vm.makePersistent(SUPER_POSITIONS_SOURCE);
+
         // 1 - USDC SuperVault: Morpho + Euler + Aave USDC (3 vaults total to start)) -> ETH
         //      Asset: USDC
 
@@ -81,9 +97,12 @@ contract SuperVaultTest is ProtocolActions {
         address superformAddress;
         for (uint256 i = 0; i < vaultAddresses.length; i++) {
             (allSuperformIds[i], superformAddress) = superformFactory.createSuperform(1, vaultAddresses[i]);
-            if (i < 3) {
-                underlyingSuperformIds[i] = allSuperformIds[i];
-            }
+        }
+
+        sortAllSuperformIds();
+
+        for (uint256 i = 0; i < vaultAddresses.length - 1; i++) {
+            underlyingSuperformIds[i] = allSuperformIds[i];
         }
 
         uint256[] memory weights = new uint256[](vaultAddresses.length - 1);
@@ -125,18 +144,10 @@ contract SuperVaultTest is ProtocolActions {
             weights
         );
 
-        /*
-        (success,) = address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.setPerformanceFee.selector, 0));
-        require(success, "Failed to set performance fee to 0");
-        */
-
         (bool success2, bytes memory data) =
             address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.performanceFee.selector));
         require(success2, "Failed to get performance fee");
-        /*
-        uint256 performanceFee = abi.decode(data, (uint256));
-        assertEq(performanceFee, 0, "Performance fee should be 0");
-        */
+
         address superVaultAddress = address(superVault);
 
         // Deploy Superform
@@ -328,6 +339,58 @@ contract SuperVaultTest is ProtocolActions {
 
         vm.expectRevert(ISuperVault.SUPERFORM_DOES_NOT_SUPPORT_ASSET.selector);
         superVaultHarness.updateSVData(superPositions, finalSuperformIds);
+    }
+
+    function test_superVault_rebalance_duplicateSuperformIdsRebalanceFrom() public {
+        uint256[] memory superformIdsRebalanceFrom = new uint256[](2);
+        superformIdsRebalanceFrom[0] = underlyingSuperformIds[0];
+        superformIdsRebalanceFrom[1] = underlyingSuperformIds[0];
+
+        uint256[] memory finalSuperformIds = new uint256[](1);
+        finalSuperformIds[0] = underlyingSuperformIds[0];
+
+        uint256[] memory amountsRebalanceFrom = new uint256[](2);
+        amountsRebalanceFrom[0] = 1 ether;
+        amountsRebalanceFrom[1] = 1 ether;
+
+        uint256[] memory weightsOfRedistribution = new uint256[](1);
+        weightsOfRedistribution[0] = 10_000;
+
+        vm.startPrank(deployer);
+        vm.expectRevert(ISuperVault.DUPLICATE_SUPERFORM_IDS_REBALANCE_FROM.selector);
+        superVaultHarness.rebalance(
+            ISuperVault.RebalanceArgs(
+                superformIdsRebalanceFrom, amountsRebalanceFrom, finalSuperformIds, weightsOfRedistribution, 100
+            )
+        );
+        vm.stopPrank();
+    }
+
+    function test_superVault_rebalance_duplicateFinalSuperformIds() public {
+        uint256[] memory superformIdsRebalanceFrom = new uint256[](2);
+        superformIdsRebalanceFrom[0] = underlyingSuperformIds[0];
+        superformIdsRebalanceFrom[1] = underlyingSuperformIds[1];
+
+        uint256[] memory finalSuperformIds = new uint256[](2);
+        finalSuperformIds[0] = underlyingSuperformIds[0];
+        finalSuperformIds[1] = underlyingSuperformIds[0];
+
+        uint256[] memory amountsRebalanceFrom = new uint256[](2);
+        amountsRebalanceFrom[0] = 1 ether;
+        amountsRebalanceFrom[1] = 1 ether;
+
+        uint256[] memory weightsOfRedistribution = new uint256[](2);
+        weightsOfRedistribution[0] = 10_000;
+        weightsOfRedistribution[1] = 20_000;
+
+        vm.startPrank(deployer);
+        vm.expectRevert(ISuperVault.DUPLICATE_FINAL_SUPERFORM_IDS.selector);
+        superVaultHarness.rebalance(
+            ISuperVault.RebalanceArgs(
+                superformIdsRebalanceFrom, amountsRebalanceFrom, finalSuperformIds, weightsOfRedistribution, 100
+            )
+        );
+        vm.stopPrank();
     }
 
     function test_superVault_rebalance() public {
@@ -619,8 +682,10 @@ contract SuperVaultTest is ProtocolActions {
             finalIndexes[1] = 2;
         } else if (finalIndex == 2) {
             finalIndexes[1] = 1;
-        } else if (finalIndex == 3) {
-            finalIndexes[1] = 1;
+        }
+        // Sort finalIndexes
+        if (finalIndexes[0] > finalIndexes[1]) {
+            (finalIndexes[0], finalIndexes[1]) = (finalIndexes[1], finalIndexes[0]);
         }
 
         uint256[] memory indexesRebalanceFrom = new uint256[](1);

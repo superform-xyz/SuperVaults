@@ -19,6 +19,7 @@ interface ISuperVault is IERC1155Receiver {
     }
 
     /// @notice Struct to hold rebalance arguments
+    /// @notice superformIdsRebalanceFrom must be an ordered array of superform IDs with no duplicates
     /// @param superformIdsRebalanceFrom Array of superform IDs to rebalance from
     /// @param amountsRebalanceFrom Array of amounts to rebalance from each superform
     /// @param finalSuperformIds Array of final superform IDs
@@ -39,6 +40,12 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Error thrown when no superforms are provided in constructor
     error ZERO_SUPERFORMS();
 
+    /// @notice Error thrown when duplicate superform IDs to rebalance from are provided
+    error DUPLICATE_SUPERFORM_IDS_REBALANCE_FROM();
+
+    /// @notice Error thrown when duplicate final superform IDs are provided
+    error DUPLICATE_FINAL_SUPERFORM_IDS();
+
     /// @notice Error thrown when array lengths do not match
     error ARRAY_LENGTH_MISMATCH();
 
@@ -53,6 +60,9 @@ interface ISuperVault is IERC1155Receiver {
 
     /// @notice Error thrown when the amounts to rebalance from array is empty
     error EMPTY_AMOUNTS_REBALANCE_FROM();
+
+    /// @notice Error thrown when the final superform IDs array is empty
+    error EMPTY_FINAL_SUPERFORM_IDS();
 
     /// @notice Error thrown when a superform does not support the asset
     error SUPERFORM_DOES_NOT_SUPPORT_ASSET();
@@ -90,6 +100,7 @@ interface ISuperVault is IERC1155Receiver {
     //////////////////////////////////////////////////////////////
 
     /// @notice Rebalances the SuperVault
+    /// @notice rebalanceArgs_.superformIdsRebalanceFrom must be an ordered array of superform IDs with no duplicates
     /// @notice the logic is as follows:
     /// select the ids to rebalance from
     /// send an amount to take from those ids
