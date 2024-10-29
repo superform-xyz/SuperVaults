@@ -152,6 +152,12 @@ contract SuperVault is BaseStrategy, ISuperVault, AccessControl {
         emit DepositLimitSet(depositLimit_);
     }
 
+    /// @notice Sets the vault manager
+    /// @param vaultManager_ The new vault manager
+    function setVaultManager(address vaultManager_) external onlySuperVaultsStrategist {
+        _grantRole(keccak256("VAULT_MANAGER"), vaultManager_);
+    }
+
     /// @inheritdoc ISuperVault
     function rebalance(RebalanceArgs calldata rebalanceArgs) external payable override onlySuperVaultsStrategist {
         uint256 lenRebalanceFrom = rebalanceArgs.superformIdsRebalanceFrom.length;
