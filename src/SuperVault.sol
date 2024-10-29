@@ -314,15 +314,18 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Reports the total assets of the vault
     /// @return totalAssets The total assets of the vault
     function _harvestAndReport() internal view override returns (uint256 totalAssets) {
-        /// @dev we will be using reward distributor and transfer rewards to users directly
-        /// @dev thus this function will be unused (we just report full assets)
         uint256 totalAssetsInVaults;
         uint256 numberOfSuperforms = SV.numberOfSuperforms;
         uint256[] memory superformIds = SV.superformIds;
+
+        address superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
+
         for (uint256 i; i < numberOfSuperforms; ++i) {
             (address superform,,) = superformIds[i].getSuperform();
-            address vault = IBaseForm(superform).getVaultAddress();
-            totalAssetsInVaults += IERC4626(vault).convertToAssets(IERC4626(vault).balanceOf(address(this)));
+
+            /// @dev This contract holds superPositions, not shares
+            uint256 spBalance = ISuperPositions(superPositions).balanceOf(address(this), superformIds[i]);
+            totalAssetsInVaults += IBaseForm(superform).previewRedeemFrom(spBalance);
         }
 
         totalAssets = totalAssetsInVaults + asset.balanceOf(address(this));
@@ -371,10 +374,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
                 mvData.amounts[i] = amount_.mulDiv(SV.weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
                 mvData.outputAmounts[i] = superformContract.previewDepositTo(mvData.amounts[i]);
             } else {
+                /// @dev assets
                 mvData.outputAmounts[i] = amount_.mulDiv(SV.weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
-                /// @notice convertToShares here helps avoid round up issue
-                mvData.amounts[i] =
-                    IERC4626(superformContract.getVaultAddress()).convertToShares(mvData.outputAmounts[i]);
+                /// @dev shares - in 4626Form this uses convertToShares in 5115Form this uses previewDeposit
+                mvData.amounts[i] = superformContract.previewDepositTo(mvData.outputAmounts[i]);
             }
 
             mvData.maxSlippages[i] = MAX_SLIPPAGE;
@@ -567,7 +570,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             }
 
             uint256 balance = ISuperPositions(superPositions).balanceOf(address(this), finalSuperformIds[i]);
-            value = IERC4626(IBaseForm(superform).getVaultAddress()).convertToAssets(balance);
+            value = IBaseForm(superform).previewRedeemFrom(balance);
 
             newWeights[i] = value;
             totalWeight += value;

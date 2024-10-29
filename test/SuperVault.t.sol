@@ -46,6 +46,9 @@ contract SuperVaultTest is ProtocolActions {
     /// @dev yearn address factory on ETH
     address constant FACTORY = 0x444045c5C13C246e117eD36437303cac8E250aB0;
 
+    address constant KEEPER = address(uint160(uint256(keccak256("KEEPER"))));
+    address constant PERFORMANCE_FEE_RECIPIENT = address(uint160(uint256(keccak256("PERFORMANCE_FEE_RECIPIENT"))));
+
     function sortAllSuperformIds() internal {
         uint256 n = allSuperformIds.length;
         for (uint256 i = 0; i < n - 1; i++) {
@@ -119,6 +122,18 @@ contract SuperVaultTest is ProtocolActions {
             underlyingSuperformIds,
             weights
         );
+
+        /// @dev after deploying superVault, deployer (a FB role) needs to accept management
+        /// @dev also needs to be set as keeper (a new FB role)
+        /// @dev also we need to have a performance fee recipient (a new FB role)
+        (bool success, bytes memory returnValue) =
+            address(superVault).call(abi.encodeWithSignature("setKeeper(address)", KEEPER));
+        require(success, "Failed to set keeper");
+        (success, returnValue) = address(superVault).call(
+            abi.encodeWithSignature("setPerformanceFeeRecipient(address)", PERFORMANCE_FEE_RECIPIENT)
+        );
+        require(success, "Failed to set performance fee recipient");
+
         superVaultHarness = new SuperVaultHarness(
             getContract(SOURCE_CHAIN, "SuperRegistry"),
             getContract(ETH, "USDC"),
@@ -129,17 +144,10 @@ contract SuperVaultTest is ProtocolActions {
             weights
         );
 
-        //underlyingSuperformIds = superVaultHarness.quickSort(underlyingSuperformIds);
-
-        (bool success,) =
-            address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.setPerformanceFee.selector, 0));
-        require(success, "Failed to set performance fee to 0");
-
         (bool success2, bytes memory data) =
             address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.performanceFee.selector));
         require(success2, "Failed to get performance fee");
-        uint256 performanceFee = abi.decode(data, (uint256));
-        assertEq(performanceFee, 0, "Performance fee should be 0");
+
         address superVaultAddress = address(superVault);
 
         // Deploy Superform
@@ -555,22 +563,72 @@ contract SuperVaultTest is ProtocolActions {
     }
 
     function test_harvestAndReport() public {
-        vm.startPrank(deployer);
         SOURCE_CHAIN = ETH;
 
         uint256 depositAmount = 10_000e6; // 10,000 USDC
-        // Perform a direct deposit to the SuperVault
-        _directDeposit(SUPER_VAULT_ID1, depositAmount);
+        uint256 numUsers = 30;
+        address[] memory depositUsers = new address[](numUsers);
 
+        // Generate 30 user addresses
+        for (uint256 i = 1; i < numUsers; i++) {
+            depositUsers[i] = address(uint160(0x1000 + i));
+        }
+
+        // Get USDC token address
+        address usdcToken = getContract(ETH, "USDC");
+
+        for (uint256 i = 1; i < numUsers; i++) {
+            vm.deal(depositUsers[i], 10 ether);
+            // Deal USDC tokens to the current user
+            deal(usdcToken, depositUsers[i], depositAmount);
+
+            // Perform direct deposit for the current user
+            vm.startPrank(depositUsers[i]);
+            _directDeposit(SUPER_VAULT_ID1, depositAmount);
+            vm.stopPrank();
+
+            // Warp 1 day
+            vm.warp(block.timestamp + 1 days);
+        }
+
+        vm.stopPrank();
         // Get SuperVault address
         (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
         address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
+        (bool success, bytes memory returnData) = superVaultAddress.call(abi.encodeWithSignature("totalAssets()"));
+        require(success, "totalAssets() call failed");
 
-        // Call report() function
-        (bool success,) = superVaultAddress.call(abi.encodeWithSignature("report()"));
+        uint256 totalAssets = abi.decode(returnData, (uint256));
+        console.log("Total Assets:", totalAssets);
+
+        vm.warp(block.timestamp + 30 days);
+        (success, returnData) = superVaultAddress.call(abi.encodeWithSignature("totalAssets()"));
+        require(success, "totalAssets() call failed");
+        uint256 totalAssetsAfter = abi.decode(returnData, (uint256));
+        console.log("Total Assets after 30 days:", totalAssetsAfter);
+
+        assertEq(totalAssetsAfter, totalAssets);
+
+        uint256 balanceFeeRecipientBeforeReport = IERC4626(address(superVault)).balanceOf(PERFORMANCE_FEE_RECIPIENT);
+        console.log("Balance of performance fee recipient before report:", balanceFeeRecipientBeforeReport);
+
+        // Call report() function with a keeper
+        vm.prank(KEEPER);
+        (success,) = superVaultAddress.call(abi.encodeWithSignature("report()"));
         require(success, "report() call failed");
 
-        vm.stopPrank();
+        (success, returnData) = superVaultAddress.call(abi.encodeWithSignature("totalAssets()"));
+        require(success, "totalAssets() call failed");
+        uint256 totalAssetsAfterReport = abi.decode(returnData, (uint256));
+
+        console.log("Total Assets after report:", totalAssetsAfterReport);
+
+        assertGt(totalAssetsAfterReport, totalAssetsAfter);
+
+        uint256 balanceFeeRecipientAfterReport = IERC4626(address(superVault)).balanceOf(PERFORMANCE_FEE_RECIPIENT);
+        console.log("Balance of performance fee recipient:", balanceFeeRecipientAfterReport);
+
+        assertGt(balanceFeeRecipientAfterReport, balanceFeeRecipientBeforeReport);
     }
 
     function test_setDepositLimit() public {
