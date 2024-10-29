@@ -58,6 +58,14 @@ contract SuperVault is BaseStrategy, ISuperVault {
         _;
     }
 
+    /// @notice Ensures that only the Vault Manager can call the function
+    modifier onlyVaultManager() {
+        if (_getAddress(keccak256("VAULT_MANAGER")) != msg.sender) {
+            revert NOT_VAULT_MANAGER();
+        }
+        _;
+    }
+
     //////////////////////////////////////////////////////////////
     //                       CONSTRUCTOR                        //
     //////////////////////////////////////////////////////////////
@@ -205,6 +213,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
         /// @notice updateSV emits rebalance event
         _updateSVData(superPositions, rebalanceArgs.finalSuperformIds);
     }
+
+    
 
     //////////////////////////////////////////////////////////////
     //                 EXTERNAL VIEW/PURE FUNCTIONS             //
