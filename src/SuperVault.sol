@@ -154,7 +154,7 @@ contract SuperVault is BaseStrategy, ISuperVault, AccessControl {
 
     /// @notice Sets the vault manager
     /// @param vaultManager_ The new vault manager
-    function setVaultManager(address vaultManager_) external onlySuperVaultsStrategist {
+    function setVaultManager(address vaultManager_) external onlyVaultManager {
         _grantRole(keccak256("VAULT_MANAGER"), vaultManager_);
     }
 
