@@ -7,6 +7,8 @@ import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/Sa
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { IERC165 } from "openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IERC4626 } from "openzeppelin/contracts/interfaces/IERC4626.sol";
+import { AccessControl } from "openzeppelin/contracts/access/AccessControl.sol";
+
 import { SingleDirectMultiVaultStateReq, MultiVaultSFData, LiqRequest } from "superform-core/src/types/DataTypes.sol";
 import { ISuperPositions } from "superform-core/src/interfaces/ISuperPositions.sol";
 import { DataLib } from "superform-core/src/libraries/DataLib.sol";
@@ -22,7 +24,7 @@ import { ISuperVault, IERC1155Receiver } from "./ISuperVault.sol";
 /// @notice A vault contract that manages multiple Superform positions
 /// @dev Inherits from BaseStrategy and implements ISuperVault and IERC1155Receiver
 /// @author Superform Labs
-contract SuperVault is BaseStrategy, ISuperVault {
+contract SuperVault is BaseStrategy, ISuperVault, AccessControl {
     using Math for uint256;
     using DataLib for uint256;
     using SafeERC20 for ERC20;
@@ -60,7 +62,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
     /// @notice Ensures that only the Vault Manager can call the function
     modifier onlyVaultManager() {
-        if (_getAddress(keccak256("VAULT_MANAGER")) != msg.sender) {
+        if (!_hasRole(keccak256("VAULT_MANAGER"), msg.sender)) {
             revert NOT_VAULT_MANAGER();
         }
         _;
@@ -79,6 +81,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     constructor(
         address superRegistry_,
         address asset_,
+        address vaultManager_,
         string memory name_,
         uint256 depositLimit_,
         uint256[] memory superformIds_,
@@ -95,7 +98,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             revert ARRAY_LENGTH_MISMATCH();
         }
 
-        if (superRegistry_ == address(0)) {
+        if (superRegistry_ == address(0) || vaultManager_ == address(0)) {
             revert ZERO_ADDRESS();
         }
 
@@ -108,6 +111,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
         superRegistry = ISuperRegistry(superRegistry_);
 
         ISuperformFactory factory = ISuperformFactory(_getAddress(keccak256("SUPERFORM_FACTORY")));
+
+        _grantRole(keccak256("VAULT_MANAGER"), vaultManager_);
 
         uint256 totalWeight;
         address superform;
