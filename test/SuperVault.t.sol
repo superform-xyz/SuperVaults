@@ -288,6 +288,7 @@ contract SuperVaultTest is ProtocolActions {
     }
 
     function test_superVault_forwardDustToPaymaster_cannotForwardShares() public {
+        superformFactory.createSuperform(1, SUPER_VAULT_ID1);
         (address superform,,) = SUPER_VAULT_ID1.getSuperform();
         vm.startPrank(deployer);
         vm.expectRevert(ISuperVault.CANNOT_FORWARD_SHARES.selector);
