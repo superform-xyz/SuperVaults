@@ -214,7 +214,19 @@ contract SuperVault is BaseStrategy, ISuperVault {
         _updateSVData(superPositions, rebalanceArgs.finalSuperformIds);
     }
 
-    
+    /// @inheritdoc ISuperVault
+    function forwardDustToPaymaster(address token_) external onlyVaultManager {
+        if (token_ == ZERO_ADDRESS) revert Error.ZERO_ADDRESS();
+
+        address paymaster = superRegistry.getAddress(keccak256("PAYMASTER"));
+        IERC20 token = IERC20(token_);
+
+        uint256 dust = token.balanceOf(address(this));
+        if (dust != 0) {
+            token.safeTransfer(paymaster, dust);
+            emit FormDustForwardedToPaymaster(token_, dust);
+        }
+    }
 
     //////////////////////////////////////////////////////////////
     //                 EXTERNAL VIEW/PURE FUNCTIONS             //
