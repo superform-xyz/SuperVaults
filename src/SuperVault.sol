@@ -5,6 +5,7 @@ import { Address } from "openzeppelin/contracts/utils/Address.sol";
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
 import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { IERC165 } from "openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IERC4626 } from "openzeppelin/contracts/interfaces/IERC4626.sol";
 import { AccessControl } from "openzeppelin/contracts/access/AccessControl.sol";
@@ -27,7 +28,7 @@ import { ISuperVault, IERC1155Receiver } from "./ISuperVault.sol";
 contract SuperVault is BaseStrategy, ISuperVault, AccessControl {
     using Math for uint256;
     using DataLib for uint256;
-    using SafeERC20 for ERC20;
+    using SafeERC20 for IERC20;
 
     //////////////////////////////////////////////////////////////
     //                     STATE VARIABLES                      //
@@ -62,7 +63,7 @@ contract SuperVault is BaseStrategy, ISuperVault, AccessControl {
 
     /// @notice Ensures that only the Vault Manager can call the function
     modifier onlyVaultManager() {
-        if (!_hasRole(keccak256("VAULT_MANAGER"), msg.sender)) {
+        if (!hasRole(keccak256("VAULT_MANAGER"), msg.sender)) {
             revert NOT_VAULT_MANAGER();
         }
         _;
@@ -227,7 +228,7 @@ contract SuperVault is BaseStrategy, ISuperVault, AccessControl {
 
     /// @inheritdoc ISuperVault
     function forwardDustToPaymaster(address token_) external onlyVaultManager {
-        if (token_ == ZERO_ADDRESS) revert Error.ZERO_ADDRESS();
+        if (token_ == address(0)) revert ZERO_ADDRESS();
 
         address paymaster = superRegistry.getAddress(keccak256("PAYMASTER"));
         IERC20 token = IERC20(token_);
@@ -235,7 +236,7 @@ contract SuperVault is BaseStrategy, ISuperVault, AccessControl {
         uint256 dust = token.balanceOf(address(this));
         if (dust != 0) {
             token.safeTransfer(paymaster, dust);
-            emit FormDustForwardedToPaymaster(token_, dust);
+            emit DustForwardedToPaymaster(token_, dust);
         }
     }
 
