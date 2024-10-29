@@ -61,6 +61,9 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Error thrown when a zero address is provided
     error ZERO_ADDRESS();
 
+    /// @notice Error thrown when trying to forward shares to the paymaster
+    error CANNOT_FORWARD_SHARES();
+
     /// @notice Error thrown when the amounts to rebalance from array is empty
     error EMPTY_AMOUNTS_REBALANCE_FROM();
 
