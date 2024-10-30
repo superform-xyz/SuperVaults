@@ -216,7 +216,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     }
 
     /// @inheritdoc ISuperVault
-    function forwardDustToPaymaster() external onlyVaultManager {
+    function forwardDustToPaymaster() external onlyManagement {
         address paymaster = superRegistry.getAddress(keccak256("PAYMASTER"));
         IERC20 token = IERC20(asset);
 
