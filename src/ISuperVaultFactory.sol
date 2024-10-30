@@ -12,8 +12,32 @@ interface ISuperVaultFactory {
     //                          ERRORS                          //
     //////////////////////////////////////////////////////////////
 
-    /// @notice Thrown when a zero address is provided
+    /// @notice Error thrown when duplicate final superform IDs are provided
+    error DUPLICATE_FINAL_SUPERFORM_IDS();
+
+    /// @notice Error thrown when array lengths do not match
+    error ARRAY_LENGTH_MISMATCH();
+
+    /// @notice Error thrown when invalid weights are provided
+    error INVALID_WEIGHTS();
+
+    /// @notice Error thrown when the caller is not the Super Vaults strategist
+    error NOT_SUPER_VAULTS_STRATEGIST();
+
+    /// @notice Error thrown when a zero address is provided
     error ZERO_ADDRESS();
+
+    /// @notice Error thrown when the final superform IDs array is empty
+    error EMPTY_FINAL_SUPERFORM_IDS();
+
+    /// @notice Error thrown when a superform does not support the asset
+    error SUPERFORM_DOES_NOT_SUPPORT_ASSET();
+
+    /// @notice Error thrown when the block chain ID is out of bounds
+    error BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
+
+    /// @notice Error thrown when a superform does not exist
+    error SUPERFORM_DOES_NOT_EXIST(uint256 superformId);
 
     //////////////////////////////////////////////////////////////
     //                          EVENTS                          //
