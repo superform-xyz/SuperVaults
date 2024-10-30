@@ -82,8 +82,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         superRegistry = ISuperRegistry(superRegistry_);
 
-        ISuperformFactory factory = ISuperformFactory(_getAddress(keccak256("SUPERFORM_FACTORY")));
-
         SV.numberOfSuperforms = numberOfSuperforms;
         SV.superformIds = superformIds_;
         SV.weights = startingWeights_;
