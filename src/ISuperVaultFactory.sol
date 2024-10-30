@@ -21,6 +21,9 @@ interface ISuperVaultFactory {
     /// @notice Error thrown when invalid weights are provided
     error INVALID_WEIGHTS();
 
+    /// @notice Error thrown when the number of superforms is zero
+    error ZERO_SUPERFORMS();
+
     /// @notice Error thrown when the caller is not the Super Vaults strategist
     error NOT_SUPER_VAULTS_STRATEGIST();
 
