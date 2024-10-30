@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import { Address } from "openzeppelin/contracts/utils/Address.sol";
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
 import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { IERC165 } from "openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IERC4626 } from "openzeppelin/contracts/interfaces/IERC4626.sol";
@@ -26,6 +27,7 @@ import { ISuperVault, IERC1155Receiver } from "./ISuperVault.sol";
 contract SuperVault is BaseStrategy, ISuperVault {
     using Math for uint256;
     using DataLib for uint256;
+    using SafeERC20 for ERC20;
     using SafeERC20 for IERC20;
 
     //////////////////////////////////////////////////////////////
