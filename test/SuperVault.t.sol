@@ -277,10 +277,10 @@ contract SuperVaultTest is ProtocolActions {
 
         vm.prank(address(12345));
         vm.expectRevert(ISuperVault.NOT_VAULT_MANAGER.selector);
-        superVault.forwardDustToPaymaster(getContract(ETH, "USDC"));
+        superVault.forwardDustToPaymaster();
 
         vm.startPrank(deployer);
-        superVault.forwardDustToPaymaster(getContract(ETH, "USDC"));
+        superVault.forwardDustToPaymaster();
         vm.stopPrank();
 
         address superRegistry = getContract(ETH, "SuperRegistry");
@@ -291,7 +291,7 @@ contract SuperVaultTest is ProtocolActions {
 
     function test_superVault_forwardsDustToPaymaster_noDust() public {
         vm.startPrank(deployer);
-        superVault.forwardDustToPaymaster(getContract(ETH, "USDC"));
+        superVault.forwardDustToPaymaster();
         vm.stopPrank();
         assertEq(IERC20(getContract(ETH, "USDC")).balanceOf(getContract(ETH, "Paymaster")), 0);
     }
