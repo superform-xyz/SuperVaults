@@ -2,6 +2,7 @@
 pragma solidity ^0.8.23;
 
 import { SuperVault } from "./SuperVault.sol";
+import { ISuperVault } from "./ISuperVault.sol";
 import { ISuperVaultFactory } from "./ISuperVaultFactory.sol";
 import { IBaseForm } from "superform-core/src/interfaces/IBaseForm.sol";
 import { TokenizedStrategy } from "tokenized-strategy/TokenizedStrategy.sol";
@@ -61,6 +62,7 @@ contract SuperVaultFactory is ISuperVaultFactory {
     /// @inheritdoc ISuperVaultFactory
     function createSuperVault(
         address asset_,
+        address strategist_,
         string memory name_,
         uint256 depositLimit_,
         uint256[] memory superformIds_,
@@ -115,6 +117,7 @@ contract SuperVaultFactory is ISuperVaultFactory {
         );
 
         registeredSuperVaults[address(superVault)] = true;
+        setSuperVaultStrategist(address(superVault), strategist_);
 
         return address(superVault);
     }
@@ -134,22 +137,17 @@ contract SuperVaultFactory is ISuperVaultFactory {
     }
 
     function getSuperVaultData(address superVault_) external view returns (ISuperVault.SuperVaultStrategyData memory) {
-        // TODO: Implement
+        return ISuperVault(superVault_).getSuperVaultData();
     }
 
     /// @inheritdoc ISuperVaultFactory
     function getSuperVaultAsset(address superVault_) external view returns (address) {
-        // TODO: Implement
+        return ISuperVault(superVault_).asset();
     }
 
     /// @inheritdoc ISuperVaultFactory
     function getSuperformIds(address superVault_) external view returns (uint256[] memory) {
-        // TODO: Implement
-    }
-
-    /// @inheritdoc ISuperVaultFactory
-    function getSuperVaultStartingWeights(address superVault_) external view returns (uint256[] memory) {
-        // TODO: Implement
+        return ISuperVault(superVault_).getSuperVaultData().superformIds;
     }
 
     /// @inheritdoc ISuperVaultFactor
