@@ -223,7 +223,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         uint256 dust = token.balanceOf(address(this));
         if (dust != 0) {
             token.safeTransfer(paymaster, dust);
-            emit DustForwardedToPaymaster(token_, dust);
+            emit DustForwardedToPaymaster(token, dust);
         }
     }
 
