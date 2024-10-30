@@ -62,6 +62,7 @@ contract SuperVaultFactory is ISuperVaultFactory {
 
     /// @inheritdoc ISuperVaultFactory
     function createSuperVault(
+        address superRegistry_,
         address asset_,
         string memory name_,
         uint256 depositLimit_,

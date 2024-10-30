@@ -102,12 +102,14 @@ interface ISuperVaultFactory {
     //////////////////////////////////////////////////////////////
 
     /// @notice Creates a new SuperVault
+    /// @param superRegistry_ Address of the SuperRegistry
     /// @param asset_ Address of the asset token
     /// @param name_ Name of the strategy
     /// @param depositLimit_ Maximum deposit limit
     /// @param superformIds_ Array of Superform IDs
     /// @param startingWeights_ Array of starting weights for each Superform
     function createSuperVault(
+        address superRegistry_,
         address asset_,
         string memory name_,
         uint256 depositLimit_,
