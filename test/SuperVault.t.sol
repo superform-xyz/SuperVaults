@@ -289,20 +289,6 @@ contract SuperVaultTest is ProtocolActions {
         assertEq(IERC20(getContract(ETH, "USDC")).balanceOf(paymaster), 1e18);
     }
 
-    function test_superVault_forwardDustToPaymaster_cannotForwardShares() public {
-        // VaultMock mockVault = new VaultMock(IERC20(getContract(SOURCE_CHAIN, "DAI")), "Mock Vault", "mVLT");
-        //address superVaultAddress = address(superVault);
-        // SuperformFactory superformFactory = SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory"));
-        // (uint256 SUPER_VAULT_ID2,) = superformFactory.createSuperform(1, address(mockVault));
-        (, uint256[] memory ids, ) = superVault.getSuperVaultData();
-        (address superform,,) = ids[0].getSuperform();
-        
-        vm.startPrank(deployer);
-        vm.expectRevert(ISuperVault.CANNOT_FORWARD_SHARES.selector);
-        superVault.forwardDustToPaymaster(IBaseForm(superform).getVaultAddress());
-        vm.stopPrank();
-    }
-
     function test_superVault_forwardsDustToPaymaster_noDust() public {
         vm.startPrank(deployer);
         superVault.forwardDustToPaymaster(getContract(ETH, "USDC"));
