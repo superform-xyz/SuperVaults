@@ -57,7 +57,7 @@ contract SuperVaultFactory is ISuperVaultFactory {
     }
 
     //////////////////////////////////////////////////////////////
-    //                     EXTERNAL WRITE FUNCTIONS              //
+    //                    EXTERNAL WRITE FUNCTIONS              //
     //////////////////////////////////////////////////////////////
 
     /// @inheritdoc ISuperVaultFactory
