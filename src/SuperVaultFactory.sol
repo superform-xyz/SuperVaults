@@ -15,11 +15,17 @@ contract SuperVaultFactory is ISuperVaultFactory {
     //                     STATE VARIABLES                      //
     //////////////////////////////////////////////////////////////
 
-    /// @notice Address of the SuperformFactory
-    address public immutable superformFactory;
+    /// @notice The SuperformFactory contract
+    ISuperformFactory public immutable superformFactory;
 
-    /// @notice The address of the SuperRegistry contract
-    address public immutable superRegistry;
+    /// @notice The SuperRegistry contract
+    ISuperRegistry public immutable superRegistry;
+
+    /// @notice The number of SuperVaults created
+    uint256 public superVaultCount;
+
+    /// @notice The mapping of registered SuperVaults
+    mapping(address superVault => bool registered) public registeredSuperVaults;
 
     //////////////////////////////////////////////////////////////
     //                       MODIFIERS                          //
@@ -42,8 +48,11 @@ contract SuperVaultFactory is ISuperVaultFactory {
         address superformFactory_,
         address superRegistry_
     ) {
-        superformFactory = superformFactory_;
-        superRegistry = superRegistry_;
+        if (superformFactory_ == address(0) || superRegistry_ == address(0)) {
+            revert ZERO_ADDRESS();
+        }
+        superformFactory = ISuperformFactory(superformFactory_);
+        superRegistry = ISuperRegistry(superRegistry_);
     }
 
     //////////////////////////////////////////////////////////////
@@ -60,6 +69,22 @@ contract SuperVaultFactory is ISuperVaultFactory {
         uint256[] memory startingWeights_
     ) external returns (address) {
         // TODO: Implement
+        // uint256 numberOfSuperforms = superformIds_.length;
+        // if (numberOfSuperforms == 0) {
+        //     revert ZERO_SUPERFORMS();
+        // }
+
+        // if (numberOfSuperforms != startingWeights_.length) {
+        //     revert ARRAY_LENGTH_MISMATCH();
+        // }
+
+        // if (superRegistry_ == address(0)) {
+        //     revert ZERO_ADDRESS();
+        // }
+
+        // if (block.chainid > type(uint64).max) {
+        //     revert BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
+        // }
     }
 
     //////////////////////////////////////////////////////////////
