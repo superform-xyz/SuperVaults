@@ -62,7 +62,6 @@ contract SuperVaultFactory is ISuperVaultFactory {
 
     /// @inheritdoc ISuperVaultFactory
     function createSuperVault(
-        address superRegistry_,
         address asset_,
         string memory name_,
         uint256 depositLimit_,
@@ -109,7 +108,7 @@ contract SuperVaultFactory is ISuperVaultFactory {
         superVaultCount++;
         registeredSuperVaults[address(superVault)] = true;
 
-        SuperVault superVault = new SuperVault(asset_, chainId_, name_, depositLimit_, superformIds_, startingWeights_);
+        SuperVault superVault = new SuperVault(address(superRegistry), asset_, name_, depositLimit_, superformIds_, startingWeights_);
 
         // SV.numberOfSuperforms = numberOfSuperforms;
         // SV.superformIds = superformIds_;
