@@ -61,30 +61,63 @@ contract SuperVaultFactory is ISuperVaultFactory {
 
     /// @inheritdoc ISuperVaultFactory
     function createSuperVault(
-        address superRegistry_,
         address asset_,
+        uint64 chainId_,
         string memory name_,
         uint256 depositLimit_,
         uint256[] memory superformIds_,
         uint256[] memory startingWeights_
     ) external onlySuperVaultsManager returns (address) {
-        // TODO: Implement
-        // uint256 numberOfSuperforms = superformIds_.length;
-        // if (numberOfSuperforms == 0) {
-        //     revert ZERO_SUPERFORMS();
+        uint256 numberOfSuperforms = superformIds_.length;
+        if (numberOfSuperforms == 0) {
+            revert ZERO_SUPERFORMS();
+        }
+
+        if (numberOfSuperforms != startingWeights_.length) {
+            revert ARRAY_LENGTH_MISMATCH();
+        }
+
+        if (superRegistry_ == address(0)) {
+            revert ZERO_ADDRESS();
+        }
+
+        if (block.chainid > type(uint64).max) {
+            revert BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
+        }
+
+        // CHAIN_ID = uint64(block.chainid);
+
+        // uint256 totalWeight;
+        // address superform;
+
+        // for (uint256 i; i < numberOfSuperforms; ++i) {
+        //     /// @dev this superVault only supports superforms that have the same asset as the vault
+        //     (superform,,) = superformIds_[i].getSuperform();
+
+        //     if (!factory.isSuperform(superformIds_[i])) {
+        //         revert SUPERFORM_DOES_NOT_EXIST(superformIds_[i]);
+        //     }
+
+        //     if (IBaseForm(superform).getVaultAsset() != asset_) {
+        //         revert SUPERFORM_DOES_NOT_SUPPORT_ASSET();
+        //     }
+
+        //     totalWeight += startingWeights_[i];
         // }
 
-        // if (numberOfSuperforms != startingWeights_.length) {
-        //     revert ARRAY_LENGTH_MISMATCH();
-        // }
+        // if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
 
-        // if (superRegistry_ == address(0)) {
-        //     revert ZERO_ADDRESS();
-        // }
+        superVaultCount++;
+        registeredSuperVaults[address(superVault)] = true;
 
-        // if (block.chainid > type(uint64).max) {
-        //     revert BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
-        // }
+        //SuperVault superVault = new SuperVault(superRegistry_, asset_, chainId_, name_, depositLimit_, superformIds_, startingWeights_);
+
+        // SV.numberOfSuperforms = numberOfSuperforms;
+        // SV.superformIds = superformIds_;
+        // SV.weights = startingWeights_;
+        // SV.depositLimit = depositLimit_;
+
+        return address(superVault);
     }
 
     //////////////////////////////////////////////////////////////
@@ -132,7 +165,7 @@ contract SuperVaultFactory is ISuperVaultFactory {
     }
 
     //////////////////////////////////////////////////////////////
-    //                       INTERNAL FUNCTIONS                  //
+    //                      INTERNAL FUNCTIONS                  //
     //////////////////////////////////////////////////////////////
 
     /// @dev returns the address for id_ from super registry
