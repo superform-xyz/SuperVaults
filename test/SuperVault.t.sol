@@ -2,7 +2,10 @@
 pragma solidity ^0.8.23;
 
 import "superform-core/test/utils/ProtocolActions.sol";
+import { VaultMock } from "superform-core/test/mocks/VaultMock.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
 import { ISuperVault } from "../src/ISuperVault.sol";
 import { SuperVault } from "../src/SuperVault.sol";
@@ -157,6 +160,8 @@ contract SuperVaultTest is ProtocolActions {
 
         SuperRegistry(getContract(ETH, "SuperRegistry")).setAddress(keccak256("SUPER_VAULTS_STRATEGIST"), deployer, ETH);
 
+        SuperRegistry(getContract(ETH, "SuperRegistry")).setAddress(keccak256("VAULT_MANAGER"), deployer, ETH);
+
         vm.stopPrank();
     }
 
@@ -218,7 +223,6 @@ contract SuperVaultTest is ProtocolActions {
         new SuperVault(superRegistry, asset, name, depositLimit, superformIds, mismatchedWeights);
 
         // Test 4: SUPERFORM_DOES_NOT_SUPPORT_ASSET revert
-
         vm.expectRevert(abi.encodeWithSignature("SUPERFORM_DOES_NOT_SUPPORT_ASSET()"));
         new SuperVault(superRegistry, getContract(ETH, "DAI"), name, depositLimit, superformIds, startingWeights);
 
@@ -266,6 +270,30 @@ contract SuperVaultTest is ProtocolActions {
         // Assert
         bytes4 expectedSelector = SuperVault.onERC1155Received.selector;
         assertEq(result, expectedSelector, "onERC1155Received should return the correct selector");
+    }
+
+    function test_superVault_forwardDustToPaymaster() public {
+        deal(getContract(ETH, "USDC"), address(superVault), 1e18);
+
+        vm.prank(address(12345));
+        vm.expectRevert("!management");
+        superVault.forwardDustToPaymaster();
+
+        vm.startPrank(deployer);
+        superVault.forwardDustToPaymaster();
+        vm.stopPrank();
+
+        address superRegistry = getContract(ETH, "SuperRegistry");
+        assertEq(IERC20(getContract(ETH, "USDC")).balanceOf(address(superVault)), 0);
+        address paymaster = ISuperRegistry(superRegistry).getAddress(keccak256("PAYMASTER"));
+        assertEq(IERC20(getContract(ETH, "USDC")).balanceOf(paymaster), 1e18);
+    }
+
+    function test_superVault_forwardsDustToPaymaster_noDust() public {
+        vm.startPrank(deployer);
+        superVault.forwardDustToPaymaster();
+        vm.stopPrank();
+        assertEq(IERC20(getContract(ETH, "USDC")).balanceOf(getContract(ETH, "Paymaster")), 0);
     }
 
     function test_superVault_xChainDeposit_assertSuperPositions_splitAccordingToWeights() public {

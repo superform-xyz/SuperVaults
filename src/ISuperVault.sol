@@ -58,6 +58,9 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Error thrown when a zero address is provided
     error ZERO_ADDRESS();
 
+    /// @notice Error thrown when trying to forward shares to the paymaster
+    error CANNOT_FORWARD_SHARES();
+
     /// @notice Error thrown when the amounts to rebalance from array is empty
     error EMPTY_AMOUNTS_REBALANCE_FROM();
 
@@ -92,6 +95,10 @@ interface ISuperVault is IERC1155Receiver {
     /// @param depositLimit The new deposit limit
     event DepositLimitSet(uint256 depositLimit);
 
+    /// @notice Emitted when dust is forwarded to the paymaster
+    /// @param dust The amount of dust forwarded
+    event DustForwardedToPaymaster(uint256 dust);
+
     //////////////////////////////////////////////////////////////
     //                  EXTERNAL  FUNCTIONS                     //
     //////////////////////////////////////////////////////////////
@@ -103,4 +110,7 @@ interface ISuperVault is IERC1155Receiver {
     /// send an amount to take from those ids
     /// the total underlying asset amount is redestributed according to the desired weights
     function rebalance(RebalanceArgs memory rebalanceArgs_) external payable;
+
+    /// @notice Forwards dust to the paymaster
+    function forwardDustToPaymaster() external;
 }

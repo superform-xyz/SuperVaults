@@ -5,8 +5,10 @@ import { Address } from "openzeppelin/contracts/utils/Address.sol";
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
 import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { IERC165 } from "openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IERC4626 } from "openzeppelin/contracts/interfaces/IERC4626.sol";
+
 import { SingleDirectMultiVaultStateReq, MultiVaultSFData, LiqRequest } from "superform-core/src/types/DataTypes.sol";
 import { ISuperPositions } from "superform-core/src/interfaces/ISuperPositions.sol";
 import { DataLib } from "superform-core/src/libraries/DataLib.sol";
@@ -26,6 +28,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     using Math for uint256;
     using DataLib for uint256;
     using SafeERC20 for ERC20;
+    using SafeERC20 for IERC20;
 
     //////////////////////////////////////////////////////////////
     //                     STATE VARIABLES                      //
@@ -204,6 +207,18 @@ contract SuperVault is BaseStrategy, ISuperVault {
         /// @notice no issue about reentrancy as the external contracts are trusted
         /// @notice updateSV emits rebalance event
         _updateSVData(superPositions, rebalanceArgs.finalSuperformIds);
+    }
+
+    /// @inheritdoc ISuperVault
+    function forwardDustToPaymaster() external onlyManagement {
+        address paymaster = superRegistry.getAddress(keccak256("PAYMASTER"));
+        IERC20 token = IERC20(asset);
+
+        uint256 dust = token.balanceOf(address(this));
+        if (dust != 0) {
+            token.safeTransfer(paymaster, dust);
+            emit DustForwardedToPaymaster(dust);
+        }
     }
 
     //////////////////////////////////////////////////////////////
