@@ -18,6 +18,9 @@ contract SuperVaultFactory is ISuperVaultFactory {
     /// @notice Address of the SuperformFactory
     address public immutable superformFactory;
 
+    /// @notice The address of the SuperRegistry contract
+    address public immutable superRegistry;
+
     //////////////////////////////////////////////////////////////
     //                       MODIFIERS                          //
     //////////////////////////////////////////////////////////////
