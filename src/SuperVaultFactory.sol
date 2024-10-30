@@ -4,15 +4,20 @@ pragma solidity ^0.8.23;
 import { SuperVault } from "./SuperVault.sol";
 import { ISuperVault } from "./ISuperVault.sol";
 import { ISuperVaultFactory } from "./ISuperVaultFactory.sol";
-import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
+import { DataLib } from "superform-core/src/libraries/DataLib.sol";
 import { IBaseForm } from "superform-core/src/interfaces/IBaseForm.sol";
-import { ISuperformFactory } from "superform-core/src/interfaces/ISuperformFactory.sol";
+import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
 
 /// @title SuperVaultFactory
 /// @notice Factory for creating SuperVaults
+/// @dev Implements the ISuperVaultFactory interface
 /// @author SuperForm Labs
-contract SuperVaultFactory is BaseStrategy, ISuperVaultFactory {
+contract SuperVaultFactory is ISuperVaultFactory {
+    using Math for uint256;
+    using DataLib for uint256;
+
     //////////////////////////////////////////////////////////////
     //                     STATE VARIABLES                      //
     //////////////////////////////////////////////////////////////
@@ -20,9 +25,8 @@ contract SuperVaultFactory is BaseStrategy, ISuperVaultFactory {
     /// @notice The SuperRegistry contract
     ISuperRegistry public immutable superRegistry;
 
-    /// @notice The SuperformFactory contract
-    ISuperformFactory public immutable superformFactory;
-
+    /// @notice The TokenizedStrategy contract
+    ITokenizedStrategy public immutable tokenizedStrategy;
     /// @notice The number of SuperVaults created
     uint256 public superVaultCount;
 
@@ -31,6 +35,15 @@ contract SuperVaultFactory is BaseStrategy, ISuperVaultFactory {
 
     /// @notice The mapping of registered SuperVaults
     mapping(address superVault => bool registered) public registeredSuperVaults;
+
+    //////////////////////////////////////////////////////////////
+    //                       MODIFIERS                          //
+    //////////////////////////////////////////////////////////////
+
+    modifier onlyManagement() {
+        tokenizedStrategy.requireManagement(msg.sender);
+        _;
+    }
 
     //////////////////////////////////////////////////////////////
     //                       CONSTRUCTOR                        //
@@ -44,7 +57,7 @@ contract SuperVaultFactory is BaseStrategy, ISuperVaultFactory {
             revert ZERO_ADDRESS();
         }
         superRegistry = ISuperRegistry(superRegistry_);
-        superformFactory = superRegistry.getAddress(keccak256("SUPERFORM_FACTORY"));
+        tokenizedStrategy = ITokenizedStrategy(0xBB51273D6c746910C7C06fe718f30c936170feD0);
     }
 
     //////////////////////////////////////////////////////////////
@@ -74,26 +87,6 @@ contract SuperVaultFactory is BaseStrategy, ISuperVaultFactory {
             revert BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
         }
 
-        uint256 totalWeight;
-        address superform;
-
-        for (uint256 i; i < numberOfSuperforms; ++i) {
-            /// @dev this superVault only supports superforms that have the same asset as the vault
-            (superform,,) = superformIds_[i].getSuperform();
-
-            if (!superformFactory.isSuperform(superformIds_[i])) {
-                revert SUPERFORM_DOES_NOT_EXIST(superformIds_[i]);
-            }
-
-            if (IBaseForm(superform).getVaultAsset() != asset_) {
-                revert SUPERFORM_DOES_NOT_SUPPORT_ASSET();
-            }
-
-            totalWeight += startingWeights_[i];
-        }
-
-        if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
-
         superVaultCount++;
 
         SuperVault superVault = new SuperVault(
@@ -120,18 +113,14 @@ contract SuperVaultFactory is BaseStrategy, ISuperVaultFactory {
         return registeredSuperVaults[superVault_];
     }
 
-    function getSuperVaultData(address superVault_) external view returns (ISuperVault.SuperVaultStrategyData memory) {
+    function getSuperVaultData(address superVault_) external view returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights) {
         return ISuperVault(superVault_).getSuperVaultData();
     }
 
     /// @inheritdoc ISuperVaultFactory
-    function getSuperVaultAsset(address superVault_) external view returns (address) {
-        return ISuperVault(superVault_).asset();
-    }
-
-    /// @inheritdoc ISuperVaultFactory
     function getSuperformIds(address superVault_) external view returns (uint256[] memory) {
-        return ISuperVault(superVault_).getSuperVaultData().superformIds;
+        (,, uint256[] memory superformIds) = ISuperVault(superVault_).getSuperVaultData();
+        return superformIds;
     }
 
     /// @inheritdoc ISuperVaultFactory
@@ -144,7 +133,8 @@ contract SuperVaultFactory is BaseStrategy, ISuperVaultFactory {
     //////////////////////////////////////////////////////////////
 
     function updateSuperVaultStrategist(address superVault_, address strategist_) public onlyManagement {
-        ISuperVault(superVault_).strategist() = strategist_;
+        // TODO: Implement
+        //ISuperVault(superVault_).strategist() = strategist_;
     }
 
     //////////////////////////////////////////////////////////////
