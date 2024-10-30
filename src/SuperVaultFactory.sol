@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import { SuperVault } from "./SuperVault.sol";
 import { ISuperVaultFactory } from "./ISuperVaultFactory.sol";
 import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
+import { IBaseForm } from "superform-core/src/interfaces/IBaseForm.sol";
 import { ISuperformFactory } from "superform-core/src/interfaces/ISuperformFactory.sol";
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
 
@@ -62,7 +63,6 @@ contract SuperVaultFactory is ISuperVaultFactory {
     /// @inheritdoc ISuperVaultFactory
     function createSuperVault(
         address asset_,
-        uint64 chainId_,
         string memory name_,
         uint256 depositLimit_,
         uint256[] memory superformIds_,
@@ -85,32 +85,30 @@ contract SuperVaultFactory is ISuperVaultFactory {
             revert BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
         }
 
-        // uint256 totalWeight;
-        // address superform;
+        uint256 totalWeight;
+        address superform;
 
-        // for (uint256 i; i < numberOfSuperforms; ++i) {
-        //     /// @dev this superVault only supports superforms that have the same asset as the vault
-        //     (superform,,) = superformIds_[i].getSuperform();
+        for (uint256 i; i < numberOfSuperforms; ++i) {
+            /// @dev this superVault only supports superforms that have the same asset as the vault
+            (superform,,) = superformIds_[i].getSuperform();
 
-        //     if (!factory.isSuperform(superformIds_[i])) {
-        //         revert SUPERFORM_DOES_NOT_EXIST(superformIds_[i]);
-        //     }
+            if (!factory.isSuperform(superformIds_[i])) {
+                revert SUPERFORM_DOES_NOT_EXIST(superformIds_[i]);
+            }
 
-        //     if (IBaseForm(superform).getVaultAsset() != asset_) {
-        //         revert SUPERFORM_DOES_NOT_SUPPORT_ASSET();
-        //     }
+            if (IBaseForm(superform).getVaultAsset() != asset_) {
+                revert SUPERFORM_DOES_NOT_SUPPORT_ASSET();
+            }
 
-        //     totalWeight += startingWeights_[i];
-        // }
+            totalWeight += startingWeights_[i];
+        }
 
-        // if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
+        if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
 
         superVaultCount++;
         registeredSuperVaults[address(superVault)] = true;
 
-        //SuperVault superVault = new SuperVault(superRegistry_, asset_, chainId_, name_, depositLimit_, superformIds_, startingWeights_);
-
-        superVault.CHAIN_ID = uint64(block.chainid);
+        SuperVault superVault = new SuperVault(asset_, chainId_, name_, depositLimit_, superformIds_, startingWeights_);
 
         // SV.numberOfSuperforms = numberOfSuperforms;
         // SV.superformIds = superformIds_;
