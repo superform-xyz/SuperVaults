@@ -13,6 +13,10 @@ contract SuperVaultFactoryTest is ProtocolActions {
 
     uint64 SOURCE_CHAIN;
 
+    uint256[] underlyingSuperformIds;
+    uint256[] allSuperformIds;
+    uint256[] weights;
+
     function sortAllSuperformIds() internal {
         uint256 n = allSuperformIds.length;
         for (uint256 i = 0; i < n - 1; i++) {
@@ -63,7 +67,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
             underlyingSuperformIds[i] = allSuperformIds[i];
         }
 
-        uint256[] memory weights = new uint256[](vaultAddresses.length - 1);
+       weights = new uint256[](vaultAddresses.length - 1);
         for (uint256 i = 0; i < vaultAddresses.length - 1; i++) {
             weights[i] = uint256(10_000) / 3;
             if (i == 2) {
