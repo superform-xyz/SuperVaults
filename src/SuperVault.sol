@@ -34,6 +34,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice The chain ID of the network this contract is deployed on
     uint64 public immutable CHAIN_ID;
 
+    /// @notice The address of the SuperVault Strategist
+    address public strategist;
+
     /// @notice The address of the SuperRegistry contract
     ISuperRegistry public immutable superRegistry;
 
@@ -52,7 +55,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
     /// @notice Ensures that only the Super Vaults Strategist can call the function
     modifier onlySuperVaultsStrategist() {
-        if (_getAddress(keccak256("SUPER_VAULTS_STRATEGIST")) != msg.sender) {
+        if (strategist != msg.sender) {
             revert NOT_SUPER_VAULTS_STRATEGIST();
         }
         _;
