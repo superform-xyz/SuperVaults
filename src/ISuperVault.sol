@@ -99,9 +99,8 @@ interface ISuperVault is IERC1155Receiver {
     event DepositLimitSet(uint256 depositLimit);
 
     /// @notice Emitted when dust is forwarded to the paymaster
-    /// @param token The address of the token
     /// @param dust The amount of dust forwarded
-    event DustForwardedToPaymaster(address token, uint256 dust);
+    event DustForwardedToPaymaster(uint256 dust);
 
     //////////////////////////////////////////////////////////////
     //                  EXTERNAL  FUNCTIONS                     //
