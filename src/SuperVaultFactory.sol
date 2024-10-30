@@ -35,8 +35,12 @@ contract SuperVaultFactory is ISuperVaultFactory {
     //////////////////////////////////////////////////////////////
 
     /// @param superformFactory_ Address of the SuperformFactory
-    constructor(address superformFactory_) {
+    constructor(
+        address superformFactory_,
+        address superRegistry_
+    ) {
         superformFactory = superformFactory_;
+        superRegistry = superRegistry_;
     }
 
     //////////////////////////////////////////////////////////////
@@ -58,4 +62,43 @@ contract SuperVaultFactory is ISuperVaultFactory {
     //////////////////////////////////////////////////////////////
     //                     EXTERNAL VIEW FUNCTIONS              //
     //////////////////////////////////////////////////////////////
+
+    /// @inheritdoc ISuperVaultFactor
+    function getSuperVaultCount() external view returns (uint256) {
+        // TODO: Implement
+    }
+
+    /// @inheritdoc ISuperVaultFactory
+    function getSuperVaultAsset(address superVault_) external view returns (address) {
+        // TODO: Implement
+    }
+
+    /// @inheritdoc ISuperVaultFactory
+    function getSuperformIds(address superVault_) external view returns (uint256[] memory) {
+        // TODO: Implement
+    }
+
+    /// @inheritdoc ISuperVaultFactory
+    function getSuperVaultStartingWeights(address superVault_) external view returns (uint256[] memory) {
+        // TODO: Implement
+    }
+
+    /// @inheritdoc ISuperVaultFactory
+    function getSuperVaultDepositLimit(address superVault_) external view returns (uint256) {
+        // TODO: Implement
+    }
+
+    /// @inheritdoc ISuperVaultFactory
+    function getSuperVaultName(address superVault_) external view returns (string memory) {
+        // TODO: Implement
+    }
+
+    //////////////////////////////////////////////////////////////
+    //                       INTERNAL FUNCTIONS                  //
+    //////////////////////////////////////////////////////////////
+
+    /// @dev returns the address for id_ from super registry
+    function _getAddress(bytes32 id_) internal view returns (address) {
+        return superRegistry.getAddress(id_);
+    }
 }
