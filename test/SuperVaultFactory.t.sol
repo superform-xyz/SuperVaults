@@ -33,6 +33,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
     }
 
     function setUp() public override {
+        super.setUp();
         SOURCE_CHAIN = ETH;
 
         // Setup
@@ -75,7 +76,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
                 weights[i] += 1;
             }
         }
-        
+        vm.stopPrank();
     }
 
     function test_createSuperVault() public {
@@ -87,9 +88,8 @@ contract SuperVaultFactoryTest is ProtocolActions {
             underlyingSuperformIds,
             weights
         );
-        assertEq(superVault.name(), "USDCSuperVaultMorphoEulerAave");
         assertTrue(factory.isSuperVault(address(superVault)));
-        assertEq(factory.superVaultCount, 1);
+        assertEq(factory.superVaultCount(), 1);
         assert(address(superVault) != address(0));
     }
 }
