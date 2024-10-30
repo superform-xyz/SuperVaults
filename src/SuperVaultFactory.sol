@@ -11,6 +11,38 @@ import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol
 /// @notice Factory for creating SuperVaults
 /// @author SuperForm Labs
 contract SuperVaultFactory is ISuperVaultFactory {
+    //////////////////////////////////////////////////////////////
+    //                     STATE VARIABLES                      //
+    //////////////////////////////////////////////////////////////
+
+    /// @notice Address of the SuperformFactory
+    address public immutable superformFactory;
+
+    //////////////////////////////////////////////////////////////
+    //                       MODIFIERS                          //
+    //////////////////////////////////////////////////////////////
+
+    /// @notice Ensures that the caller is the SuperVaults Manager
+    modifier onlySuperVaultsManager() {
+        if (_getAddress(keccak256("SUPER_VAULTS_MANAGER")) != msg.sender) {
+            revert NOT_SUPER_VAULTS_MANAGER();
+        }
+        _;
+    }
+
+    //////////////////////////////////////////////////////////////
+    //                       CONSTRUCTOR                        //
+    //////////////////////////////////////////////////////////////
+
+    /// @param superformFactory_ Address of the SuperformFactory
+    constructor(address superformFactory_) {
+        superformFactory = superformFactory_;
+    }
+
+    //////////////////////////////////////////////////////////////
+    //                     EXTERNAL WRITE FUNCTIONS              //
+    //////////////////////////////////////////////////////////////
+
     /// @inheritdoc ISuperVaultFactory
     function createSuperVault(
         address superRegistry_,
@@ -22,4 +54,8 @@ contract SuperVaultFactory is ISuperVaultFactory {
     ) external returns (address) {
         // TODO: Implement
     }
+
+    //////////////////////////////////////////////////////////////
+    //                     EXTERNAL VIEW FUNCTIONS              //
+    //////////////////////////////////////////////////////////////
 }
