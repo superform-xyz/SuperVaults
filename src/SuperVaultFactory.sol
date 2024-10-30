@@ -45,6 +45,7 @@ contract SuperVaultFactory is ISuperVaultFactory {
     //////////////////////////////////////////////////////////////
 
     /// @param superformFactory_ Address of the SuperformFactory
+    /// @param superRegistry_ Address of the SuperRegistry
     constructor(
         address superformFactory_,
         address superRegistry_
