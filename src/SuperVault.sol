@@ -78,48 +78,11 @@ contract SuperVault is BaseStrategy, ISuperVault {
     )
         BaseStrategy(asset_, name_)
     {
-        uint256 numberOfSuperforms = superformIds_.length;
-        if (numberOfSuperforms == 0) {
-            revert ZERO_SUPERFORMS();
-        }
-
-        if (numberOfSuperforms != startingWeights_.length) {
-            revert ARRAY_LENGTH_MISMATCH();
-        }
-
-        if (superRegistry_ == address(0)) {
-            revert ZERO_ADDRESS();
-        }
-
-        if (block.chainid > type(uint64).max) {
-            revert BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
-        }
-
         CHAIN_ID = uint64(block.chainid);
 
         superRegistry = ISuperRegistry(superRegistry_);
 
         ISuperformFactory factory = ISuperformFactory(_getAddress(keccak256("SUPERFORM_FACTORY")));
-
-        uint256 totalWeight;
-        address superform;
-
-        for (uint256 i; i < numberOfSuperforms; ++i) {
-            /// @dev this superVault only supports superforms that have the same asset as the vault
-            (superform,,) = superformIds_[i].getSuperform();
-
-            if (!factory.isSuperform(superformIds_[i])) {
-                revert SUPERFORM_DOES_NOT_EXIST(superformIds_[i]);
-            }
-
-            if (IBaseForm(superform).getVaultAsset() != asset_) {
-                revert SUPERFORM_DOES_NOT_SUPPORT_ASSET();
-            }
-
-            totalWeight += startingWeights_[i];
-        }
-
-        if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
 
         SV.numberOfSuperforms = numberOfSuperforms;
         SV.superformIds = superformIds_;
