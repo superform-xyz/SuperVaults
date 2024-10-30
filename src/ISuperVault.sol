@@ -55,9 +55,6 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Error thrown when the caller is not the Super Vaults strategist
     error NOT_SUPER_VAULTS_STRATEGIST();
 
-    /// @notice Error thrown when the caller is not the vault manager
-    error NOT_VAULT_MANAGER();
-
     /// @notice Error thrown when a zero address is provided
     error ZERO_ADDRESS();
 
