@@ -131,11 +131,6 @@ contract SuperVaultFactory is ISuperVaultFactory {
         return registeredSuperVaults[superVault_];
     }
 
-    /// @inheritdoc ISuperVaultFactory
-    function getSuperVault(uint256 superformId_) external view returns (address) {
-        // TODO: Implement
-    }
-
     function getSuperVaultData(address superVault_) external view returns (ISuperVault.SuperVaultStrategyData memory) {
         return ISuperVault(superVault_).getSuperVaultData();
     }
@@ -155,22 +150,12 @@ contract SuperVaultFactory is ISuperVaultFactory {
         return superVaultCount;
     }
 
-    /// @inheritdoc ISuperVaultFactory
-    // function getSuperVaultDepositLimit(address superVault_) external view returns (uint256) {
-    //     // TODO: Implement
-    // }
-
-    // /// @inheritdoc ISuperVaultFactory
-    // function getSuperVaultName(address superVault_) external view returns (string memory) {
-    //     // TODO: Implement
-    // }
-
     //////////////////////////////////////////////////////////////
     //                    PUBLIC FUNCTIONS                      //
     //////////////////////////////////////////////////////////////
 
-    function setSuperVaultStrategist(address superVault_, address strategist_) public onlyManagement {
-        // TODO: Implement
+    function updateSuperVaultStrategist(address superVault_, address strategist_) public onlyManagement {
+        ISuperVault(superVault_).strategist() = strategist_;
     }
 
     //////////////////////////////////////////////////////////////

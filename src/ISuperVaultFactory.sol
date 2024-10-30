@@ -60,11 +60,6 @@ interface ISuperVaultFactory {
     //              EXTERNAL VIEW FUNCTIONS                     //
     //////////////////////////////////////////////////////////////
 
-    /// @notice Returns the address of the SuperVault
-    /// @param superformId_ ID of the Superform
-    /// @return Address of the SuperVault
-    function getSuperVault(uint256 superformId_) external view returns (address);
-
     /// @notice Returns whether a SuperVault exists
     /// @param superVault_ Address of the SuperVault
     /// @return Whether the SuperVault exists
@@ -74,10 +69,6 @@ interface ISuperVaultFactory {
     /// @param superVault_ Address of the SuperVault
     /// @return Data for the SuperVault
     function getSuperVaultData(address superVault_) external view returns (ISuperVault.SuperVaultStrategyData memory);
-
-    /// @notice Returns the SuperRegistry
-    /// @return Address of the SuperRegistry
-    function getSuperRegistry() external view returns (address);
 
     /// @notice Returns the asset for a SuperVault
     /// @param superVault_ Address of the SuperVault
@@ -118,5 +109,5 @@ interface ISuperVaultFactory {
     /// @notice Updates the strategist for a SuperVault
     /// @param superVault_ Address of the SuperVault
     /// @param strategist_ Address of the strategist
-    function updateVaultStrategist(address superVault_, address strategist_) external;
+    function updateSuperVaultStrategist(address superVault_, address strategist_) external;
 }
