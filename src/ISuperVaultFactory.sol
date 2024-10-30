@@ -103,14 +103,12 @@ interface ISuperVaultFactory {
 
     /// @notice Creates a new SuperVault
     /// @param asset_ Address of the asset token
-    /// @param chainId_ Chain ID
     /// @param name_ Name of the strategy
     /// @param depositLimit_ Maximum deposit limit
     /// @param superformIds_ Array of Superform IDs
     /// @param startingWeights_ Array of starting weights for each Superform
     function createSuperVault(
         address asset_,
-        uint64 chainId_,
         string memory name_,
         uint256 depositLimit_,
         uint256[] memory superformIds_,
