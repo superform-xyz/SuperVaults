@@ -43,7 +43,6 @@ contract SuperVaultFactory is ISuperVaultFactory {
     //                       CONSTRUCTOR                        //
     //////////////////////////////////////////////////////////////
 
-    /// @param superformFactory_ Address of the SuperformFactory
     /// @param superRegistry_ Address of the SuperRegistry
     constructor(
         address superRegistry_
@@ -145,7 +144,7 @@ contract SuperVaultFactory is ISuperVaultFactory {
         return ISuperVault(superVault_).getSuperVaultData().superformIds;
     }
 
-    /// @inheritdoc ISuperVaultFactor
+    /// @inheritdoc ISuperVaultFactory
     function getSuperVaultCount() external view returns (uint256) {
         return superVaultCount;
     }
