@@ -5,6 +5,7 @@ import { SuperVault } from "../src/SuperVault.sol";
 import { SuperVaultFactory } from "../src/SuperVaultFactory.sol";
 
 import "superform-core/test/utils/ProtocolActions.sol";
+import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
 contract SuperVaultFactoryTest is ProtocolActions {
@@ -31,7 +32,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
         }
     }
 
-    function setUp() public {
+    function setUp() public override {
         SOURCE_CHAIN = ETH;
 
         // Setup
