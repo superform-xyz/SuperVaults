@@ -40,6 +40,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice The address of the SuperRegistry contract
     ISuperRegistry public immutable superRegistry;
 
+    /// @notice The address of the SuperformFactory contract
+    ISuperformFactory public immutable superformFactory;
+
     /// @notice The total weight used for calculating proportions (10000 = 100%)
     uint256 public constant TOTAL_WEIGHT = 10_000;
 
@@ -82,10 +85,31 @@ contract SuperVault is BaseStrategy, ISuperVault {
         BaseStrategy(asset_, name_)
     {
         uint256 numberOfSuperforms = superformIds_.length;
+
+        superRegistry = ISuperRegistry(superRegistry_);
+        superformFactory = ISuperformFactory(superRegistry.getAddress(keccak256("SUPERFORM_FACTORY")));
         
         CHAIN_ID = uint64(block.chainid);
 
-        superRegistry = ISuperRegistry(superRegistry_);
+        uint256 totalWeight;
+        address superform;
+
+        for (uint256 i; i < numberOfSuperforms; ++i) {
+            /// @dev this superVault only supports superforms that have the same asset as the vault
+            (superform,,) = superformIds_[i].getSuperform();
+
+            if (!superformFactory.isSuperform(superformIds_[i])) {
+                revert SUPERFORM_DOES_NOT_EXIST(superformIds_[i]);
+            }
+
+            if (IBaseForm(superform).getVaultAsset() != asset_) {
+                revert SUPERFORM_DOES_NOT_SUPPORT_ASSET();
+            }
+
+            totalWeight += startingWeights_[i];
+        }
+
+        if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
 
         SV.numberOfSuperforms = numberOfSuperforms;
         SV.superformIds = superformIds_;
@@ -176,10 +200,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     //                 EXTERNAL VIEW/PURE FUNCTIONS             //
     //////////////////////////////////////////////////////////////
 
-    /// @notice Returns the SuperVault data
-    /// @return numberOfSuperforms The number of Superforms
-    /// @return superformIds Array of Superform IDs
-    /// @return weights Array of weights for each Superform
+    /// @inheritdoc ISuperVault
     function getSuperVaultData()
         external
         view
