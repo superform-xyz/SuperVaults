@@ -7,6 +7,14 @@ import { ISuperVault } from "./ISuperVault.sol";
 /// @notice Interface for the SuperVaultFactory contract
 /// @author SuperForm Labs
 interface ISuperVaultFactory {
+    
+    //////////////////////////////////////////////////////////////
+    //                          ERRORS                          //
+    //////////////////////////////////////////////////////////////
+
+    /// @notice Thrown when a zero address is provided
+    error ZERO_ADDRESS();
+
     //////////////////////////////////////////////////////////////
     //                          EVENTS                          //
     //////////////////////////////////////////////////////////////
