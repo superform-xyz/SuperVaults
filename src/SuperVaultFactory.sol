@@ -26,6 +26,9 @@ contract SuperVaultFactory is ISuperVaultFactory {
     /// @notice The number of SuperVaults created
     uint256 public superVaultCount;
 
+    /// @notice The total weight used for calculating proportions (10000 = 100%)
+    uint256 public constant TOTAL_WEIGHT = 10_000;
+
     /// @notice The mapping of registered SuperVaults
     mapping(address superVault => bool registered) public registeredSuperVaults;
 
@@ -76,10 +79,6 @@ contract SuperVaultFactory is ISuperVaultFactory {
             revert ARRAY_LENGTH_MISMATCH();
         }
 
-        if (superRegistry_ == address(0)) {
-            revert ZERO_ADDRESS();
-        }
-
         if (block.chainid > type(uint64).max) {
             revert BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
         }
@@ -91,7 +90,7 @@ contract SuperVaultFactory is ISuperVaultFactory {
             /// @dev this superVault only supports superforms that have the same asset as the vault
             (superform,,) = superformIds_[i].getSuperform();
 
-            if (!factory.isSuperform(superformIds_[i])) {
+            if (!superformFactory.isSuperform(superformIds_[i])) {
                 revert SUPERFORM_DOES_NOT_EXIST(superformIds_[i]);
             }
 
@@ -116,7 +115,7 @@ contract SuperVaultFactory is ISuperVaultFactory {
         );
 
         registeredSuperVaults[address(superVault)] = true;
-        setSuperVaultStrategist(address(superVault), strategist_);
+        updateSuperVaultStrategist(address(superVault), strategist_);
 
         return address(superVault);
     }
