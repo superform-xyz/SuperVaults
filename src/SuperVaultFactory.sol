@@ -85,8 +85,6 @@ contract SuperVaultFactory is ISuperVaultFactory {
             revert BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
         }
 
-        // CHAIN_ID = uint64(block.chainid);
-
         // uint256 totalWeight;
         // address superform;
 
@@ -112,6 +110,8 @@ contract SuperVaultFactory is ISuperVaultFactory {
 
         //SuperVault superVault = new SuperVault(superRegistry_, asset_, chainId_, name_, depositLimit_, superformIds_, startingWeights_);
 
+        superVault.CHAIN_ID = uint64(block.chainid);
+
         // SV.numberOfSuperforms = numberOfSuperforms;
         // SV.superformIds = superformIds_;
         // SV.weights = startingWeights_;
@@ -125,13 +125,17 @@ contract SuperVaultFactory is ISuperVaultFactory {
     //////////////////////////////////////////////////////////////
 
     /// @inheritdoc ISuperVaultFactory
+    function isSuperVault(address superVault_) external view returns (bool) {
+        return registeredSuperVaults[superVault_];
+    }
+
+    /// @inheritdoc ISuperVaultFactory
     function getSuperVault(uint256 superformId_) external view returns (address) {
         // TODO: Implement
     }
 
-    /// @inheritdoc ISuperVaultFactory
-    function isSuperVault(address superVault_) external view returns (bool) {
-        return registeredSuperVaults[superVault_];
+    function getSuperVaultData(address superVault_) external view returns (ISuperVault.SuperVaultStrategyData memory) {
+        // TODO: Implement
     }
 
     /// @inheritdoc ISuperVaultFactory
@@ -155,14 +159,14 @@ contract SuperVaultFactory is ISuperVaultFactory {
     }
 
     /// @inheritdoc ISuperVaultFactory
-    function getSuperVaultDepositLimit(address superVault_) external view returns (uint256) {
-        // TODO: Implement
-    }
+    // function getSuperVaultDepositLimit(address superVault_) external view returns (uint256) {
+    //     // TODO: Implement
+    // }
 
-    /// @inheritdoc ISuperVaultFactory
-    function getSuperVaultName(address superVault_) external view returns (string memory) {
-        // TODO: Implement
-    }
+    // /// @inheritdoc ISuperVaultFactory
+    // function getSuperVaultName(address superVault_) external view returns (string memory) {
+    //     // TODO: Implement
+    // }
 
     //////////////////////////////////////////////////////////////
     //                      INTERNAL FUNCTIONS                  //
