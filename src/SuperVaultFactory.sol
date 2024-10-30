@@ -71,6 +71,7 @@ contract SuperVaultFactory is ISuperVaultFactory {
         uint256[] memory startingWeights_
     ) external onlyManagement returns (address) {
         uint256 numberOfSuperforms = superformIds_.length;
+        
         if (numberOfSuperforms == 0) {
             revert ZERO_SUPERFORMS();
         }
