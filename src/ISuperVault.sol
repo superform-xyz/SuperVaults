@@ -115,6 +115,5 @@ interface ISuperVault is IERC1155Receiver {
     function rebalance(RebalanceArgs memory rebalanceArgs_) external payable;
 
     /// @notice Forwards dust to the paymaster
-    /// @param token_ The address of the token to forward
-    function forwardDustToPaymaster(address token_) external;
+    function forwardDustToPaymaster() external;
 }
