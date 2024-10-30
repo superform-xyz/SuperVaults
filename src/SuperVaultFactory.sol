@@ -4,15 +4,15 @@ pragma solidity ^0.8.23;
 import { SuperVault } from "./SuperVault.sol";
 import { ISuperVault } from "./ISuperVault.sol";
 import { ISuperVaultFactory } from "./ISuperVaultFactory.sol";
+import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
 import { IBaseForm } from "superform-core/src/interfaces/IBaseForm.sol";
-import { TokenizedStrategy } from "tokenized-strategy/TokenizedStrategy.sol";
 import { ISuperformFactory } from "superform-core/src/interfaces/ISuperformFactory.sol";
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
 
 /// @title SuperVaultFactory
 /// @notice Factory for creating SuperVaults
 /// @author SuperForm Labs
-contract SuperVaultFactory is ISuperVaultFactory {
+contract SuperVaultFactory is BaseStrategy, ISuperVaultFactory {
     //////////////////////////////////////////////////////////////
     //                     STATE VARIABLES                      //
     //////////////////////////////////////////////////////////////
@@ -31,16 +31,6 @@ contract SuperVaultFactory is ISuperVaultFactory {
 
     /// @notice The mapping of registered SuperVaults
     mapping(address superVault => bool registered) public registeredSuperVaults;
-
-    //////////////////////////////////////////////////////////////
-    //                       MODIFIERS                          //
-    //////////////////////////////////////////////////////////////
-
-    /// @notice Ensures that the caller is the Management
-    modifier onlyManagement() {
-        TokenizedStrategy.requireManagement(msg.sender);
-        _;
-    }
 
     //////////////////////////////////////////////////////////////
     //                       CONSTRUCTOR                        //
@@ -71,7 +61,7 @@ contract SuperVaultFactory is ISuperVaultFactory {
         uint256[] memory startingWeights_
     ) external onlyManagement returns (address) {
         uint256 numberOfSuperforms = superformIds_.length;
-        
+
         if (numberOfSuperforms == 0) {
             revert ZERO_SUPERFORMS();
         }
