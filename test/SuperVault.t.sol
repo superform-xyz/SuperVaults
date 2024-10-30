@@ -276,7 +276,7 @@ contract SuperVaultTest is ProtocolActions {
         deal(getContract(ETH, "USDC"), address(superVault), 1e18);
 
         vm.prank(address(12345));
-        vm.expectRevert(ISuperVault.!management.selector);
+        vm.expectRevert("!management");
         superVault.forwardDustToPaymaster();
 
         vm.startPrank(deployer);
