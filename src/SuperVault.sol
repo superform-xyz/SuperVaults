@@ -61,12 +61,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
         _;
     }
 
-    /// @notice Ensures that only the Vault Manager can call the function
-    modifier onlyManagement() {
-        TokenizedStrategy.requireManagement(msg.sender);
-        _;
-    }
-
     //////////////////////////////////////////////////////////////
     //                       CONSTRUCTOR                        //
     //////////////////////////////////////////////////////////////
