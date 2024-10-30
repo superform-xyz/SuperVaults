@@ -2,8 +2,10 @@
 pragma solidity ^0.8.23;
 
 import "superform-core/test/utils/ProtocolActions.sol";
+import { VaultMock } from "superform-core/test/mocks/VaultMock.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
 import { ISuperVault } from "../src/ISuperVault.sol";
 import { SuperVault } from "../src/SuperVault.sol";
@@ -288,15 +290,24 @@ contract SuperVaultTest is ProtocolActions {
     }
 
     function test_superVault_forwardDustToPaymaster_cannotForwardShares() public {
-        address superVaultAddress = address(superVault);
-        SuperformFactory superformFactory = SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory"));
-        (uint256 SUPER_VAULT_ID2,) = superformFactory.createSuperform(2, superVaultAddress);
-        (address superform,,) = SUPER_VAULT_ID2.getSuperform();
-
+        // VaultMock mockVault = new VaultMock(IERC20(getContract(SOURCE_CHAIN, "DAI")), "Mock Vault", "mVLT");
+        //address superVaultAddress = address(superVault);
+        // SuperformFactory superformFactory = SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory"));
+        // (uint256 SUPER_VAULT_ID2,) = superformFactory.createSuperform(1, address(mockVault));
+        (, uint256[] memory ids, ) = superVault.getSuperVaultData();
+        (address superform,,) = ids[0].getSuperform();
+        
         vm.startPrank(deployer);
         vm.expectRevert(ISuperVault.CANNOT_FORWARD_SHARES.selector);
         superVault.forwardDustToPaymaster(IBaseForm(superform).getVaultAddress());
         vm.stopPrank();
+    }
+
+    function test_superVault_forwardsDustToPaymaster_noDust() public {
+        vm.startPrank(deployer);
+        superVault.forwardDustToPaymaster(getContract(ETH, "USDC"));
+        vm.stopPrank();
+        assertEq(IERC20(getContract(ETH, "USDC")).balanceOf(getContract(ETH, "Paymaster")), 0);
     }
 
     function test_superVault_xChainDeposit_assertSuperPositions_splitAccordingToWeights() public {
