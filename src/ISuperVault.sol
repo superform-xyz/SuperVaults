@@ -90,6 +90,19 @@ interface ISuperVault is IERC1155Receiver {
     event DepositLimitSet(uint256 depositLimit);
 
     //////////////////////////////////////////////////////////////
+    //                 EXTERNAL VIEW/PURE FUNCTIONS             //
+    //////////////////////////////////////////////////////////////
+
+    /// @notice Returns the SuperVault data
+    /// @return numberOfSuperforms The number of Superforms
+    /// @return superformIds Array of Superform IDs
+    /// @return weights Array of weights for each Superform
+    function getSuperVaultData()
+        external
+        view
+        returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights);
+
+    //////////////////////////////////////////////////////////////
     //                  EXTERNAL  FUNCTIONS                     //
     //////////////////////////////////////////////////////////////
 
