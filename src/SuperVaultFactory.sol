@@ -106,14 +106,17 @@ contract SuperVaultFactory is ISuperVaultFactory {
         if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
 
         superVaultCount++;
+
+        SuperVault superVault = new SuperVault(
+          address(superRegistry),
+            asset_,
+            name_,
+            depositLimit_,
+            superformIds_,
+            startingWeights_
+        );
+
         registeredSuperVaults[address(superVault)] = true;
-
-        SuperVault superVault = new SuperVault(address(superRegistry), asset_, name_, depositLimit_, superformIds_, startingWeights_);
-
-        // SV.numberOfSuperforms = numberOfSuperforms;
-        // SV.superformIds = superformIds_;
-        // SV.weights = startingWeights_;
-        // SV.depositLimit = depositLimit_;
 
         return address(superVault);
     }
