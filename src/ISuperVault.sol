@@ -37,14 +37,8 @@ interface ISuperVault is IERC1155Receiver {
     //                  ERRORS                                   //
     //////////////////////////////////////////////////////////////
 
-    /// @notice Error thrown when no superforms are provided in constructor
-    error ZERO_SUPERFORMS();
-
     /// @notice Error thrown when duplicate superform IDs to rebalance from are provided
     error DUPLICATE_SUPERFORM_IDS_REBALANCE_FROM();
-
-    /// @notice Error thrown when duplicate final superform IDs are provided
-    error DUPLICATE_FINAL_SUPERFORM_IDS();
 
     /// @notice Error thrown when array lengths do not match
     error ARRAY_LENGTH_MISMATCH();
@@ -54,9 +48,6 @@ interface ISuperVault is IERC1155Receiver {
 
     /// @notice Error thrown when the caller is not the Super Vaults strategist
     error NOT_SUPER_VAULTS_STRATEGIST();
-
-    /// @notice Error thrown when a zero address is provided
-    error ZERO_ADDRESS();
 
     /// @notice Error thrown when the amounts to rebalance from array is empty
     error EMPTY_AMOUNTS_REBALANCE_FROM();
