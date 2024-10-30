@@ -67,7 +67,7 @@ contract SuperVaultFactory is ISuperVaultFactory {
         uint256 depositLimit_,
         uint256[] memory superformIds_,
         uint256[] memory startingWeights_
-    ) external returns (address) {
+    ) external onlySuperVaultsManager returns (address) {
         // TODO: Implement
         // uint256 numberOfSuperforms = superformIds_.length;
         // if (numberOfSuperforms == 0) {
@@ -88,12 +88,17 @@ contract SuperVaultFactory is ISuperVaultFactory {
     }
 
     //////////////////////////////////////////////////////////////
-    //                     EXTERNAL VIEW FUNCTIONS              //
+    //                  EXTERNAL VIEW FUNCTIONS                 //
     //////////////////////////////////////////////////////////////
 
-    /// @inheritdoc ISuperVaultFactor
-    function getSuperVaultCount() external view returns (uint256) {
+    /// @inheritdoc ISuperVaultFactory
+    function getSuperVault(uint256 superformId_) external view returns (address) {
         // TODO: Implement
+    }
+
+    /// @inheritdoc ISuperVaultFactory
+    function isSuperVault(address superVault_) external view returns (bool) {
+        return registeredSuperVaults[superVault_];
     }
 
     /// @inheritdoc ISuperVaultFactory
@@ -109,6 +114,11 @@ contract SuperVaultFactory is ISuperVaultFactory {
     /// @inheritdoc ISuperVaultFactory
     function getSuperVaultStartingWeights(address superVault_) external view returns (uint256[] memory) {
         // TODO: Implement
+    }
+
+    /// @inheritdoc ISuperVaultFactor
+    function getSuperVaultCount() external view returns (uint256) {
+        return superVaultCount;
     }
 
     /// @inheritdoc ISuperVaultFactory
