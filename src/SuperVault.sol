@@ -62,10 +62,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
     }
 
     /// @notice Ensures that only the Vault Manager can call the function
-    modifier onlyVaultManager() {
-        if (_getAddress(keccak256("VAULT_MANAGER")) != msg.sender) {
-            revert NOT_VAULT_MANAGER();
-        }
+    modifier onlyManagement() {
+        TokenizedStrategy.requireManagement(msg.sender);
         _;
     }
 
@@ -218,18 +216,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
     }
 
     /// @inheritdoc ISuperVault
-    function forwardDustToPaymaster(address token_) external onlyVaultManager {
-        if (token_ == address(0)) revert ZERO_ADDRESS();
-
-        for (uint256 i; i < SV.numberOfSuperforms; ++i) {
-            (address superform,,) = SV.superformIds[i].getSuperform();
-            if (IBaseForm(superform).getVaultAddress() == token_) {
-                revert CANNOT_FORWARD_SHARES();
-            }
-        }
-
+    function forwardDustToPaymaster() external onlyVaultManager {
         address paymaster = superRegistry.getAddress(keccak256("PAYMASTER"));
-        IERC20 token = IERC20(token_);
+        IERC20 token = IERC20(asset);
 
         uint256 dust = token.balanceOf(address(this));
         if (dust != 0) {
