@@ -58,7 +58,6 @@ contract MainnetDeploySuperVault is Script {
         SuperRBAC superRBACC = SuperRBAC(superRBAC);
         superRBACC.setRoleAdmin(keccak256("SUPER_VAULTS_STRATEGIST"), superRBACC.PROTOCOL_ADMIN_ROLE());
         superRBACC.grantRole(keccak256("SUPER_VAULTS_STRATEGIST"), REWARDS_ADMIN);
-        //superRBACC.grantRole(superRBACC.PROTOCOL_ADMIN_ROLE(), deployer); // Or make a vault manager role? 
         vm.stopBroadcast();
     }
 }
