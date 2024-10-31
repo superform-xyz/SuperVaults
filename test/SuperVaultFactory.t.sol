@@ -167,4 +167,41 @@ contract SuperVaultFactoryTest is ProtocolActions {
             assertEq(weightsReceived[i], weights[i]);
         }
     }
+
+    function test_getSuperformIds() public {
+        vm.prank(deployer);
+        factory.createSuperVault(
+            getContract(ETH, "USDC"),
+            address(deployer),
+            "USDCSuperVaultMorphoEulerAave",
+            type(uint256).max,
+            underlyingSuperformIds,
+            weights
+        );
+        uint256[] memory superformIds = factory.getSuperformIds(address(superVault));
+        assertEq(superformIds.length, underlyingSuperformIds.length);
+        for (uint256 i = 0; i < underlyingSuperformIds.length; i++) {
+            assertEq(superformIds[i], underlyingSuperformIds[i]);
+        }
+    }
+
+    function test_getSuperVaultCount() public {
+        vm.startPrank(deployer);
+        factory.createSuperVault(
+            getContract(ETH, "USDC"),
+            address(deployer),
+            "USDCSuperVaultMorphoEulerAave",
+            type(uint256).max,
+            underlyingSuperformIds,
+            weights
+        );
+        factory.createSuperVault(
+            getContract(ETH, "USDC"),
+            address(deployer),
+            "USDCSuperVaultMorphoEulerAave",
+            type(uint256).max,
+            underlyingSuperformIds,
+            weights
+        );
+    }
 }
