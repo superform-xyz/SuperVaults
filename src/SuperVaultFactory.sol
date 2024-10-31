@@ -120,7 +120,7 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
 
     /// @inheritdoc ISuperVaultFactory
     function getSuperformIds(address superVault_) external view returns (uint256[] memory) {
-        (,, uint256[] memory superformIds) = ISuperVault(superVault_).getSuperVaultData();
+        (,uint256[] memory superformIds,) = ISuperVault(superVault_).getSuperVaultData();
         return superformIds;
     }
 
