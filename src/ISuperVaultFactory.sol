@@ -87,6 +87,7 @@ interface ISuperVaultFactory {
     //////////////////////////////////////////////////////////////
 
     /// @notice Creates a new SuperVault
+    /// @dev Sets pending management to deployer, deployer will have to accept management in SuperVault
     /// @param asset_ Address of the asset token
     /// @param strategist_ Address of the strategist
     /// @param name_ Name of the strategy
@@ -101,9 +102,4 @@ interface ISuperVaultFactory {
         uint256[] memory superformIds_,
         uint256[] memory startingWeights_
     ) external returns (address);
-
-    /// @notice Updates the strategist for a SuperVault
-    /// @param superVault_ Address of the SuperVault
-    /// @param strategist_ Address of the strategist
-    function updateSuperVaultStrategist(address superVault_, address strategist_) external;
 }
