@@ -170,7 +170,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
 
     function test_getSuperformIds() public {
         vm.prank(deployer);
-        factory.createSuperVault(
+        address superVault = factory.createSuperVault(
             getContract(ETH, "USDC"),
             address(deployer),
             "USDCSuperVaultMorphoEulerAave",
