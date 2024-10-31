@@ -100,6 +100,12 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
             startingWeights_
         ));
 
+        /// @dev set pending management to deployer
+        /// @dev deployer will have to accept management in SuperVault
+        (bool success2, bytes memory data) =
+            address(superVault).call(abi.encodeWithSelector(SuperVault.setPendingManagement.selector, msg.sender));
+        require(success2, "Failed to set pending management");
+
         registeredSuperVaults[address(superVault)] = true;
         updateSuperVaultStrategist(address(superVault), strategist_);
 
@@ -128,15 +134,6 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
     /// @inheritdoc ISuperVaultFactory
     function getSuperVaultCount() external view returns (uint256) {
         return superVaultCount;
-    }
-
-    //////////////////////////////////////////////////////////////
-    //                    PUBLIC FUNCTIONS                      //
-    //////////////////////////////////////////////////////////////
-
-    function updateSuperVaultStrategist(address superVault_, address strategist_) public onlyManagement {
-        SuperVault(superVault_).setStrategist(strategist_);
-        emit VaultStrategistUpdated(superVault_, strategist_);
     }
 
     //////////////////////////////////////////////////////////////
