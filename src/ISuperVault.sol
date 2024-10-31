@@ -76,6 +76,9 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Error thrown when a superform ID is not found in the final superform IDs
     error REBALANCE_FROM_ID_NOT_FOUND_IN_FINAL_IDS();
 
+    /// @notice Error thrown when the caller is not the pending management
+    error NOT_PENDING_MANAGEMENT();
+
     //////////////////////////////////////////////////////////////
     //                  EVENTS                                   //
     //////////////////////////////////////////////////////////////
