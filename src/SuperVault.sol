@@ -18,6 +18,7 @@ import { ISuperformRouterPlus } from "superform-core/src/interfaces/ISuperformRo
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
 import { ISuperformFactory } from "superform-core/src/interfaces/ISuperformFactory.sol";
 import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
+import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 import { ISuperVault, IERC1155Receiver } from "./ISuperVault.sol";
 
 /// @title SuperVault
@@ -148,9 +149,15 @@ contract SuperVault is BaseStrategy, ISuperVault {
     }
 
     function acceptManagement() external {
-        if (msg.sender != pendingManagement) revert NOT_PENDING_MANAGEMENT();
-        management = msg.sender;
-        pendingManagement = address(0);
+        (, bytes memory pendingManagementData) =
+            address(this).call(abi.encodeWithSelector(ITokenizedStrategy.pendingManagement.selector));
+        if (abi.decode(pendingManagementData, (address)) != msg.sender) revert NOT_PENDING_MANAGEMENT();
+
+        (bool success, ) =
+            address(this).call(abi.encodeWithSelector(ITokenizedStrategy.acceptManagement.selector));
+        require(success, "Failed to accept management");
+
+        emit ManagementUpdated(msg.sender);
     }
 
     /// @inheritdoc ISuperVault

@@ -206,7 +206,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
         assertEq(factory.getSuperVaultCount(), 2);
     }
 
-    function test_deployerIsVaultManagement() public {
+    function test_deployerIsPendingVaultManagement() public {
         vm.startPrank(deployer);
         address superVault = factory.createSuperVault(
             getContract(ETH, "USDC"),
@@ -216,6 +216,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
             underlyingSuperformIds,
             weights
         );
+        SuperVault(superVault).acceptManagement();
         SuperVault(superVault).setStrategist(address(0xdead));
         vm.stopPrank();
         assertEq(SuperVault(superVault).strategist(), address(0xdead));

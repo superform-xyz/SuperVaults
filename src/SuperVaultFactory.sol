@@ -7,6 +7,7 @@ import { ISuperVaultFactory } from "./ISuperVaultFactory.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { DataLib } from "superform-core/src/libraries/DataLib.sol";
 import { IBaseForm } from "superform-core/src/interfaces/IBaseForm.sol";
+import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
@@ -24,6 +25,9 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
 
     /// @notice The SuperRegistry contract
     ISuperRegistry public immutable superRegistry;
+
+    /// @notice The TokenizedStrategy contract
+    ITokenizedStrategy public immutable tokenizedStrategy;
 
     /// @notice The number of SuperVaults created
     uint256 public superVaultCount;
@@ -102,12 +106,11 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
 
         /// @dev set pending management to deployer
         /// @dev deployer will have to accept management in SuperVault
-        (bool success2, bytes memory data) =
-            address(superVault).call(abi.encodeWithSelector(SuperVault.setPendingManagement.selector, msg.sender));
-        require(success2, "Failed to set pending management");
+        (bool success,) =
+            address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.setPendingManagement.selector, msg.sender));
+        require(success, "Failed to set pending management");
 
         registeredSuperVaults[address(superVault)] = true;
-        updateSuperVaultStrategist(address(superVault), strategist_);
 
         return superVault;
     }
