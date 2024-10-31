@@ -93,6 +93,7 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
         address superVault = address(new SuperVault(
             address(superRegistry),
             asset_,
+            strategist_,
             name_,
             depositLimit_,
             superformIds_,
@@ -134,8 +135,8 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
     //////////////////////////////////////////////////////////////
 
     function updateSuperVaultStrategist(address superVault_, address strategist_) public onlyManagement {
-        // TODO: Implement
-        //ISuperVault(superVault_).strategist() = strategist_;
+        SuperVault(superVault_).setStrategist(strategist_);
+        emit VaultStrategistUpdated(superVault_, strategist_);
     }
 
     //////////////////////////////////////////////////////////////
