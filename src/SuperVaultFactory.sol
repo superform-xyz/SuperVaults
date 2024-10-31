@@ -95,8 +95,15 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
             revert ARRAY_LENGTH_MISMATCH();
         }
 
-        //bytes32
-        address superVault = address(new SuperVault(
+        bytes32 salt = keccak256(abi.encodePacked(
+            asset_,
+            name_,
+            superformIds_,
+            startingWeights_,
+            "SuperVault"
+        ));
+
+        address superVault = address(new SuperVault{salt: salt}(
             address(superRegistry),
             asset_,
             strategist_,
