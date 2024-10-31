@@ -43,7 +43,7 @@ contract MainnetDeploySuperVault is Script {
         address REWARDS_ADMIN =
             isStaging ? 0x1F05a8Ff6d895Ba04C84c5031c5d63FA1afCDA6F : 0xf82F3D7Df94FC2994315c32322DA6238cA2A2f7f;
 
-        new SuperVault(
+        address superVault = address(   new SuperVault(
             superRegistry,
             0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913, // USDC
             REWARDS_ADMIN,
@@ -51,7 +51,7 @@ contract MainnetDeploySuperVault is Script {
             type(uint256).max,
             superformIds,
             startingWeights
-        );
+        ));
 
         address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.acceptManagement.selector));
 
