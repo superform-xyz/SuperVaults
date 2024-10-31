@@ -12,8 +12,11 @@ interface ISuperVaultFactory {
     //                          ERRORS                          //
     //////////////////////////////////////////////////////////////
 
+    /// @notice Error thrown when the caller is not the management role
+    error NOT_MANAGEMENT();
+
     /// @notice Error thrown when the pending management is not set
-    error PENDING_MANAGEMENT_NOT_SET();
+    error FAILED_TO_SET_PENDING_MANAGEMENT();
 
     /// @notice Error thrown when duplicate final superform IDs are provided
     error DUPLICATE_FINAL_SUPERFORM_IDS();

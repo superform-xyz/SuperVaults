@@ -95,6 +95,7 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
             revert ARRAY_LENGTH_MISMATCH();
         }
 
+        //bytes32
         address superVault = address(new SuperVault(
             address(superRegistry),
             asset_,
