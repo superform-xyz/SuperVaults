@@ -139,10 +139,18 @@ contract SuperVault is BaseStrategy, ISuperVault {
         emit DepositLimitSet(depositLimit_);
     }
 
+    /// @notice Sets the strategist for the vault
+    /// @param strategist_ The new strategist
     function setStrategist(address strategist_) external onlyManagement {
         strategist = strategist_;
 
         emit StrategistSet(strategist_);
+    }
+
+    function acceptManagement() external {
+        if (msg.sender != pendingManagement) revert NOT_PENDING_MANAGEMENT();
+        management = msg.sender;
+        pendingManagement = address(0);
     }
 
     /// @inheritdoc ISuperVault
