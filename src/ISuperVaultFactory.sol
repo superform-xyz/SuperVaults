@@ -12,6 +12,9 @@ interface ISuperVaultFactory {
     //                          ERRORS                          //
     //////////////////////////////////////////////////////////////
 
+    /// @notice Error thrown when the caller is not the management role
+    error NOT_MANAGEMENT();
+
     /// @notice Error thrown when duplicate final superform IDs are provided
     error DUPLICATE_FINAL_SUPERFORM_IDS();
 
