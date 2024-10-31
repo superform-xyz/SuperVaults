@@ -93,6 +93,10 @@ interface ISuperVault is IERC1155Receiver {
     /// @param dust The amount of dust forwarded
     event DustForwardedToPaymaster(uint256 dust);
 
+    /// @notice Emitted when the strategist is set
+    /// @param strategist The new strategist
+    event StrategistSet(address strategist);
+
     //////////////////////////////////////////////////////////////
     //                 EXTERNAL VIEW/PURE FUNCTIONS             //
     //////////////////////////////////////////////////////////////
