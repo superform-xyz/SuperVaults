@@ -148,18 +148,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
         emit StrategistSet(strategist_);
     }
 
-    function acceptManagement() external {
-        (, bytes memory pendingManagementData) =
-            address(this).call(abi.encodeWithSelector(ITokenizedStrategy.pendingManagement.selector));
-        if (abi.decode(pendingManagementData, (address)) != msg.sender) revert NOT_PENDING_MANAGEMENT();
-
-        (bool success, ) =
-            address(msg.sender).call(abi.encodeWithSelector(ITokenizedStrategy.acceptManagement.selector));
-        require(success, "Failed to accept management");
-
-        emit ManagementUpdated(msg.sender);
-    }
-
     /// @inheritdoc ISuperVault
     function rebalance(RebalanceArgs calldata rebalanceArgs) external payable override onlySuperVaultsStrategist {
         uint256 lenRebalanceFrom = rebalanceArgs.superformIdsRebalanceFrom.length;
