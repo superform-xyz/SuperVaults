@@ -2,9 +2,10 @@
 pragma solidity ^0.8.23;
 
 import { Script } from "forge-std/Script.sol";
-import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
-import { SuperRBAC } from "superform-core/src/settings/SuperRBAC.sol";
 import { SuperVault } from "src/SuperVault.sol";
+import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
+import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
+
 
 contract MainnetDeploySuperVault is Script {
     function deploySuperVault(bool isStaging, uint256 chainId) external {
