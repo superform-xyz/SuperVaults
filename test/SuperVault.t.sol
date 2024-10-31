@@ -15,13 +15,13 @@ contract SuperVaultHarness is SuperVault {
     constructor(
         address superRegistry_,
         address asset_,
-        address strategist_,
+        address vaultManager_,
         string memory name_,
         uint256 depositLimit_,
         uint256[] memory superformIds_,
         uint256[] memory startingWeights_
     )
-        SuperVault(superRegistry_, asset_, name_, depositLimit_, superformIds_, startingWeights_)
+        SuperVault(superRegistry_, asset_, vaultManager_, name_, depositLimit_, superformIds_, startingWeights_)
     { }
 
     function updateSVData(address superPositions, uint256[] memory finalSuperformIds) public {
@@ -120,11 +120,21 @@ contract SuperVaultTest is ProtocolActions {
         superVault = new SuperVault(
             getContract(SOURCE_CHAIN, "SuperRegistry"),
             getContract(ETH, "USDC"),
+            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
             weights
         );
+        uint256[] memory superformIds = new uint256[](1);
+        superformIds[0] = allSuperformIds[3];
+        bool[] memory isWhitelisted = new bool[](1);
+        isWhitelisted[0] = true;
+
+        ISuperVault(superVault).setWhitelist(superformIds, isWhitelisted);
+
+        uint256[] memory isWhitelistedResult = ISuperVault(superVault).getWhitelist();
+        assertEq(isWhitelistedResult[0], allSuperformIds[0], "Whitelist not set correctly");
 
         /// @dev after deploying superVault, deployer (a FB role) needs to accept management
         /// @dev also needs to be set as keeper (a new FB role)
@@ -147,8 +157,7 @@ contract SuperVaultTest is ProtocolActions {
             weights
         );
 
-        (bool success2, bytes memory data) =
-            address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.performanceFee.selector));
+        (bool success2,) = address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.performanceFee.selector));
         require(success2, "Failed to get performance fee");
 
         address superVaultAddress = address(superVault);
@@ -165,6 +174,87 @@ contract SuperVaultTest is ProtocolActions {
         vm.stopPrank();
     }
 
+    function test_RevertWhen_SetWhitelistWithMismatchedArrays() public {
+        uint256[] memory superformIds = new uint256[](2);
+        superformIds[0] = 1;
+        superformIds[1] = 2;
+
+        bool[] memory isWhitelisted = new bool[](1);
+        isWhitelisted[0] = true;
+
+        vm.prank(deployer);
+        vm.expectRevert(ISuperVault.ARRAY_LENGTH_MISMATCH.selector);
+        superVault.setWhitelist(superformIds, isWhitelisted);
+    }
+
+    function test_RevertWhen_SetWhitelistWithEmptyArrays() public {
+        uint256[] memory superformIds = new uint256[](0);
+        bool[] memory isWhitelisted = new bool[](0);
+
+        vm.prank(deployer);
+        vm.expectRevert(ISuperVault.ZERO_SUPERFORMS.selector);
+        superVault.setWhitelist(superformIds, isWhitelisted);
+    }
+
+    function test_setVaultManager() public {
+        address newVaultManager = address(0xDEAD);
+        // Test successful vault manager update
+        vm.prank(deployer);
+        superVault.setVaultManager(newVaultManager);
+    }
+
+    function test_setVaultManager_zeroAddress() public {
+        // Test that zero address is rejected
+        vm.prank(deployer);
+        vm.expectRevert(abi.encodeWithSignature("ZERO_ADDRESS()"));
+        superVault.setVaultManager(address(0));
+    }
+
+    function test_setWhitelist_RemoveElements() public {
+        // Setup: First get the initial whitelist
+        uint256[] memory initialWhitelist = superVault.getWhitelist();
+        assertGt(initialWhitelist.length, 0, "Initial whitelist should not be empty");
+
+        // Select some superformIds to remove (let's remove the first two if they exist)
+        uint256 removeCount = initialWhitelist.length >= 2 ? 2 : 1;
+        uint256[] memory superformIdsToRemove = new uint256[](removeCount);
+        bool[] memory isWhitelisted = new bool[](removeCount);
+
+        // Fill arrays for removal (all false to remove)
+        for (uint256 i = 0; i < removeCount; i++) {
+            superformIdsToRemove[i] = initialWhitelist[i];
+            isWhitelisted[i] = false;
+        }
+
+        // Execute removal
+        vm.prank(deployer);
+        superVault.setWhitelist(superformIdsToRemove, isWhitelisted);
+
+        // Verify removal
+        uint256[] memory finalWhitelist = superVault.getWhitelist();
+        assertEq(
+            finalWhitelist.length,
+            initialWhitelist.length - removeCount,
+            "Whitelist length should decrease by removal count"
+        );
+
+        // Verify removed IDs are no longer whitelisted
+        for (uint256 i = 0; i < removeCount; i++) {
+            uint256[] memory checkId = new uint256[](1);
+            checkId[0] = superformIdsToRemove[i];
+            bool[] memory status = superVault.getIsWhitelisted(checkId);
+            assertFalse(status[0], "Removed ID should not be whitelisted");
+        }
+
+        // Verify remaining IDs are still in order and valid
+        for (uint256 i = 0; i < finalWhitelist.length; i++) {
+            uint256[] memory checkId = new uint256[](1);
+            checkId[0] = finalWhitelist[i];
+            bool[] memory status = superVault.getIsWhitelisted(checkId);
+            assertTrue(status[0], "Remaining ID should still be whitelisted");
+        }
+    }
+
     function test_constructorIsSuperformCheck() public {
         uint256 fakeSuperformId = type(uint256).max;
 
@@ -178,6 +268,7 @@ contract SuperVaultTest is ProtocolActions {
         new SuperVault(
             getContract(ETH, "SuperRegistry"),
             getContract(ETH, "USDC"),
+            deployer,
             "TestSuperVault",
             type(uint256).max,
             superformIds,
@@ -185,9 +276,9 @@ contract SuperVaultTest is ProtocolActions {
         );
     }
 
-    function test_onlyVaultStrategistCanCall() public {
+    function test_onlyVaultManagerCanCall() public {
         vm.startPrank(address(0xdead));
-        vm.expectRevert(ISuperVault.NOT_SUPER_VAULTS_STRATEGIST.selector);
+        vm.expectRevert(ISuperVault.NOT_VAULT_MANAGER.selector);
         SuperVault(address(superVault)).setDepositLimit(type(uint256).max);
         vm.stopPrank();
     }
@@ -207,12 +298,16 @@ contract SuperVaultTest is ProtocolActions {
 
         // Test 1: ZERO_SUPERFORMS revert
         vm.expectRevert(abi.encodeWithSignature("ZERO_SUPERFORMS()"));
-        new SuperVault(superRegistry, asset, name, depositLimit, superformIds, startingWeights);
+        new SuperVault(superRegistry, asset, deployer, name, depositLimit, superformIds, startingWeights);
         superformIds = underlyingSuperformIds;
 
-        // Test 2: ZERO_ADDRESS revert
+        // Test 2.1: ZERO_ADDRESS revert
         vm.expectRevert(abi.encodeWithSignature("ZERO_ADDRESS()"));
-        new SuperVault(address(0), asset, name, depositLimit, superformIds, startingWeights);
+        new SuperVault(address(0), asset, deployer, name, depositLimit, superformIds, startingWeights);
+
+        // Test 2.2: ZERO_ADDRESS revert
+        vm.expectRevert(abi.encodeWithSignature("ZERO_ADDRESS()"));
+        new SuperVault(superRegistry, asset, address(0), name, depositLimit, superformIds, startingWeights);
 
         // Test 3: ARRAY_LENGTH_MISMATCH revert
         uint256[] memory mismatchedWeights = new uint256[](2);
@@ -220,11 +315,13 @@ contract SuperVaultTest is ProtocolActions {
         mismatchedWeights[1] = 5000;
 
         vm.expectRevert(abi.encodeWithSignature("ARRAY_LENGTH_MISMATCH()"));
-        new SuperVault(superRegistry, asset, name, depositLimit, superformIds, mismatchedWeights);
+        new SuperVault(superRegistry, asset, deployer, name, depositLimit, superformIds, mismatchedWeights);
 
         // Test 4: SUPERFORM_DOES_NOT_SUPPORT_ASSET revert
         vm.expectRevert(abi.encodeWithSignature("SUPERFORM_DOES_NOT_SUPPORT_ASSET()"));
-        new SuperVault(superRegistry, getContract(ETH, "DAI"), name, depositLimit, superformIds, startingWeights);
+        new SuperVault(
+            superRegistry, getContract(ETH, "DAI"), deployer, name, depositLimit, superformIds, startingWeights
+        );
 
         // Test 5: INVALID_WEIGHTS revert
         uint256[] memory invalidWeights = new uint256[](3);
@@ -233,7 +330,7 @@ contract SuperVaultTest is ProtocolActions {
         invalidWeights[2] = 3000;
 
         vm.expectRevert(abi.encodeWithSignature("INVALID_WEIGHTS()"));
-        new SuperVault(superRegistry, asset, name, depositLimit, superformIds, invalidWeights);
+        new SuperVault(superRegistry, asset, deployer, name, depositLimit, superformIds, invalidWeights);
     }
 
     function test_superVault_assertSuperPositions_splitAccordingToWeights() public {
@@ -274,10 +371,6 @@ contract SuperVaultTest is ProtocolActions {
 
     function test_superVault_forwardDustToPaymaster() public {
         deal(getContract(ETH, "USDC"), address(superVault), 1e18);
-
-        vm.prank(address(12345));
-        vm.expectRevert("!management");
-        superVault.forwardDustToPaymaster();
 
         vm.startPrank(deployer);
         superVault.forwardDustToPaymaster();
@@ -335,6 +428,15 @@ contract SuperVaultTest is ProtocolActions {
         vm.startPrank(deployer);
         vm.expectRevert(ISuperVault.INVALID_SUPERFORM_ID_REBALANCE_FROM.selector);
         SuperVault(address(superVault)).rebalance(args);
+
+        uint256[] memory empty;
+
+        args = ISuperVault.RebalanceArgs(
+            superformIdsRebalanceFrom, amountsRebalanceFrom, empty, weightsOfRedistribution, 100
+        );
+        vm.expectRevert(ISuperVault.EMPTY_FINAL_SUPERFORM_IDS.selector);
+        SuperVault(address(superVault)).rebalance(args);
+
         vm.stopPrank();
     }
 
@@ -413,6 +515,33 @@ contract SuperVaultTest is ProtocolActions {
 
         vm.startPrank(deployer);
         vm.expectRevert(ISuperVault.DUPLICATE_FINAL_SUPERFORM_IDS.selector);
+        superVaultHarness.rebalance(
+            ISuperVault.RebalanceArgs(
+                superformIdsRebalanceFrom, amountsRebalanceFrom, finalSuperformIds, weightsOfRedistribution, 100
+            )
+        );
+        vm.stopPrank();
+    }
+
+    function test_superVault_rebalance_notWhitelisted() public {
+        uint256[] memory superformIdsRebalanceFrom = new uint256[](2);
+        superformIdsRebalanceFrom[0] = underlyingSuperformIds[0];
+        superformIdsRebalanceFrom[1] = underlyingSuperformIds[1];
+
+        uint256[] memory finalSuperformIds = new uint256[](2);
+        finalSuperformIds[0] = underlyingSuperformIds[0];
+        finalSuperformIds[1] = type(uint256).max;
+
+        uint256[] memory amountsRebalanceFrom = new uint256[](2);
+        amountsRebalanceFrom[0] = 1 ether;
+        amountsRebalanceFrom[1] = 1 ether;
+
+        uint256[] memory weightsOfRedistribution = new uint256[](2);
+        weightsOfRedistribution[0] = 10_000;
+        weightsOfRedistribution[1] = 20_000;
+
+        vm.startPrank(deployer);
+        vm.expectRevert(ISuperVault.SUPERFORM_NOT_WHITELISTED.selector);
         superVaultHarness.rebalance(
             ISuperVault.RebalanceArgs(
                 superformIdsRebalanceFrom, amountsRebalanceFrom, finalSuperformIds, weightsOfRedistribution, 100

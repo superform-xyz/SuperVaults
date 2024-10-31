@@ -8,7 +8,6 @@ import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { IERC165 } from "openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { IERC4626 } from "openzeppelin/contracts/interfaces/IERC4626.sol";
-
 import { SingleDirectMultiVaultStateReq, MultiVaultSFData, LiqRequest } from "superform-core/src/types/DataTypes.sol";
 import { ISuperPositions } from "superform-core/src/interfaces/ISuperPositions.sol";
 import { DataLib } from "superform-core/src/libraries/DataLib.sol";
@@ -49,6 +48,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Struct containing SuperVault strategy data
     SuperVaultStrategyData private SV;
 
+    /// @notice Mapping to track whitelisted Superform IDs
+    mapping(uint256 => bool) public whitelistedSuperformIds;
+
+    /// @notice Array of whitelisted Superform IDs for easy access
+    uint256[] public whitelistedSuperformIdArray;
+
     //////////////////////////////////////////////////////////////
     //                       MODIFIERS                          //
     //////////////////////////////////////////////////////////////
@@ -57,6 +62,14 @@ contract SuperVault is BaseStrategy, ISuperVault {
     modifier onlySuperVaultsStrategist() {
         if (_getAddress(keccak256("SUPER_VAULTS_STRATEGIST")) != msg.sender) {
             revert NOT_SUPER_VAULTS_STRATEGIST();
+        }
+        _;
+    }
+
+    /// @notice Ensures that only the Vault Manager can call the function
+    modifier onlyVaultManager() {
+        if (SV.vaultManager != msg.sender) {
+            revert NOT_VAULT_MANAGER();
         }
         _;
     }
@@ -74,6 +87,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     constructor(
         address superRegistry_,
         address asset_,
+        address vaultManager_,
         string memory name_,
         uint256 depositLimit_,
         uint256[] memory superformIds_,
@@ -91,6 +105,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
         }
 
         if (superRegistry_ == address(0)) {
+            revert ZERO_ADDRESS();
+        }
+
+        if (vaultManager_ == address(0)) {
             revert ZERO_ADDRESS();
         }
 
@@ -119,11 +137,15 @@ contract SuperVault is BaseStrategy, ISuperVault {
                 revert SUPERFORM_DOES_NOT_SUPPORT_ASSET();
             }
 
+            /// @dev initial whitelist of superform IDs
+            _addToWhitelist(superformIds_[i]);
+
             totalWeight += startingWeights_[i];
         }
 
         if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
 
+        SV.vaultManager = vaultManager_;
         SV.numberOfSuperforms = numberOfSuperforms;
         SV.superformIds = superformIds_;
         SV.weights = startingWeights_;
@@ -134,9 +156,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
     //                  EXTERNAL  FUNCTIONS                     //
     //////////////////////////////////////////////////////////////
 
-    /// @notice Sets the deposit limit for the vault
-    /// @param depositLimit_ The new deposit limi
-    function setDepositLimit(uint256 depositLimit_) external onlySuperVaultsStrategist {
+    /// @inheritdoc ISuperVault
+    function setDepositLimit(uint256 depositLimit_) external override onlyVaultManager {
         SV.depositLimit = depositLimit_;
 
         emit DepositLimitSet(depositLimit_);
@@ -180,9 +201,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
             }
         }
 
-        for (uint256 i = 1; i < lenFinal; ++i) {
-            if (rebalanceArgs.finalSuperformIds[i] <= rebalanceArgs.finalSuperformIds[i - 1]) {
+        for (uint256 i; i < lenFinal; ++i) {
+            if (i >= 1 && rebalanceArgs.finalSuperformIds[i] <= rebalanceArgs.finalSuperformIds[i - 1]) {
                 revert DUPLICATE_FINAL_SUPERFORM_IDS();
+            }
+            if (!whitelistedSuperformIds[rebalanceArgs.finalSuperformIds[i]]) {
+                revert SUPERFORM_NOT_WHITELISTED();
             }
         }
 
@@ -210,7 +234,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     }
 
     /// @inheritdoc ISuperVault
-    function forwardDustToPaymaster() external onlyManagement {
+    function forwardDustToPaymaster() external override {
         address paymaster = superRegistry.getAddress(keccak256("PAYMASTER"));
         IERC20 token = IERC20(asset);
 
@@ -221,20 +245,59 @@ contract SuperVault is BaseStrategy, ISuperVault {
         }
     }
 
+    /// @inheritdoc ISuperVault
+    function setWhitelist(
+        uint256[] memory superformIds,
+        bool[] memory isWhitelisted
+    )
+        external
+        override
+        onlyVaultManager
+    {
+        uint256 length = superformIds.length;
+        if (length != isWhitelisted.length) revert ARRAY_LENGTH_MISMATCH();
+        if (length == 0) revert ZERO_SUPERFORMS();
+        for (uint256 i; i < length; ++i) {
+            _changeSuperformWhitelist(superformIds[i], isWhitelisted[i]);
+        }
+    }
+
+    /// @inheritdoc ISuperVault
+    function setVaultManager(address vaultManager_) external override onlyManagement {
+        if (vaultManager_ == address(0)) revert ZERO_ADDRESS();
+        SV.vaultManager = vaultManager_;
+
+        emit VaultManagerSet(vaultManager_);
+    }
+
     //////////////////////////////////////////////////////////////
     //                 EXTERNAL VIEW/PURE FUNCTIONS             //
     //////////////////////////////////////////////////////////////
 
-    /// @notice Returns the SuperVault data
-    /// @return numberOfSuperforms The number of Superforms
-    /// @return superformIds Array of Superform IDs
-    /// @return weights Array of weights for each Superform
+    /// @inheritdoc ISuperVault
     function getSuperVaultData()
         external
         view
         returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights)
     {
         return (SV.numberOfSuperforms, SV.superformIds, SV.weights);
+    }
+
+    /// @inheritdoc ISuperVault
+    function getIsWhitelisted(uint256[] memory superformIds) external view returns (bool[] memory isWhitelisted) {
+        uint256 length = superformIds.length;
+        isWhitelisted = new bool[](length);
+
+        for (uint256 i; i < length; ++i) {
+            isWhitelisted[i] = whitelistedSuperformIds[superformIds[i]];
+        }
+
+        return isWhitelisted;
+    }
+
+    /// @inheritdoc ISuperVault
+    function getWhitelist() external view override returns (uint256[] memory) {
+        return whitelistedSuperformIdArray;
     }
 
     /// @inheritdoc IERC1155Receiver
@@ -607,5 +670,50 @@ contract SuperVault is BaseStrategy, ISuperVault {
         SV.numberOfSuperforms = length;
 
         emit RebalanceComplete(finalSuperformIds, newWeights);
+    }
+
+    /// @notice Changes the whitelist for a Superform ID
+    /// @param superformId The Superform ID to change
+    /// @param isWhitelisted Whether to whitelist or blacklist
+    function _changeSuperformWhitelist(uint256 superformId, bool isWhitelisted) internal {
+        bool currentlyWhitelisted = whitelistedSuperformIds[superformId];
+
+        // Only process if there's an actual change
+        if (currentlyWhitelisted != isWhitelisted) {
+            whitelistedSuperformIds[superformId] = isWhitelisted;
+
+            if (isWhitelisted) {
+                _addToWhitelist(superformId);
+            } else {
+                _removeFromWhitelist(superformId);
+            }
+
+            emit SuperformWhitelisted(superformId, isWhitelisted);
+        }
+    }
+
+    /// @notice Adds a superform ID to the whitelist array
+    /// @param superformId The Superform ID to add
+    function _addToWhitelist(uint256 superformId) internal {
+        whitelistedSuperformIds[superformId] = true;
+        whitelistedSuperformIdArray.push(superformId);
+    }
+
+    /// @notice Removes a superform ID from the whitelist array
+    /// @param superformId The Superform ID to remove
+    function _removeFromWhitelist(uint256 superformId) internal {
+        whitelistedSuperformIds[superformId] = false;
+
+        uint256 length = whitelistedSuperformIdArray.length;
+        // Find and remove the superformId from the array
+        for (uint256 i; i < length; ++i) {
+            if (whitelistedSuperformIdArray[i] == superformId) {
+                // Move the last element to the position being deleted
+                whitelistedSuperformIdArray[i] = whitelistedSuperformIdArray[length - 1];
+                // Remove the last element
+                whitelistedSuperformIdArray.pop();
+                break;
+            }
+        }
     }
 }
