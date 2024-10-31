@@ -80,6 +80,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     constructor(
         address superRegistry_,
         address asset_,
+        address strategist_,
         string memory name_,
         uint256 depositLimit_,
         uint256[] memory superformIds_,
@@ -93,6 +94,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
         superformFactory = ISuperformFactory(superRegistry.getAddress(keccak256("SUPERFORM_FACTORY")));
         
         CHAIN_ID = uint64(block.chainid);
+
+        if (CHAIN_ID > type(uint64).max) {
+            revert BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
+        }
 
         uint256 totalWeight;
         address superform;
@@ -114,6 +119,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
 
+        strategist = strategist_;
+
         SV.numberOfSuperforms = numberOfSuperforms;
         SV.superformIds = superformIds_;
         SV.weights = startingWeights_;
@@ -130,6 +137,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
         SV.depositLimit = depositLimit_;
 
         emit DepositLimitSet(depositLimit_);
+    }
+
+    function setStrategist(address strategist_) external onlyManagement {
+        strategist = strategist_;
+
+        emit StrategistSet(strategist_);
     }
 
     /// @inheritdoc ISuperVault
