@@ -109,7 +109,9 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
         /// @dev deployer will have to accept management in SuperVault
         (bool success,) =
             address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.setPendingManagement.selector, msg.sender));
-        require(success, "Failed to set pending management");
+        if (!success) {
+            revert FAILED_TO_SET_PENDING_MANAGEMENT();
+        }
 
         superVaults.push(superVault);
         registeredSuperVaults[superVault] = true;
