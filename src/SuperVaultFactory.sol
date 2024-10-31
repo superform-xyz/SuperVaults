@@ -7,14 +7,14 @@ import { ISuperVaultFactory } from "./ISuperVaultFactory.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { DataLib } from "superform-core/src/libraries/DataLib.sol";
 import { IBaseForm } from "superform-core/src/interfaces/IBaseForm.sol";
-import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /// @title SuperVaultFactory
 /// @notice Factory for creating SuperVaults
 /// @dev Implements the ISuperVaultFactory interface
 /// @author SuperForm Labs
-contract SuperVaultFactory is ISuperVaultFactory {
+contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
     using Math for uint256;
     using DataLib for uint256;
 
@@ -25,8 +25,6 @@ contract SuperVaultFactory is ISuperVaultFactory {
     /// @notice The SuperRegistry contract
     ISuperRegistry public immutable superRegistry;
 
-    /// @notice The TokenizedStrategy contract
-    ITokenizedStrategy public immutable tokenizedStrategy;
     /// @notice The number of SuperVaults created
     uint256 public superVaultCount;
 
@@ -41,7 +39,9 @@ contract SuperVaultFactory is ISuperVaultFactory {
     //////////////////////////////////////////////////////////////
 
     modifier onlyManagement() {
-        tokenizedStrategy.requireManagement(msg.sender);
+        if (!hasRole(keccak256("MANAGEMENT_ROLE"), msg.sender)) {
+            revert NOT_MANAGEMENT();
+        }
         _;
     }
 
@@ -57,7 +57,7 @@ contract SuperVaultFactory is ISuperVaultFactory {
             revert ZERO_ADDRESS();
         }
         superRegistry = ISuperRegistry(superRegistry_);
-        tokenizedStrategy = ITokenizedStrategy(0xBB51273D6c746910C7C06fe718f30c936170feD0);
+        _grantRole(keccak256("MANAGEMENT_ROLE"), msg.sender);
     }
 
     //////////////////////////////////////////////////////////////
@@ -89,19 +89,19 @@ contract SuperVaultFactory is ISuperVaultFactory {
 
         superVaultCount++;
 
-        SuperVault superVault = new SuperVault(
-          address(superRegistry),
+        address superVault = address(new SuperVault(
+            address(superRegistry),
             asset_,
             name_,
             depositLimit_,
             superformIds_,
             startingWeights_
-        );
+        ));
 
         registeredSuperVaults[address(superVault)] = true;
         updateSuperVaultStrategist(address(superVault), strategist_);
 
-        return address(superVault);
+        return superVault;
     }
 
     //////////////////////////////////////////////////////////////
