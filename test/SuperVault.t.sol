@@ -21,7 +21,7 @@ contract SuperVaultHarness is SuperVault {
         uint256[] memory superformIds_,
         uint256[] memory startingWeights_
     )
-        SuperVault(asset_, strategist_, name_, depositLimit_, superformIds_, startingWeights_)
+        SuperVault(superRegistry_, asset_, strategist_, name_, depositLimit_, superformIds_, startingWeights_)
     { }
 
     function updateSVData(address superPositions, uint256[] memory finalSuperformIds) public {
@@ -195,10 +195,12 @@ contract SuperVaultTest is ProtocolActions {
     }
 
     function test_superVaultConstructorReverts() public {
+        address superRegistry = getContract(ETH, "SuperRegistry");
         address asset = getContract(ETH, "USDC");
         string memory name = "TestSuperVault";
         uint256 depositLimit = type(uint256).max;
         uint256[] memory superformIds;
+        superformIds = underlyingSuperformIds;
         uint256[] memory startingWeights = new uint256[](3);
 
         // Setup valid parameters
@@ -208,7 +210,16 @@ contract SuperVaultTest is ProtocolActions {
 
         // Test SUPERFORM_DOES_NOT_SUPPORT_ASSET revert
         vm.expectRevert(abi.encodeWithSignature("SUPERFORM_DOES_NOT_SUPPORT_ASSET()"));
-        new SuperVault(getContract(ETH, "SuperRegistry"), getContract(ETH, "DAI"), deployer, name, depositLimit, superformIds, startingWeights);
+        new SuperVault(superRegistry, getContract(ETH, "DAI"), deployer, name, depositLimit, superformIds, startingWeights);
+
+        // Test INVALID_WEIGHTS revert
+        uint256[] memory invalidWeights = new uint256[](3);
+        invalidWeights[0] = 3000;
+        invalidWeights[1] = 3000;
+        invalidWeights[2] = 3000;
+
+        vm.expectRevert(abi.encodeWithSignature("INVALID_WEIGHTS()"));
+        new SuperVault(superRegistry, asset, deployer, name, depositLimit, superformIds, invalidWeights);
     }
 
     function test_superVault_assertSuperPositions_splitAccordingToWeights() public {
