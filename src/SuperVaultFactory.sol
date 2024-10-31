@@ -36,7 +36,7 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
     uint256 public constant TOTAL_WEIGHT = 10_000;
 
     /// @notice The array of registered SuperVaults
-    address[] public registeredSuperVaults;
+    address[] public superVaults;
 
     /// @notice The mapping of registered SuperVaults
     mapping(address superVault => bool registered) public registeredSuperVaults;
