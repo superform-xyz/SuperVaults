@@ -4,6 +4,3 @@
 [submodule "lib/tokenized-strategy"]
 	path = lib/tokenized-strategy
 	url = https://github.com/yearn/tokenized-strategy
-[submodule "lib/superform-core"]
-	path = lib/superform-core
-	url = https://github.com/superform-xyz/superform-core
