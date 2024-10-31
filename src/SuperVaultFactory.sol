@@ -35,6 +35,9 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
     /// @notice The total weight used for calculating proportions (10000 = 100%)
     uint256 public constant TOTAL_WEIGHT = 10_000;
 
+    /// @notice The array of registered SuperVaults
+    address[] public registeredSuperVaults;
+
     /// @notice The mapping of registered SuperVaults
     mapping(address superVault => bool registered) public registeredSuperVaults;
 
@@ -110,7 +113,8 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
             address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.setPendingManagement.selector, msg.sender));
         require(success, "Failed to set pending management");
 
-        registeredSuperVaults[address(superVault)] = true;
+        registeredSuperVaults.push(superVault);
+        registeredSuperVaults[superVault] = true;
 
         return superVault;
     }
