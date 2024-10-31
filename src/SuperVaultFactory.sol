@@ -65,6 +65,7 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
     //////////////////////////////////////////////////////////////
 
     /// @inheritdoc ISuperVaultFactory
+    /// @dev after deploying superVault, deployer needs to accept management
     function createSuperVault(
         address asset_,
         address strategist_,
