@@ -154,7 +154,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         if (abi.decode(pendingManagementData, (address)) != msg.sender) revert NOT_PENDING_MANAGEMENT();
 
         (bool success, ) =
-            address(this).call(abi.encodeWithSelector(ITokenizedStrategy.acceptManagement.selector));
+            address(msg.sender).call(abi.encodeWithSelector(ITokenizedStrategy.acceptManagement.selector));
         require(success, "Failed to accept management");
 
         emit ManagementUpdated(msg.sender);
