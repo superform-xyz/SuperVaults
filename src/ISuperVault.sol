@@ -100,10 +100,6 @@ interface ISuperVault is IERC1155Receiver {
     /// @param strategist The new strategist
     event StrategistSet(address strategist);
 
-    /// @notice Emitted when the management is updated
-    /// @param management The new management
-    event ManagementUpdated(address management);
-
     //////////////////////////////////////////////////////////////
     //                 EXTERNAL VIEW/PURE FUNCTIONS             //
     //////////////////////////////////////////////////////////////
