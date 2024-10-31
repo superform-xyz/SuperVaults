@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.23;
 
-import { BaseSuperVaultSetup } from "./BaseSuperVaultSetup.sol";
 import { SuperVault } from "../src/SuperVault.sol";
 import { SuperVaultFactory } from "../src/SuperVaultFactory.sol";
 import { ISuperVaultFactory } from "../src/ISuperVaultFactory.sol";
 
+import "superform-core/test/utils/ProtocolActions.sol";
+import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
+import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 
-contract SuperVaultFactoryTest is BaseSuperVaultSetup {
+contract SuperVaultFactoryTest is ProtocolActions {
     SuperVaultFactory public factory;
     SuperVault public superVault;
 
@@ -16,6 +18,7 @@ contract SuperVaultFactoryTest is BaseSuperVaultSetup {
         super.setUp();
 
         // Setup
+        vm.selectFork(FORKS[SOURCE_CHAIN]);
         vm.startPrank(deployer);
 
         factory = new SuperVaultFactory(
