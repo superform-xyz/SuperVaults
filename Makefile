@@ -27,6 +27,7 @@ ifeq ($(ENVIRONMENT), local)
 	export BSC_TESTNET_RPC_URL_QN := $(shell op read op://5ylebqljbh3x6zomdxi3qd7tsa/BSC_TESTNET_RPC_URL/credential)
 	export LINEA_RPC_URL_QN := $(shell op read op://5ylebqljbh3x6zomdxi3qd7tsa/LINEA_RPC_URL/credential)
 	export BLAST_RPC_URL_QN := $(shell op read op://5ylebqljbh3x6zomdxi3qd7tsa/BLAST_RPC_URL/credential)
+	export BARTIO_RPC_URL_QN := $(shell op read op://5ylebqljbh3x6zomdxi3qd7tsa/BARTIO_RPC_URL/credential)
 
 endif
 
