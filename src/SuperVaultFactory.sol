@@ -74,6 +74,10 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
         uint256[] memory superformIds_,
         uint256[] memory startingWeights_
     ) external onlyManagement returns (address) {
+        if (asset_ == address(0) || strategist_ == address(0)) {
+            revert ZERO_ADDRESS();
+        }
+
         uint256 numberOfSuperforms = superformIds_.length;
 
         if (numberOfSuperforms == 0) {
@@ -82,10 +86,6 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
 
         if (numberOfSuperforms != startingWeights_.length) {
             revert ARRAY_LENGTH_MISMATCH();
-        }
-
-        if (block.chainid > type(uint64).max) {
-            revert BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
         }
 
         superVaultCount++;
