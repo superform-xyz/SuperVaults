@@ -7,6 +7,7 @@ import { SuperVaultFactory } from "../src/SuperVaultFactory.sol";
 import "superform-core/test/utils/ProtocolActions.sol";
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 
 contract SuperVaultFactoryTest is ProtocolActions {
     SuperVaultFactory public factory;
@@ -33,16 +34,13 @@ contract SuperVaultFactoryTest is ProtocolActions {
     }
 
     function setUp() public override {
-        chainIds = [ETH, ARBI];
+        //chainIds = [ETH, ARBI];
         super.setUp();
         SOURCE_CHAIN = ETH;
 
         // Setup
         vm.selectFork(FORKS[SOURCE_CHAIN]);
         vm.startPrank(deployer);
-        factory = new SuperVaultFactory(
-            getContract(SOURCE_CHAIN, "SuperRegistry")
-        );
 
         address morphoVault = 0x8eB67A509616cd6A7c1B3c8C21D48FF57df3d458;
         address aaveUsdcVault = 0x73edDFa87C71ADdC275c2b9890f5c3a8480bC9E6;
@@ -77,14 +75,19 @@ contract SuperVaultFactoryTest is ProtocolActions {
                 weights[i] += 1;
             }
         }
+
+        factory = new SuperVaultFactory(
+            getContract(SOURCE_CHAIN, "SuperRegistry")
+        );
+
         vm.stopPrank();
     }
 
     function test_createSuperVault() public {
         vm.prank(deployer);
         address superVault = factory.createSuperVault(
-            getContract(SOURCE_CHAIN, "SuperRegistry"),
             getContract(ETH, "USDC"),
+            address(deployer),
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
@@ -93,5 +96,25 @@ contract SuperVaultFactoryTest is ProtocolActions {
         assertTrue(factory.isSuperVault(superVault));
         assertEq(factory.superVaultCount(), 1);
         assert(superVault != address(0));
+    }
+
+    function test_getSuperVaultData() public {
+        vm.prank(deployer);
+        address superVault = factory.createSuperVault(
+            getContract(ETH, "USDC"),
+            address(deployer),
+            "USDCSuperVaultMorphoEulerAave",
+            type(uint256).max,
+            underlyingSuperformIds,
+            weights
+        );
+        (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weightsReceived) = factory.getSuperVaultData(address(superVault));
+        assertEq(numberOfSuperforms, underlyingSuperformIds.length);
+        assertEq(superformIds.length, underlyingSuperformIds.length);
+        assertEq(weightsReceived.length, underlyingSuperformIds.length);
+        for (uint256 i = 0; i < underlyingSuperformIds.length; i++) {
+            assertEq(superformIds[i], underlyingSuperformIds[i]);
+            assertEq(weightsReceived[i], weights[i]);
+        }
     }
 }
