@@ -197,11 +197,13 @@ contract SuperVaultFactoryTest is ProtocolActions {
         );
         factory.createSuperVault(
             getContract(ETH, "USDC"),
-            address(deployer),
-            "USDCSuperVaultMorphoEulerAave",
-            type(uint256).max,
+            address(12345),
+            "TestSuperVault",
+            100e18,
             underlyingSuperformIds,
             weights
         );
+        vm.stopPrank();
+        assertEq(factory.getSuperVaultCount(), 2);
     }
 }
