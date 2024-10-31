@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.23;
 
-import { BaseSetup } from "./BaseSetup.sol";
+import { BaseSuperVaultSetup } from "./BaseSuperVaultSetup.sol";
 import { SuperVault } from "../src/SuperVault.sol";
 import { SuperVaultFactory } from "../src/SuperVaultFactory.sol";
 import { ISuperVaultFactory } from "../src/ISuperVaultFactory.sol";
 
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 
-contract SuperVaultFactoryTest is BaseSetup {
+contract SuperVaultFactoryTest is BaseSuperVaultSetup {
     SuperVaultFactory public factory;
     SuperVault public superVault;
 

@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.23;
 
-import { BaseSetup } from "./BaseSetup.sol";
 import { SuperVault } from "../src/SuperVault.sol";
 import { ISuperVault } from "../src/ISuperVault.sol";
+import { BaseSuperVaultSetup } from "./BaseSuperVaultSetup.sol";
 
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
+import { DataLib } from "superform-core/src/libraries/DataLib.sol";
 import { VaultMock } from "superform-core/test/mocks/VaultMock.sol";
+import { ProtocolActions } from "superform-core/test/utils/ProtocolActions.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
@@ -30,7 +32,7 @@ contract SuperVaultHarness is SuperVault {
     }
 }
 
-contract SuperVaultTest is BaseSetup {
+contract SuperVaultTest is BaseSuperVaultSetup {
     using Math for uint256;
     using DataLib for uint256;
 

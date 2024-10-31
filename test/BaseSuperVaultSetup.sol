@@ -6,7 +6,7 @@ import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 
-contract BaseSetup is ProtocolActions {
+abstract contract BaseSuperVaultSetup is ProtocolActions {
     
     uint64 SOURCE_CHAIN;
 
@@ -28,7 +28,7 @@ contract BaseSetup is ProtocolActions {
         }
     }
 
-    function setUp() public override {
+    function setUp() public virtual override {
         super.setUp();
         SOURCE_CHAIN = ETH;
 
