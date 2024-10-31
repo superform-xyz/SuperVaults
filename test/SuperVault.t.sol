@@ -1,14 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.23;
 
-import "superform-core/test/utils/ProtocolActions.sol";
+import { BaseSetup } from "./BaseSetup.sol";
+import { SuperVault } from "../src/SuperVault.sol";
+import { ISuperVault } from "../src/ISuperVault.sol";
+
+import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
 import { VaultMock } from "superform-core/test/mocks/VaultMock.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
-import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
-import { ISuperVault } from "../src/ISuperVault.sol";
-import { SuperVault } from "../src/SuperVault.sol";
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 
 contract SuperVaultHarness is SuperVault {
@@ -29,9 +30,8 @@ contract SuperVaultHarness is SuperVault {
     }
 }
 
-contract SuperVaultTest is ProtocolActions {
+contract SuperVaultTest is BaseSetup {
     using Math for uint256;
-
     using DataLib for uint256;
 
     address SUPER_POSITIONS_SOURCE;
@@ -52,69 +52,13 @@ contract SuperVaultTest is ProtocolActions {
     address constant KEEPER = address(uint160(uint256(keccak256("KEEPER"))));
     address constant PERFORMANCE_FEE_RECIPIENT = address(uint160(uint256(keccak256("PERFORMANCE_FEE_RECIPIENT"))));
 
-    function sortAllSuperformIds() internal {
-        uint256 n = allSuperformIds.length;
-        for (uint256 i = 0; i < n - 1; i++) {
-            for (uint256 j = 0; j < n - i - 1; j++) {
-                if (allSuperformIds[j] > allSuperformIds[j + 1]) {
-                    // Swap
-                    uint256 temp = allSuperformIds[j];
-                    allSuperformIds[j] = allSuperformIds[j + 1];
-                    allSuperformIds[j + 1] = temp;
-                }
-            }
-        }
-    }
-
     function setUp() public override {
         chainIds = [ETH, ARBI];
         super.setUp();
         MULTI_TX_SLIPPAGE_SHARE = 0;
         AMBs = [2, 3];
-        SOURCE_CHAIN = ETH;
 
         SUPER_POSITIONS_SOURCE = getContract(SOURCE_CHAIN, "SuperPositions");
-        //vm.makePersistent(SUPER_POSITIONS_SOURCE);
-
-        // 1 - USDC SuperVault: Morpho + Euler + Aave USDC (3 vaults total to start)) -> ETH
-        //      Asset: USDC
-
-        // Setup
-        vm.selectFork(FORKS[SOURCE_CHAIN]);
-        vm.startPrank(deployer);
-        address morphoVault = 0x8eB67A509616cd6A7c1B3c8C21D48FF57df3d458;
-        address aaveUsdcVault = 0x73edDFa87C71ADdC275c2b9890f5c3a8480bC9E6;
-        address eulerUsdcVault = 0x797DD80692c3b2dAdabCe8e30C07fDE5307D48a9;
-        address sandclockUSDCVault = 0x096697720056886b905D0DEB0f06AfFB8e4665E5;
-
-        address[] memory vaultAddresses = new address[](4);
-        vaultAddresses[0] = morphoVault;
-        vaultAddresses[1] = aaveUsdcVault;
-        vaultAddresses[2] = eulerUsdcVault;
-        vaultAddresses[3] = sandclockUSDCVault;
-
-        // Get the SuperformFactory
-        SuperformFactory superformFactory = SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory"));
-        underlyingSuperformIds = new uint256[](vaultAddresses.length - 1);
-        allSuperformIds = new uint256[](vaultAddresses.length);
-        address superformAddress;
-        for (uint256 i = 0; i < vaultAddresses.length; i++) {
-            (allSuperformIds[i], superformAddress) = superformFactory.createSuperform(1, vaultAddresses[i]);
-        }
-
-        sortAllSuperformIds();
-
-        for (uint256 i = 0; i < vaultAddresses.length - 1; i++) {
-            underlyingSuperformIds[i] = allSuperformIds[i];
-        }
-
-        uint256[] memory weights = new uint256[](vaultAddresses.length - 1);
-        for (uint256 i = 0; i < vaultAddresses.length - 1; i++) {
-            weights[i] = uint256(10_000) / 3;
-            if (i == 2) {
-                weights[i] += 1;
-            }
-        }
 
         // Deploy SuperVault
         superVault = new SuperVault(
