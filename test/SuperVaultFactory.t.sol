@@ -3,6 +3,7 @@ pragma solidity ^0.8.23;
 
 import { SuperVault } from "../src/SuperVault.sol";
 import { SuperVaultFactory } from "../src/SuperVaultFactory.sol";
+import { ISuperformFactory } from "../src/ISuperformFactory.sol";
 
 import "superform-core/test/utils/ProtocolActions.sol";
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
@@ -96,6 +97,55 @@ contract SuperVaultFactoryTest is ProtocolActions {
         assertTrue(factory.isSuperVault(superVault));
         assertEq(factory.superVaultCount(), 1);
         assert(superVault != address(0));
+    }
+
+    function test_createSuperVault_reverts() public {
+        vm.startPrank(deployer);
+
+        /// Test zero address for asset
+        vm.expectRevert(ISuperVaultFactory.ZERO_ADDRESS.selector);
+        factory.createSuperVault(
+            address(0),
+            address(deployer),
+            "USDCSuperVaultMorphoEulerAave",
+            type(uint256).max,
+            underlyingSuperformIds,
+            weights
+        );
+
+        /// Test zero address for strategist
+        vm.expectRevert(ISuperVaultFactory.ZERO_ADDRESS.selector);
+        factory.createSuperVault(
+            getContract(ETH, "USDC"),
+            address(0),
+            "USDCSuperVaultMorphoEulerAave",
+            type(uint256).max,
+            underlyingSuperformIds,
+            weights
+        );
+
+        /// Test superform ids and weights length mismatch
+        vm.expectRevert(ISuperVaultFactory.ARRAY_LENGTH_MISMATCH.selector);
+        factory.createSuperVault(
+            getContract(ETH, "USDC"),
+            address(deployer),
+            "USDCSuperVaultMorphoEulerAave",
+            type(uint256).max,
+            underlyingSuperformIds,
+            new uint256[](underlyingSuperformIds.length - 1)
+        );
+
+        /// Test no superforms
+        vm.expectRevert(ISuperVaultFactory.ZERO_SUPERFORMS.selector);
+        factory.createSuperVault(
+            getContract(ETH, "USDC"),
+            address(deployer),
+            "USDCSuperVaultMorphoEulerAave",
+            type(uint256).max,
+            new uint256[](0),
+            new uint256[](0)
+        );
+        vm.stopPrank();
     }
 
     function test_getSuperVaultData() public {
