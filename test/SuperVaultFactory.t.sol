@@ -221,4 +221,12 @@ contract SuperVaultFactoryTest is ProtocolActions {
         vm.stopPrank();
         assertEq(SuperVault(superVault).strategist(), address(0xdead));
     }
+
+    function test_cannotCreateSameSuperVaultTwice() public {
+        vm.startPrank(deployer);
+        factory.createSuperVault(getContract(ETH, "USDC"), deployer, "USDCSuperVaultMorphoEulerAave", type(uint256).max, underlyingSuperformIds, weights);
+        vm.expectRevert();
+        factory.createSuperVault(getContract(ETH, "USDC"), deployer, "USDCSuperVaultMorphoEulerAave", type(uint256).max, underlyingSuperformIds, weights);
+        vm.stopPrank();
+    }
 }
