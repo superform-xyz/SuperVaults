@@ -89,6 +89,10 @@ interface ISuperVault is IERC1155Receiver {
     /// @param depositLimit The new deposit limit
     event DepositLimitSet(uint256 depositLimit);
 
+    /// @notice Emitted when dust is forwarded to the paymaster
+    /// @param dust The amount of dust forwarded
+    event DustForwardedToPaymaster(uint256 dust);
+
     //////////////////////////////////////////////////////////////
     //                 EXTERNAL VIEW/PURE FUNCTIONS             //
     //////////////////////////////////////////////////////////////
@@ -113,4 +117,7 @@ interface ISuperVault is IERC1155Receiver {
     /// send an amount to take from those ids
     /// the total underlying asset amount is redestributed according to the desired weights
     function rebalance(RebalanceArgs memory rebalanceArgs_) external payable;
+
+    /// @notice Forwards dust to the paymaster
+    function forwardDustToPaymaster() external;
 }
