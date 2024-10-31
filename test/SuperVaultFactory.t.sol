@@ -35,7 +35,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
     }
 
     function setUp() public override {
-        //chainIds = [ETH, ARBI];
         super.setUp();
         SOURCE_CHAIN = ETH;
 
@@ -205,5 +204,20 @@ contract SuperVaultFactoryTest is ProtocolActions {
         );
         vm.stopPrank();
         assertEq(factory.getSuperVaultCount(), 2);
+    }
+
+    function test_deployerIsVaultManagement() public {
+        vm.startPrank(deployer);
+        address superVault = factory.createSuperVault(
+            getContract(ETH, "USDC"),
+            deployer,
+            "USDCSuperVaultMorphoEulerAave",
+            type(uint256).max,
+            underlyingSuperformIds,
+            weights
+        );
+        SuperVault(superVault).setStrategist(address(0xdead));
+        vm.stopPrank();
+        assertEq(SuperVault(superVault).strategist(), address(0xdead));
     }
 }
