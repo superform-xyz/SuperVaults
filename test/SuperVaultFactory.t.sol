@@ -3,7 +3,7 @@ pragma solidity ^0.8.23;
 
 import { SuperVault } from "../src/SuperVault.sol";
 import { SuperVaultFactory } from "../src/SuperVaultFactory.sol";
-import { ISuperformFactory } from "../src/ISuperformFactory.sol";
+import { ISuperVaultFactory } from "../src/ISuperVaultFactory.sol";
 
 import "superform-core/test/utils/ProtocolActions.sol";
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
