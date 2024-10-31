@@ -94,7 +94,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
             weights
         );
         assertTrue(factory.isSuperVault(superVault));
-        assertEq(factory.superVaultCount(), 1);
+        assertEq(factory.getSuperVaultCount(), 1);
         assert(superVault != address(0));
     }
 
@@ -216,7 +216,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
             underlyingSuperformIds,
             weights
         );
-        SuperVault(superVault).acceptManagement();
+        address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.acceptManagement.selector));
         SuperVault(superVault).setStrategist(address(0xdead));
         vm.stopPrank();
         assertEq(SuperVault(superVault).strategist(), address(0xdead));
