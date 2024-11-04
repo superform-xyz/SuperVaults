@@ -138,15 +138,6 @@ interface ISuperVault is IERC1155Receiver {
     /// @param vaultManager_ The new vault manager
     function setVaultManager(address vaultManager_) external;
 
-    /// @notice Returns the SuperVault data
-    /// @return numberOfSuperforms The number of Superforms
-    /// @return superformIds Array of Superform IDs
-    /// @return weights Array of weights for each Superform
-    function getSuperVaultData()
-        external
-        view
-        returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights);
-
     /// @notice Returns whether a Superform ID is whitelisted
     /// @param superformIds Array of Superform IDs
     /// @return isWhitelisted Array of booleans indicating whether each Superform ID is whitelisted
