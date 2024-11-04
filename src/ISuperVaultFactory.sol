@@ -64,21 +64,6 @@ interface ISuperVaultFactory {
     /// @return Whether the SuperVault exists
     function isSuperVault(address superVault_) external view returns (bool);
 
-    /// @notice Returns the data for a SuperVault
-    /// @param superVault_ Address of the SuperVault
-    /// @return numberOfSuperforms The number of Superforms
-    /// @return superformIds Array of Superform IDs
-    /// @return weights Array of weights for each Superform
-    function getSuperVaultData(address superVault_)
-        external
-        view
-        returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights);
-
-    /// @notice Returns the Superform IDs for a SuperVault
-    /// @param superVault_ Address of the SuperVault
-    /// @return Array of Superform IDs
-    function getSuperformIds(address superVault_) external view returns (uint256[] memory);
-
     /// @notice Returns all SuperVaults
     /// @return Array of SuperVault addresses
     //function getSuperVaults() external view returns (address[] memory);

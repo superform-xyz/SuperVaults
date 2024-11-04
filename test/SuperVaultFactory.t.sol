@@ -150,46 +150,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
         vm.stopPrank();
     }
 
-    function test_getSuperVaultData() public {
-        vm.prank(deployer);
-        address superVaultTest = factory.createSuperVault(
-            getContract(ETH, "USDC"),
-            deployer,
-            deployer,
-            "USDCSuperVaultMorphoEulerAave",
-            type(uint256).max,
-            underlyingSuperformIds,
-            weights
-        );
-        (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weightsReceived) =
-            factory.getSuperVaultData(address(superVaultTest));
-        assertEq(numberOfSuperforms, underlyingSuperformIds.length);
-        assertEq(superformIds.length, underlyingSuperformIds.length);
-        assertEq(weightsReceived.length, underlyingSuperformIds.length);
-        for (uint256 i = 0; i < underlyingSuperformIds.length; i++) {
-            assertEq(superformIds[i], underlyingSuperformIds[i]);
-            assertEq(weightsReceived[i], weights[i]);
-        }
-    }
-
-    function test_getSuperformIds() public {
-        vm.prank(deployer);
-        address superVaultTest = factory.createSuperVault(
-            getContract(ETH, "USDC"),
-            deployer,
-            deployer,
-            "USDCSuperVaultMorphoEulerAave",
-            type(uint256).max,
-            underlyingSuperformIds,
-            weights
-        );
-        uint256[] memory superformIds = factory.getSuperformIds(address(superVaultTest));
-        assertEq(superformIds.length, underlyingSuperformIds.length);
-        for (uint256 i = 0; i < underlyingSuperformIds.length; i++) {
-            assertEq(superformIds[i], underlyingSuperformIds[i]);
-        }
-    }
-
     function test_getSuperVaultCount() public {
         vm.startPrank(deployer);
         factory.createSuperVault(

@@ -137,20 +137,6 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
         return registeredSuperVaults[superVault_];
     }
 
-    function getSuperVaultData(address superVault_)
-        external
-        view
-        returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights)
-    {
-        return ISuperVault(superVault_).getSuperVaultData();
-    }
-
-    /// @inheritdoc ISuperVaultFactory
-    function getSuperformIds(address superVault_) external view returns (uint256[] memory) {
-        (, uint256[] memory superformIds,) = ISuperVault(superVault_).getSuperVaultData();
-        return superformIds;
-    }
-
     /// @inheritdoc ISuperVaultFactory
     function getSuperVaultCount() external view returns (uint256) {
         return superVaults.length;
