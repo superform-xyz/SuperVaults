@@ -169,7 +169,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         strategist = strategist_;
         vaultManager = vaultManager_;
-        //superformIds = new uint256[](superformIds_.length);
         superformIds = superformIds_;
         weights = startingWeights_;
         depositLimit = depositLimit_;
