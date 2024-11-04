@@ -161,11 +161,15 @@ contract SuperVaultFactoryTest is ProtocolActions {
             underlyingSuperformIds,
             weights
         );
-        (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weightsReceived) =
-            factory.getSuperVaultData(address(superVaultTest));
+
+        uint256 numberOfSuperforms = superVaultTest.numberOfSuperforms();
+        uint256[] memory superformIds = superVaultTest.superformIds();
+        uint256[] memory weightsReceived = superVaultTest.weights();
+
         assertEq(numberOfSuperforms, underlyingSuperformIds.length);
         assertEq(superformIds.length, underlyingSuperformIds.length);
         assertEq(weightsReceived.length, underlyingSuperformIds.length);
+        
         for (uint256 i = 0; i < underlyingSuperformIds.length; i++) {
             assertEq(superformIds[i], underlyingSuperformIds[i]);
             assertEq(weightsReceived[i], weights[i]);
