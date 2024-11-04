@@ -107,7 +107,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
         address superRegistry_,
         address asset_,
         address strategist_,
-        address vaultManager_,
         string memory name_,
         uint256 depositLimit_,
         uint256[] memory superformIds_,
@@ -115,7 +114,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     )
         BaseStrategy(asset_, name_)
     {
-        uint256 numberOfSuperforms = superformIds_.length;
+        numberOfSuperforms = superformIds_.length;
 
         if (numberOfSuperforms == 0) {
             revert ZERO_SUPERFORMS();
@@ -168,11 +167,11 @@ contract SuperVault is BaseStrategy, ISuperVault {
         if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
 
         strategist = strategist_;
-        SV.vaultManager = vaultManager_;
-        SV.numberOfSuperforms = numberOfSuperforms;
-        SV.superformIds = superformIds_;
-        SV.weights = startingWeights_;
-        SV.depositLimit = depositLimit_;
+        for (uint256 i; i < numberOfSuperforms; ++i) {
+            superformIds[i] = superformIds_[i];
+            weights[i] = startingWeights_[i];
+        }
+        depositLimit = depositLimit_;
     }
 
     //////////////////////////////////////////////////////////////
@@ -181,7 +180,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
     /// @inheritdoc ISuperVault
     function setDepositLimit(uint256 depositLimit_) external override onlyVaultManager {
-        SV.depositLimit = depositLimit_;
+        depositLimit = depositLimit_;
 
         emit DepositLimitSet(depositLimit_);
     }
@@ -210,12 +209,11 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         {
             /// @dev caching to avoid multiple SLOADs
-            uint256 numberOfSuperforms = SV.numberOfSuperforms;
             uint256 foundCount;
 
             for (uint256 i; i < lenRebalanceFrom; ++i) {
                 for (uint256 j; j < numberOfSuperforms; ++j) {
-                    if (rebalanceArgs.superformIdsRebalanceFrom[i] == SV.superformIds[j]) {
+                    if (rebalanceArgs.superformIdsRebalanceFrom[i] == superformIds[j]) {
                         foundCount++;
                         break;
                     }
@@ -258,9 +256,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         ISuperformRouterPlus(routerPlus).rebalanceMultiPositions(args);
 
-        /// @dev step 3: update SV data
+        /// @dev step 3: update data
         /// @notice no issue about reentrancy as the external contracts are trusted
-        /// @notice updateSV emits rebalance event
+        /// @notice updateSVData emits rebalance event
         _updateSVData(superPositions, rebalanceArgs.finalSuperformIds);
     }
 
@@ -652,7 +650,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Updates the SuperVault data after rebalancing
     /// @param superPositions Address of the SuperPositions contract
     /// @param finalSuperformIds Array of Superform IDs to rebalance to
-    function _updateSVData(address superPositions, uint256[] memory finalSuperformIds) internal {
+    function _updatSVData(address superPositions, uint256[] memory finalSuperformIds) internal {
         uint256 totalWeight;
 
         uint256 length = finalSuperformIds.length;
@@ -696,9 +694,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
         newWeights[length - 1] = TOTAL_WEIGHT - totalAssignedWeight;
 
         /// @dev update SV weights
-        SV.weights = newWeights;
-        SV.superformIds = finalSuperformIds;
-        SV.numberOfSuperforms = length;
+        weights = newWeights;
+        superformIds = finalSuperformIds;
+        numberOfSuperforms = length;
 
         emit RebalanceComplete(finalSuperformIds, newWeights);
     }
