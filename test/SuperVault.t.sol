@@ -1200,7 +1200,10 @@ contract SuperVaultTest is ProtocolActions {
         (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
         address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
         uint256[] memory svDataWeights = new uint256[](underlyingSuperformIds.length);
-        svDataWeights = SuperVault(superVaultAddress).weights();
+        SuperVault vault = SuperVault(superVaultAddress);
+        for (uint256 i; i < underlyingSuperformIds.length; i++) {
+            svDataWeights[i] = vault.weights(i);
+        }
         uint256[] memory underlyingIndexes = _calculateUnderlyingIndexes();
         uint256[] memory calculatedWeights = _calculateRealWeights(superVaultAddress, underlyingIndexes);
 
