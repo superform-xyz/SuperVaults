@@ -74,7 +74,6 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
     function createSuperVault(
         address asset_,
         address strategist_,
-        address vaultManager_,
         string memory name_,
         uint256 depositLimit_,
         uint256[] memory superformIds_,
@@ -105,7 +104,6 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
                 address(superRegistry),
                 asset_,
                 strategist_,
-                vaultManager_,
                 name_,
                 depositLimit_,
                 superformIds_,
