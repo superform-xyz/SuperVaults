@@ -15,6 +15,7 @@ ifeq ($(ENVIRONMENT), local)
 	export FANTOM_RPC_URL := $(shell op read op://5ylebqljbh3x6zomdxi3qd7tsa/FANTOM_RPC_URL/credential)
 	export LINEA_RPC_URL := $(shell op read op://5ylebqljbh3x6zomdxi3qd7tsa/LINEA_RPC_URL/credential)
 	export BLAST_RPC_URL := $(shell op read op://5ylebqljbh3x6zomdxi3qd7tsa/BLAST_RPC_URL/credential)
+	export BARTIO_RPC_URL := $(shell op read op://5ylebqljbh3x6zomdxi3qd7tsa/BARTIO_RPC_URL/credential)
 	export ETHEREUM_RPC_URL_QN := $(shell op read op://5ylebqljbh3x6zomdxi3qd7tsa/ETHEREUM_RPC_URL/credential)
 	export BSC_RPC_URL_QN := $(shell op read op://5ylebqljbh3x6zomdxi3qd7tsa/BSC_RPC_URL/credential)
 	export AVALANCHE_RPC_URL_QN := $(shell op read op://5ylebqljbh3x6zomdxi3qd7tsa/AVALANCHE_RPC_URL/credential)
@@ -27,6 +28,7 @@ ifeq ($(ENVIRONMENT), local)
 	export BSC_TESTNET_RPC_URL_QN := $(shell op read op://5ylebqljbh3x6zomdxi3qd7tsa/BSC_TESTNET_RPC_URL/credential)
 	export LINEA_RPC_URL_QN := $(shell op read op://5ylebqljbh3x6zomdxi3qd7tsa/LINEA_RPC_URL/credential)
 	export BLAST_RPC_URL_QN := $(shell op read op://5ylebqljbh3x6zomdxi3qd7tsa/BLAST_RPC_URL/credential)
+	export BARTIO_RPC_URL_QN := $(shell op read op://5ylebqljbh3x6zomdxi3qd7tsa/BARTIO_RPC_URL/credential)
 
 endif
 
@@ -37,7 +39,7 @@ update:; forge update
 # Build & test
 build :; FOUNDRY_PROFILE=production forge build
 build-sizes :; FOUNDRY_PROFILE=production forge build --sizes
-test-vvv   :; forge test --match-test test_superVault_rebalance_notWhitelisted --evm-version cancun -vvv
+test-vvv   :; forge test --match-test test_superVaultConstructorReverts --evm-version cancun -vvv
 ftest   :; forge test --evm-version cancun
 coverage :; forge coverage  --evm-version cancun --report lcov
 clean  :; forge clean

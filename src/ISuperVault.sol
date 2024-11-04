@@ -41,6 +41,9 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Error thrown when no superforms are provided in constructor
     error ZERO_SUPERFORMS();
 
+    /// @notice Error thrown when the address is zero
+    error ZERO_ADDRESS();
+
     /// @notice Error thrown when duplicate superform IDs to rebalance from are provided
     error DUPLICATE_SUPERFORM_IDS_REBALANCE_FROM();
 
@@ -55,12 +58,6 @@ interface ISuperVault is IERC1155Receiver {
 
     /// @notice Error thrown when the caller is not the Super Vaults strategist
     error NOT_SUPER_VAULTS_STRATEGIST();
-
-    /// @notice Error thrown when a zero address is provided
-    error ZERO_ADDRESS();
-
-    /// @notice Error thrown when trying to forward shares to the paymaster
-    error CANNOT_FORWARD_SHARES();
 
     /// @notice Error thrown when the amounts to rebalance from array is empty
     error EMPTY_AMOUNTS_REBALANCE_FROM();
@@ -82,6 +79,9 @@ interface ISuperVault is IERC1155Receiver {
 
     /// @notice Error thrown when a superform ID is not found in the final superform IDs
     error REBALANCE_FROM_ID_NOT_FOUND_IN_FINAL_IDS();
+
+    /// @notice Error thrown when the caller is not the pending management
+    error NOT_PENDING_MANAGEMENT();
 
     /// @notice Error thrown when the caller is not the vault manager
     error NOT_VAULT_MANAGER();
@@ -105,6 +105,10 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Emitted when dust is forwarded to the paymaster
     /// @param dust The amount of dust forwarded
     event DustForwardedToPaymaster(uint256 dust);
+
+    /// @notice Emitted when the strategist is set
+    /// @param strategist The new strategist
+    event StrategistSet(address strategist);
 
     /// @notice Emitted when a superform is whitelisted
     /// @param superformId The superform ID that was whitelisted

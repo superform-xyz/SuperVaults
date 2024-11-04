@@ -17,6 +17,7 @@ import { ISuperformRouterPlus } from "superform-core/src/interfaces/ISuperformRo
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
 import { ISuperformFactory } from "superform-core/src/interfaces/ISuperformFactory.sol";
 import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
+import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 import { ISuperVault, IERC1155Receiver } from "./ISuperVault.sol";
 
 /// @title SuperVault
@@ -36,8 +37,14 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice The chain ID of the network this contract is deployed on
     uint64 public immutable CHAIN_ID;
 
+    /// @notice The address of the SuperVault Strategist
+    address public strategist;
+
     /// @notice The address of the SuperRegistry contract
     ISuperRegistry public immutable superRegistry;
+
+    /// @notice The address of the SuperformFactory contract
+    ISuperformFactory public immutable superformFactory;
 
     /// @notice The total weight used for calculating proportions (10000 = 100%)
     uint256 public constant TOTAL_WEIGHT = 10_000;
@@ -60,7 +67,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
     /// @notice Ensures that only the Super Vaults Strategist can call the function
     modifier onlySuperVaultsStrategist() {
-        if (_getAddress(keccak256("SUPER_VAULTS_STRATEGIST")) != msg.sender) {
+        if (strategist != msg.sender) {
             revert NOT_SUPER_VAULTS_STRATEGIST();
         }
         _;
@@ -87,6 +94,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     constructor(
         address superRegistry_,
         address asset_,
+        address strategist_,
         address vaultManager_,
         string memory name_,
         uint256 depositLimit_,
@@ -96,6 +104,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         BaseStrategy(asset_, name_)
     {
         uint256 numberOfSuperforms = superformIds_.length;
+
         if (numberOfSuperforms == 0) {
             revert ZERO_SUPERFORMS();
         }
@@ -104,11 +113,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             revert ARRAY_LENGTH_MISMATCH();
         }
 
-        if (superRegistry_ == address(0)) {
-            revert ZERO_ADDRESS();
-        }
-
-        if (vaultManager_ == address(0)) {
+        if (superRegistry_ == address(0) || strategist_ == address(0) || vaultManager_ == address(0)) {
             revert ZERO_ADDRESS();
         }
 
@@ -119,8 +124,13 @@ contract SuperVault is BaseStrategy, ISuperVault {
         CHAIN_ID = uint64(block.chainid);
 
         superRegistry = ISuperRegistry(superRegistry_);
+        superformFactory = ISuperformFactory(superRegistry.getAddress(keccak256("SUPERFORM_FACTORY")));
 
-        ISuperformFactory factory = ISuperformFactory(_getAddress(keccak256("SUPERFORM_FACTORY")));
+        CHAIN_ID = uint64(block.chainid);
+
+        if (CHAIN_ID > type(uint64).max) {
+            revert BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
+        }
 
         uint256 totalWeight;
         address superform;
@@ -129,7 +139,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             /// @dev this superVault only supports superforms that have the same asset as the vault
             (superform,,) = superformIds_[i].getSuperform();
 
-            if (!factory.isSuperform(superformIds_[i])) {
+            if (!superformFactory.isSuperform(superformIds_[i])) {
                 revert SUPERFORM_DOES_NOT_EXIST(superformIds_[i]);
             }
 
@@ -145,6 +155,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
 
+        strategist = strategist_;
         SV.vaultManager = vaultManager_;
         SV.numberOfSuperforms = numberOfSuperforms;
         SV.superformIds = superformIds_;
@@ -161,6 +172,14 @@ contract SuperVault is BaseStrategy, ISuperVault {
         SV.depositLimit = depositLimit_;
 
         emit DepositLimitSet(depositLimit_);
+    }
+
+    /// @notice Sets the strategist for the vault
+    /// @param strategist_ The new strategist
+    function setStrategist(address strategist_) external onlyManagement {
+        strategist = strategist_;
+
+        emit StrategistSet(strategist_);
     }
 
     /// @inheritdoc ISuperVault

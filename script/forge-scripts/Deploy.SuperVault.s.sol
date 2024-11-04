@@ -2,9 +2,9 @@
 pragma solidity ^0.8.23;
 
 import { Script } from "forge-std/Script.sol";
-import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
-import { SuperRBAC } from "superform-core/src/settings/SuperRBAC.sol";
 import { SuperVault } from "src/SuperVault.sol";
+import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
+import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
 
 contract MainnetDeploySuperVault is Script {
     function deploySuperVault(bool isStaging, uint256 chainId) external {
@@ -37,29 +37,30 @@ contract MainnetDeploySuperVault is Script {
 
         uint256[] memory startingWeights = new uint256[](1);
         startingWeights[0] = 10_000;
-        
-        address VAULT_MANAGER = address(0xDEAD);
-        new SuperVault(
-            superRegistry,
-            0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913, // USDC
-            VAULT_MANAGER,
-            "USDCSuperVaultMoonwellFlagship",
-            type(uint256).max,
-            superformIds,
-            startingWeights
-        );
 
         /// @dev TODO set later the correct address, as this is currently rewards admin
         address REWARDS_ADMIN =
             isStaging ? 0x1F05a8Ff6d895Ba04C84c5031c5d63FA1afCDA6F : 0xf82F3D7Df94FC2994315c32322DA6238cA2A2f7f;
+        address VAULT_MANAGER = address(0xDEAD);
 
-        address superRBAC = ISuperRegistry(superRegistry).getAddress(keccak256("SUPER_RBAC"));
+        address superVault = address(
+            new SuperVault(
+                superRegistry,
+                0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913, // USDC
+                REWARDS_ADMIN,
+                VAULT_MANAGER,
+                "USDCSuperVaultMoonwellFlagship",
+                type(uint256).max,
+                superformIds,
+                startingWeights
+            )
+        );
 
-        assert(superRBAC != address(0));
+        (bool success,) = address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.acceptManagement.selector));
+        if (!success) {
+            revert("Accept management failed");
+        }
 
-        SuperRBAC superRBACC = SuperRBAC(superRBAC);
-        superRBACC.setRoleAdmin(keccak256("SUPER_VAULTS_STRATEGIST"), superRBACC.PROTOCOL_ADMIN_ROLE());
-        superRBACC.grantRole(keccak256("SUPER_VAULTS_STRATEGIST"), REWARDS_ADMIN);
         vm.stopBroadcast();
     }
 }
