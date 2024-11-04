@@ -10,15 +10,6 @@ interface ISuperVault is IERC1155Receiver {
     //                  STRUCTS                                   //
     //////////////////////////////////////////////////////////////
 
-    /// @notice Struct to hold SuperVault strategy data
-    struct SuperVaultStrategyData {
-        address vaultManager;
-        uint256 numberOfSuperforms;
-        uint256 depositLimit;
-        uint256[] superformIds;
-        uint256[] weights;
-    }
-
     /// @notice Struct to hold rebalance arguments
     /// @notice superformIdsRebalanceFrom must be an ordered array of superform IDs with no duplicates
     /// @param superformIdsRebalanceFrom Array of superform IDs to rebalance from
