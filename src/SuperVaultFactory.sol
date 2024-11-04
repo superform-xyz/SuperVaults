@@ -111,6 +111,8 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
             )
         );
 
+        superVault.setStrategist(strategist_);
+
         /// @dev set pending management to deployer
         /// @dev deployer will have to accept management in SuperVault
         (bool success,) = address(superVault).call(
