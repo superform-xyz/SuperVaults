@@ -179,8 +179,6 @@ contract SuperVaultTest is ProtocolActions {
 
         SuperRegistry(getContract(ETH, "SuperRegistry")).setAddress(keccak256("SUPER_VAULTS_STRATEGIST"), deployer, ETH);
 
-        SuperRegistry(getContract(ETH, "SuperRegistry")).setAddress(keccak256("VAULT_MANAGER"), deployer, ETH);
-
         vm.stopPrank();
     }
 
@@ -289,7 +287,7 @@ contract SuperVaultTest is ProtocolActions {
 
     function test_onlyVaultManagerCanCall() public {
         vm.startPrank(address(0xdead));
-        vm.expectRevert(ISuperVault.NOT_VAULT_MANAGER.selector);
+        vm.expectRevert("!management");
         SuperVault(address(superVault)).setDepositLimit(type(uint256).max);
         vm.stopPrank();
     }
@@ -326,7 +324,7 @@ contract SuperVaultTest is ProtocolActions {
         mismatchedWeights[1] = 5000;
 
         vm.expectRevert(abi.encodeWithSignature("ARRAY_LENGTH_MISMATCH()"));
-        new SuperVault(superRegistry, asset, deployer, deployer, name, depositLimit, superformIds, mismatchedWeights);
+        new SuperVault(superRegistry, asset, deployer, name, depositLimit, superformIds, mismatchedWeights);
 
         // Test 4: SUPERFORM_DOES_NOT_SUPPORT_ASSET revert
         vm.expectRevert(abi.encodeWithSignature("SUPERFORM_DOES_NOT_SUPPORT_ASSET()"));
