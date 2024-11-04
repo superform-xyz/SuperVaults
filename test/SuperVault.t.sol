@@ -26,7 +26,6 @@ contract SuperVaultHarness is SuperVault {
             superRegistry_,
             asset_,
             strategist_,
-            vaultManager_,
             name_,
             depositLimit_,
             superformIds_,
@@ -209,16 +208,17 @@ contract SuperVaultTest is ProtocolActions {
 
     function test_setVaultManager() public {
         address newVaultManager = address(0xDEAD);
+
         // Test successful vault manager update
         vm.prank(deployer);
-        superVault.setVaultManager(newVaultManager);
-    }
+        address(superVault).call(abi.encodeWithSignature("setPendingManagement(address)", newVaultManager));
 
-    function test_setVaultManager_zeroAddress() public {
-        // Test that zero address is rejected
-        vm.prank(deployer);
-        vm.expectRevert(abi.encodeWithSignature("ZERO_ADDRESS()"));
-        superVault.setVaultManager(address(0));
+        vm.startPrank(newVaultManager);
+        address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.acceptManagement.selector));
+
+        superVault.setStrategist(newVaultManager);
+        assertEq(superVault.strategist(), newVaultManager, "Strategist should be updated");
+        vm.stopPrank();
     }
 
     function test_setWhitelist_RemoveElements() public {
