@@ -280,14 +280,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
         }
     }
 
-    /// @inheritdoc ISuperVault
-    function setVaultManager(address vaultManager_) external override onlyManagement {
-        if (vaultManager_ == address(0)) revert ZERO_ADDRESS();
-        SV.vaultManager = vaultManager_;
-
-        emit VaultManagerSet(vaultManager_);
-    }
-
     //////////////////////////////////////////////////////////////
     //                 EXTERNAL VIEW/PURE FUNCTIONS             //
     //////////////////////////////////////////////////////////////

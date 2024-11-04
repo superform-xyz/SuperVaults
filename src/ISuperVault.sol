@@ -74,9 +74,6 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Error thrown when the caller is not the pending management
     error NOT_PENDING_MANAGEMENT();
 
-    /// @notice Error thrown when the caller is not the vault manager
-    error NOT_VAULT_MANAGER();
-
     /// @notice Error thrown when a superform ID is not whitelisted
     error SUPERFORM_NOT_WHITELISTED();
 
@@ -133,10 +130,6 @@ interface ISuperVault is IERC1155Receiver {
     /// @param superformIds Array of Superform IDs
     /// @param isWhitelisted Array of booleans indicating whether to whitelist or blacklist
     function setWhitelist(uint256[] memory superformIds, bool[] memory isWhitelisted) external;
-
-    /// @notice Sets the vault manager
-    /// @param vaultManager_ The new vault manager
-    function setVaultManager(address vaultManager_) external;
 
     /// @notice Returns the SuperVault data
     /// @return numberOfSuperforms The number of Superforms
