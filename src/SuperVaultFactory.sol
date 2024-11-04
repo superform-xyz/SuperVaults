@@ -141,8 +141,10 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
         external
         view
         returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights)
-    {
-        return ISuperVault(superVault_).getSuperVaultData();
+    {   
+        numberOfSuperforms = ISuperVault(superVault_).numberOfSuperforms();
+        superformIds = ISuperVault(superVault_).superformIds();
+        weights = ISuperVault(superVault_).weights();
     }
 
     /// @inheritdoc ISuperVaultFactory
