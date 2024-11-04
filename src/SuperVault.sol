@@ -58,9 +58,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice The deposit limit for the vault
     uint256 depositLimit;
 
-    /// @notice Struct containing SuperVault strategy data
-    SuperVaultStrategyData private SV;
-
     /// @notice Mapping to track whitelisted Superform IDs
     mapping(uint256 => bool) public whitelistedSuperformIds;
 
@@ -301,7 +298,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         view
         returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights)
     {
-        return (SV.numberOfSuperforms, SV.superformIds, SV.weights);
+        return (numberOfSuperforms, superformIds, weights);
     }
 
     /// @inheritdoc ISuperVault
@@ -363,7 +360,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @inheritdoc BaseStrategy
     function availableDepositLimit(address /*_owner*/ ) public view override returns (uint256) {
         uint256 totalAssets = TokenizedStrategy.totalAssets();
-        uint256 depositLimit = SV.depositLimit;
         return totalAssets >= depositLimit ? 0 : depositLimit - totalAssets;
     }
 
@@ -414,8 +410,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @return totalAssets The total assets of the vault
     function _harvestAndReport() internal view override returns (uint256 totalAssets) {
         uint256 totalAssetsInVaults;
-        uint256 numberOfSuperforms = SV.numberOfSuperforms;
-        uint256[] memory superformIds = SV.superformIds;
+        uint256[] memory superformIds = superformIds;
 
         address superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
 
@@ -446,9 +441,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
         view
         returns (MultiVaultSFData memory mvData)
     {
-        uint256 numberOfSuperforms = SV.numberOfSuperforms;
 
-        mvData.superformIds = SV.superformIds;
+        mvData.superformIds = superformIds;
         mvData.amounts = new uint256[](numberOfSuperforms);
         mvData.maxSlippages = new uint256[](numberOfSuperforms);
         mvData.liqRequests = new LiqRequest[](numberOfSuperforms);
@@ -470,11 +464,11 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
             if (isDeposit) {
                 /// @notice rounding down to avoid one-off issue
-                mvData.amounts[i] = amount_.mulDiv(SV.weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
+                mvData.amounts[i] = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
                 mvData.outputAmounts[i] = superformContract.previewDepositTo(mvData.amounts[i]);
             } else {
                 /// @dev assets
-                mvData.outputAmounts[i] = amount_.mulDiv(SV.weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
+                mvData.outputAmounts[i] = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
                 /// @dev shares - in 4626Form this uses convertToShares in 5115Form this uses previewDeposit
                 mvData.amounts[i] = superformContract.previewDepositTo(mvData.outputAmounts[i]);
             }
