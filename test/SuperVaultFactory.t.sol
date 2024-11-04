@@ -86,7 +86,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
         address superVaultTest = factory.createSuperVault(
             getContract(ETH, "USDC"),
             deployer,
-            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
@@ -105,7 +104,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
         factory.createSuperVault(
             address(0),
             deployer,
-            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
@@ -117,7 +115,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
         factory.createSuperVault(
             getContract(ETH, "USDC"),
             address(0),
-            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
@@ -129,7 +126,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
         factory.createSuperVault(
             getContract(ETH, "USDC"),
             deployer,
-            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
@@ -140,7 +136,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
         vm.expectRevert(ISuperVaultFactory.ZERO_SUPERFORMS.selector);
         factory.createSuperVault(
             getContract(ETH, "USDC"),
-            deployer,
             deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
@@ -154,7 +149,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
         vm.prank(deployer);
         address superVaultTest = factory.createSuperVault(
             getContract(ETH, "USDC"),
-            deployer,
             deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
@@ -177,7 +171,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
         address superVaultTest = factory.createSuperVault(
             getContract(ETH, "USDC"),
             deployer,
-            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
@@ -195,7 +188,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
         factory.createSuperVault(
             getContract(ETH, "USDC"),
             deployer,
-            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
@@ -203,7 +195,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
         );
         factory.createSuperVault(
             getContract(ETH, "USDC"),
-            address(12_345),
             address(12_345),
             "TestSuperVault",
             100e18,
@@ -218,7 +209,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
         vm.startPrank(deployer);
         address superVaultTest = factory.createSuperVault(
             getContract(ETH, "USDC"),
-            deployer,
             deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
@@ -236,7 +226,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
         factory.createSuperVault(
             getContract(ETH, "USDC"),
             deployer,
-            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
@@ -245,7 +234,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
         vm.expectRevert();
         factory.createSuperVault(
             getContract(ETH, "USDC"),
-            deployer,
             deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
