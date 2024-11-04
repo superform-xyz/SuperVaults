@@ -7,7 +7,6 @@ import { ISuperVault } from "./ISuperVault.sol";
 /// @notice Interface for the SuperVaultFactory contract
 /// @author SuperForm Labs
 interface ISuperVaultFactory {
-    
     //////////////////////////////////////////////////////////////
     //                          ERRORS                          //
     //////////////////////////////////////////////////////////////
@@ -70,7 +69,10 @@ interface ISuperVaultFactory {
     /// @return numberOfSuperforms The number of Superforms
     /// @return superformIds Array of Superform IDs
     /// @return weights Array of weights for each Superform
-    function getSuperVaultData(address superVault_) external view returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights);
+    function getSuperVaultData(address superVault_)
+        external
+        view
+        returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights);
 
     /// @notice Returns the Superform IDs for a SuperVault
     /// @param superVault_ Address of the SuperVault
@@ -93,6 +95,7 @@ interface ISuperVaultFactory {
     /// @dev Sets pending management to deployer, deployer will have to accept management in SuperVault
     /// @param asset_ Address of the asset token
     /// @param strategist_ Address of the strategist
+    /// @param vaultManager_ Address of the vault manager
     /// @param name_ Name of the strategy
     /// @param depositLimit_ Maximum deposit limit
     /// @param superformIds_ Array of Superform IDs
@@ -100,9 +103,12 @@ interface ISuperVaultFactory {
     function createSuperVault(
         address asset_,
         address strategist_,
+        address vaultManager_,
         string memory name_,
         uint256 depositLimit_,
         uint256[] memory superformIds_,
         uint256[] memory startingWeights_
-    ) external returns (address);
+    )
+        external
+        returns (address);
 }

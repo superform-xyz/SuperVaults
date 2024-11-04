@@ -12,6 +12,7 @@ interface ISuperVault is IERC1155Receiver {
 
     /// @notice Struct to hold SuperVault strategy data
     struct SuperVaultStrategyData {
+        address vaultManager;
         uint256 numberOfSuperforms;
         uint256 depositLimit;
         uint256[] superformIds;
@@ -39,6 +40,9 @@ interface ISuperVault is IERC1155Receiver {
 
     /// @notice Error thrown when no superforms are provided in constructor
     error ZERO_SUPERFORMS();
+
+    /// @notice Error thrown when the address is zero
+    error ZERO_ADDRESS();
 
     /// @notice Error thrown when duplicate superform IDs to rebalance from are provided
     error DUPLICATE_SUPERFORM_IDS_REBALANCE_FROM();
@@ -79,6 +83,12 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Error thrown when the caller is not the pending management
     error NOT_PENDING_MANAGEMENT();
 
+    /// @notice Error thrown when the caller is not the vault manager
+    error NOT_VAULT_MANAGER();
+
+    /// @notice Error thrown when a superform ID is not whitelisted
+    error SUPERFORM_NOT_WHITELISTED();
+
     //////////////////////////////////////////////////////////////
     //                  EVENTS                                   //
     //////////////////////////////////////////////////////////////
@@ -100,22 +110,22 @@ interface ISuperVault is IERC1155Receiver {
     /// @param strategist The new strategist
     event StrategistSet(address strategist);
 
-    //////////////////////////////////////////////////////////////
-    //                 EXTERNAL VIEW/PURE FUNCTIONS             //
-    //////////////////////////////////////////////////////////////
+    /// @notice Emitted when a superform is whitelisted
+    /// @param superformId The superform ID that was whitelisted
+    /// @param isWhitelisted Whether the superform was whitelisted
+    event SuperformWhitelisted(uint256 superformId, bool isWhitelisted);
 
-    /// @notice Returns the SuperVault data
-    /// @return numberOfSuperforms The number of Superforms
-    /// @return superformIds Array of Superform IDs
-    /// @return weights Array of weights for each Superform
-    function getSuperVaultData()
-        external
-        view
-        returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights);
+    /// @notice Emitted when the vault manager is set
+    /// @param vaultManager The new vault manager
+    event VaultManagerSet(address vaultManager);
 
     //////////////////////////////////////////////////////////////
     //                  EXTERNAL  FUNCTIONS                     //
     //////////////////////////////////////////////////////////////
+
+    /// @notice Sets the deposit limit for the vault
+    /// @param depositLimit_ The new deposit limit
+    function setDepositLimit(uint256 depositLimit_) external;
 
     /// @notice Rebalances the SuperVault
     /// @notice rebalanceArgs_.superformIdsRebalanceFrom must be an ordered array of superform IDs with no duplicates
@@ -127,4 +137,31 @@ interface ISuperVault is IERC1155Receiver {
 
     /// @notice Forwards dust to the paymaster
     function forwardDustToPaymaster() external;
+
+    /// @notice Sets the whitelist for Superform IDs
+    /// @param superformIds Array of Superform IDs
+    /// @param isWhitelisted Array of booleans indicating whether to whitelist or blacklist
+    function setWhitelist(uint256[] memory superformIds, bool[] memory isWhitelisted) external;
+
+    /// @notice Sets the vault manager
+    /// @param vaultManager_ The new vault manager
+    function setVaultManager(address vaultManager_) external;
+
+    /// @notice Returns the SuperVault data
+    /// @return numberOfSuperforms The number of Superforms
+    /// @return superformIds Array of Superform IDs
+    /// @return weights Array of weights for each Superform
+    function getSuperVaultData()
+        external
+        view
+        returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights);
+
+    /// @notice Returns whether a Superform ID is whitelisted
+    /// @param superformIds Array of Superform IDs
+    /// @return isWhitelisted Array of booleans indicating whether each Superform ID is whitelisted
+    function getIsWhitelisted(uint256[] memory superformIds) external view returns (bool[] memory isWhitelisted);
+
+    /// @notice Returns the array of whitelisted Superform IDs
+    /// @return Array of whitelisted Superform IDs
+    function getWhitelist() external view returns (uint256[] memory);
 }

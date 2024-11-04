@@ -57,9 +57,7 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
     //////////////////////////////////////////////////////////////
 
     /// @param superRegistry_ Address of the SuperRegistry
-    constructor(
-        address superRegistry_
-    ) {
+    constructor(address superRegistry_) {
         if (superRegistry_ == address(0)) {
             revert ZERO_ADDRESS();
         }
@@ -76,11 +74,16 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
     function createSuperVault(
         address asset_,
         address strategist_,
+        address vaultManager_,
         string memory name_,
         uint256 depositLimit_,
         uint256[] memory superformIds_,
         uint256[] memory startingWeights_
-    ) external onlyManagement returns (address) {
+    )
+        external
+        onlyManagement
+        returns (address)
+    {
         if (asset_ == address(0) || strategist_ == address(0)) {
             revert ZERO_ADDRESS();
         }
@@ -95,28 +98,26 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
             revert ARRAY_LENGTH_MISMATCH();
         }
 
-        bytes32 salt = keccak256(abi.encodePacked(
-            asset_,
-            name_,
-            superformIds_,
-            startingWeights_,
-            "SuperVault"
-        ));
+        bytes32 salt = keccak256(abi.encodePacked(asset_, name_, superformIds_, startingWeights_, "SuperVault"));
 
-        address superVault = address(new SuperVault{salt: salt}(
-            address(superRegistry),
-            asset_,
-            strategist_,
-            name_,
-            depositLimit_,
-            superformIds_,
-            startingWeights_
-        ));
+        address superVault = address(
+            new SuperVault{ salt: salt }(
+                address(superRegistry),
+                asset_,
+                strategist_,
+                vaultManager_,
+                name_,
+                depositLimit_,
+                superformIds_,
+                startingWeights_
+            )
+        );
 
         /// @dev set pending management to deployer
         /// @dev deployer will have to accept management in SuperVault
-        (bool success,) =
-            address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.setPendingManagement.selector, msg.sender));
+        (bool success,) = address(superVault).call(
+            abi.encodeWithSelector(ITokenizedStrategy.setPendingManagement.selector, msg.sender)
+        );
         if (!success) {
             revert FAILED_TO_SET_PENDING_MANAGEMENT();
         }
@@ -136,13 +137,17 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
         return registeredSuperVaults[superVault_];
     }
 
-    function getSuperVaultData(address superVault_) external view returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights) {
+    function getSuperVaultData(address superVault_)
+        external
+        view
+        returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights)
+    {
         return ISuperVault(superVault_).getSuperVaultData();
     }
 
     /// @inheritdoc ISuperVaultFactory
     function getSuperformIds(address superVault_) external view returns (uint256[] memory) {
-        (,uint256[] memory superformIds,) = ISuperVault(superVault_).getSuperVaultData();
+        (, uint256[] memory superformIds,) = ISuperVault(superVault_).getSuperVaultData();
         return superformIds;
     }
 

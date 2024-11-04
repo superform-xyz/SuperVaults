@@ -6,7 +6,6 @@ import { SuperVault } from "src/SuperVault.sol";
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
 
-
 contract MainnetDeploySuperVault is Script {
     function deploySuperVault(bool isStaging, uint256 chainId) external {
         vm.startBroadcast();
@@ -42,18 +41,25 @@ contract MainnetDeploySuperVault is Script {
         /// @dev TODO set later the correct address, as this is currently rewards admin
         address REWARDS_ADMIN =
             isStaging ? 0x1F05a8Ff6d895Ba04C84c5031c5d63FA1afCDA6F : 0xf82F3D7Df94FC2994315c32322DA6238cA2A2f7f;
+        address VAULT_MANAGER = address(0xDEAD);
 
-        address superVault = address(   new SuperVault(
-            superRegistry,
-            0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913, // USDC
-            REWARDS_ADMIN,
-            "USDCSuperVaultMoonwellFlagship",
-            type(uint256).max,
-            superformIds,
-            startingWeights
-        ));
+        address superVault = address(
+            new SuperVault(
+                superRegistry,
+                0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913, // USDC
+                REWARDS_ADMIN,
+                VAULT_MANAGER,
+                "USDCSuperVaultMoonwellFlagship",
+                type(uint256).max,
+                superformIds,
+                startingWeights
+            )
+        );
 
-        address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.acceptManagement.selector));
+        (bool success,) = address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.acceptManagement.selector));
+        if (!success) {
+            revert("Accept management failed");
+        }
 
         vm.stopBroadcast();
     }

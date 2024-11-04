@@ -68,7 +68,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
             underlyingSuperformIds[i] = allSuperformIds[i];
         }
 
-       weights = new uint256[](vaultAddresses.length - 1);
+        weights = new uint256[](vaultAddresses.length - 1);
         for (uint256 i = 0; i < vaultAddresses.length - 1; i++) {
             weights[i] = uint256(10_000) / 3;
             if (i == 2) {
@@ -76,26 +76,25 @@ contract SuperVaultFactoryTest is ProtocolActions {
             }
         }
 
-        factory = new SuperVaultFactory(
-            getContract(SOURCE_CHAIN, "SuperRegistry")
-        );
+        factory = new SuperVaultFactory(getContract(SOURCE_CHAIN, "SuperRegistry"));
 
         vm.stopPrank();
     }
 
     function test_createSuperVault() public {
         vm.prank(deployer);
-        address superVault = factory.createSuperVault(
+        address superVaultTest = factory.createSuperVault(
             getContract(ETH, "USDC"),
-            address(deployer),
+            deployer,
+            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
             weights
         );
-        assertTrue(factory.isSuperVault(superVault));
+        assertTrue(factory.isSuperVault(superVaultTest));
         assertEq(factory.getSuperVaultCount(), 1);
-        assert(superVault != address(0));
+        assert(superVaultTest != address(0));
     }
 
     function test_createSuperVault_reverts() public {
@@ -105,7 +104,8 @@ contract SuperVaultFactoryTest is ProtocolActions {
         vm.expectRevert(ISuperVaultFactory.ZERO_ADDRESS.selector);
         factory.createSuperVault(
             address(0),
-            address(deployer),
+            deployer,
+            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
@@ -117,6 +117,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
         factory.createSuperVault(
             getContract(ETH, "USDC"),
             address(0),
+            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
@@ -127,7 +128,8 @@ contract SuperVaultFactoryTest is ProtocolActions {
         vm.expectRevert(ISuperVaultFactory.ARRAY_LENGTH_MISMATCH.selector);
         factory.createSuperVault(
             getContract(ETH, "USDC"),
-            address(deployer),
+            deployer,
+            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
@@ -138,7 +140,8 @@ contract SuperVaultFactoryTest is ProtocolActions {
         vm.expectRevert(ISuperVaultFactory.ZERO_SUPERFORMS.selector);
         factory.createSuperVault(
             getContract(ETH, "USDC"),
-            address(deployer),
+            deployer,
+            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             new uint256[](0),
@@ -149,15 +152,17 @@ contract SuperVaultFactoryTest is ProtocolActions {
 
     function test_getSuperVaultData() public {
         vm.prank(deployer);
-        address superVault = factory.createSuperVault(
+        address superVaultTest = factory.createSuperVault(
             getContract(ETH, "USDC"),
-            address(deployer),
+            deployer,
+            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
             weights
         );
-        (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weightsReceived) = factory.getSuperVaultData(address(superVault));
+        (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weightsReceived) =
+            factory.getSuperVaultData(address(superVaultTest));
         assertEq(numberOfSuperforms, underlyingSuperformIds.length);
         assertEq(superformIds.length, underlyingSuperformIds.length);
         assertEq(weightsReceived.length, underlyingSuperformIds.length);
@@ -169,15 +174,16 @@ contract SuperVaultFactoryTest is ProtocolActions {
 
     function test_getSuperformIds() public {
         vm.prank(deployer);
-        address superVault = factory.createSuperVault(
+        address superVaultTest = factory.createSuperVault(
             getContract(ETH, "USDC"),
-            address(deployer),
+            deployer,
+            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
             weights
         );
-        uint256[] memory superformIds = factory.getSuperformIds(address(superVault));
+        uint256[] memory superformIds = factory.getSuperformIds(address(superVaultTest));
         assertEq(superformIds.length, underlyingSuperformIds.length);
         for (uint256 i = 0; i < underlyingSuperformIds.length; i++) {
             assertEq(superformIds[i], underlyingSuperformIds[i]);
@@ -188,7 +194,8 @@ contract SuperVaultFactoryTest is ProtocolActions {
         vm.startPrank(deployer);
         factory.createSuperVault(
             getContract(ETH, "USDC"),
-            address(deployer),
+            deployer,
+            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
@@ -196,7 +203,8 @@ contract SuperVaultFactoryTest is ProtocolActions {
         );
         factory.createSuperVault(
             getContract(ETH, "USDC"),
-            address(12345),
+            address(12_345),
+            address(12_345),
             "TestSuperVault",
             100e18,
             underlyingSuperformIds,
@@ -208,25 +216,42 @@ contract SuperVaultFactoryTest is ProtocolActions {
 
     function test_deployerIsPendingVaultManagement() public {
         vm.startPrank(deployer);
-        address superVault = factory.createSuperVault(
+        address superVaultTest = factory.createSuperVault(
             getContract(ETH, "USDC"),
+            deployer,
             deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
             weights
         );
-        address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.acceptManagement.selector));
-        SuperVault(superVault).setStrategist(address(0xdead));
+        address(superVaultTest).call(abi.encodeWithSelector(ITokenizedStrategy.acceptManagement.selector));
+        SuperVault(superVaultTest).setStrategist(address(0xdead));
         vm.stopPrank();
-        assertEq(SuperVault(superVault).strategist(), address(0xdead));
+        assertEq(SuperVault(superVaultTest).strategist(), address(0xdead));
     }
 
     function test_cannotCreateSameSuperVaultTwice() public {
         vm.startPrank(deployer);
-        factory.createSuperVault(getContract(ETH, "USDC"), deployer, "USDCSuperVaultMorphoEulerAave", type(uint256).max, underlyingSuperformIds, weights);
+        factory.createSuperVault(
+            getContract(ETH, "USDC"),
+            deployer,
+            deployer,
+            "USDCSuperVaultMorphoEulerAave",
+            type(uint256).max,
+            underlyingSuperformIds,
+            weights
+        );
         vm.expectRevert();
-        factory.createSuperVault(getContract(ETH, "USDC"), deployer, "USDCSuperVaultMorphoEulerAave", type(uint256).max, underlyingSuperformIds, weights);
+        factory.createSuperVault(
+            getContract(ETH, "USDC"),
+            deployer,
+            deployer,
+            "USDCSuperVaultMorphoEulerAave",
+            type(uint256).max,
+            underlyingSuperformIds,
+            weights
+        );
         vm.stopPrank();
     }
 }
