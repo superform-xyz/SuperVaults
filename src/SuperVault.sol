@@ -113,7 +113,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             revert ARRAY_LENGTH_MISMATCH();
         }
 
-        if (superRegistry_ == address(0) || strategist_ == address(0) || vaultManager_ == address(0)) {
+        if (superRegistry_ == address(0) || strategist_ == address(0)) {
             revert ZERO_ADDRESS();
         }
 
@@ -628,7 +628,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Updates the SuperVault data after rebalancing
     /// @param superPositions Address of the SuperPositions contract
     /// @param finalSuperformIds Array of Superform IDs to rebalance to
-    function _updatSVData(address superPositions, uint256[] memory finalSuperformIds) internal {
+    function _updateSVData(address superPositions, uint256[] memory finalSuperformIds) internal {
         uint256 totalWeight;
 
         uint256 length = finalSuperformIds.length;
