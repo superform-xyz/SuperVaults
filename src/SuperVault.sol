@@ -85,14 +85,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
         _;
     }
 
-    /// @notice Ensures that only the Vault Manager can call the function
-    modifier onlyVaultManager() {
-        if (SV.vaultManager != msg.sender) {
-            revert NOT_VAULT_MANAGER();
-        }
-        _;
-    }
-
     //////////////////////////////////////////////////////////////
     //                       CONSTRUCTOR                        //
     //////////////////////////////////////////////////////////////
@@ -179,7 +171,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     //////////////////////////////////////////////////////////////
 
     /// @inheritdoc ISuperVault
-    function setDepositLimit(uint256 depositLimit_) external override onlyVaultManager {
+    function setDepositLimit(uint256 depositLimit_) external override onlyManagement {
         depositLimit = depositLimit_;
 
         emit DepositLimitSet(depositLimit_);
@@ -281,7 +273,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     )
         external
         override
-        onlyVaultManager
+        onlyManagement
     {
         uint256 length = superformIds.length;
         if (length != isWhitelisted.length) revert ARRAY_LENGTH_MISMATCH();
