@@ -42,6 +42,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice The address of the SuperVault Strategist
     address public strategist;
 
+    /// @notice The address of the SuperVault Vault Manager
+    address public vaultManager;
+
     /// @notice The address of the SuperRegistry contract
     ISuperRegistry public immutable superRegistry;
 
@@ -54,14 +57,23 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice The maximum allowed slippage (1% = 100)
     uint256 public constant MAX_SLIPPAGE = 100;
 
-    /// @notice Struct containing SuperVault strategy data
-    SuperVaultStrategyData private SV;
+    /// @notice The number of Superforms in the vault
+    uint256 public numberOfSuperforms;
+
+    /// @notice The deposit limit for the vault
+    uint256 public depositLimit;
 
     /// @notice Mapping to track whitelisted Superform IDs
     mapping(uint256 => bool) public whitelistedSuperformIds;
 
     /// @notice Array of whitelisted Superform IDs for easy access
     uint256[] public whitelistedSuperformIdArray;
+
+    /// @notice Array of Superform IDs in the vault
+    uint256[] public superformIds;
+
+    /// @notice Array of weights for each Superform in the vault
+    uint256[] public weights;
 
     //////////////////////////////////////////////////////////////
     //                       MODIFIERS                          //
@@ -77,7 +89,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
     /// @notice Ensures that only the Vault Manager can call the function
     modifier onlyVaultManager() {
-        if (SV.vaultManager != msg.sender) {
+        if (vaultManager != msg.sender) {
             revert NOT_VAULT_MANAGER();
         }
         _;
@@ -105,7 +117,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     )
         BaseStrategy(asset_, name_)
     {
-        uint256 numberOfSuperforms = superformIds_.length;
+        numberOfSuperforms = superformIds_.length;
 
         if (numberOfSuperforms == 0) {
             revert ZERO_SUPERFORMS();
@@ -158,11 +170,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
         if (totalWeight != TOTAL_WEIGHT) revert INVALID_WEIGHTS();
 
         strategist = strategist_;
-        SV.vaultManager = vaultManager_;
-        SV.numberOfSuperforms = numberOfSuperforms;
-        SV.superformIds = superformIds_;
-        SV.weights = startingWeights_;
-        SV.depositLimit = depositLimit_;
+        vaultManager = vaultManager_;
+        superformIds = superformIds_;
+        weights = startingWeights_;
+        depositLimit = depositLimit_;
     }
 
     //////////////////////////////////////////////////////////////
@@ -171,7 +182,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
     /// @inheritdoc ISuperVault
     function setDepositLimit(uint256 depositLimit_) external override onlyVaultManager {
-        SV.depositLimit = depositLimit_;
+        depositLimit = depositLimit_;
 
         emit DepositLimitSet(depositLimit_);
     }
@@ -200,12 +211,11 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         {
             /// @dev caching to avoid multiple SLOADs
-            uint256 numberOfSuperforms = SV.numberOfSuperforms;
             uint256 foundCount;
 
             for (uint256 i; i < lenRebalanceFrom; ++i) {
                 for (uint256 j; j < numberOfSuperforms; ++j) {
-                    if (rebalanceArgs.superformIdsRebalanceFrom[i] == SV.superformIds[j]) {
+                    if (rebalanceArgs.superformIdsRebalanceFrom[i] == superformIds[j]) {
                         foundCount++;
                         break;
                     }
@@ -286,7 +296,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @inheritdoc ISuperVault
     function setVaultManager(address vaultManager_) external override onlyManagement {
         if (vaultManager_ == address(0)) revert ZERO_ADDRESS();
-        SV.vaultManager = vaultManager_;
+        vaultManager = vaultManager_;
 
         emit VaultManagerSet(vaultManager_);
     }
@@ -294,15 +304,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
     //////////////////////////////////////////////////////////////
     //                 EXTERNAL VIEW/PURE FUNCTIONS             //
     //////////////////////////////////////////////////////////////
-
-    /// @inheritdoc ISuperVault
-    function getSuperVaultData()
-        external
-        view
-        returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights)
-    {
-        return (SV.numberOfSuperforms, SV.superformIds, SV.weights);
-    }
 
     /// @inheritdoc ISuperVault
     function getIsWhitelisted(uint256[] memory superformIds) external view returns (bool[] memory isWhitelisted) {
@@ -363,7 +364,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @inheritdoc BaseStrategy
     function availableDepositLimit(address /*_owner*/ ) public view override returns (uint256) {
         uint256 totalAssets = TokenizedStrategy.totalAssets();
-        uint256 depositLimit = SV.depositLimit;
+        uint256 depositLimit = depositLimit;
         return totalAssets >= depositLimit ? 0 : depositLimit - totalAssets;
     }
 
@@ -414,8 +415,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @return totalAssets The total assets of the vault
     function _harvestAndReport() internal view override returns (uint256 totalAssets) {
         uint256 totalAssetsInVaults;
-        uint256 numberOfSuperforms = SV.numberOfSuperforms;
-        uint256[] memory superformIds = SV.superformIds;
+        uint256 numberOfSuperforms = numberOfSuperforms;
+        uint256[] memory superformIds = superformIds;
 
         address superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
 
@@ -446,9 +447,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
         view
         returns (MultiVaultSFData memory mvData)
     {
-        uint256 numberOfSuperforms = SV.numberOfSuperforms;
+        uint256 numberOfSuperforms = numberOfSuperforms;
 
-        mvData.superformIds = SV.superformIds;
+        mvData.superformIds = superformIds;
         mvData.amounts = new uint256[](numberOfSuperforms);
         mvData.maxSlippages = new uint256[](numberOfSuperforms);
         mvData.liqRequests = new LiqRequest[](numberOfSuperforms);
@@ -470,11 +471,11 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
             if (isDeposit) {
                 /// @notice rounding down to avoid one-off issue
-                mvData.amounts[i] = amount_.mulDiv(SV.weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
+                mvData.amounts[i] = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
                 mvData.outputAmounts[i] = superformContract.previewDepositTo(mvData.amounts[i]);
             } else {
                 /// @dev assets
-                mvData.outputAmounts[i] = amount_.mulDiv(SV.weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
+                mvData.outputAmounts[i] = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
                 /// @dev shares - in 4626Form this uses convertToShares in 5115Form this uses previewDeposit
                 mvData.amounts[i] = superformContract.previewDepositTo(mvData.outputAmounts[i]);
             }
@@ -685,10 +686,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
         /// @notice assign remaining weight to the last index
         newWeights[length - 1] = TOTAL_WEIGHT - totalAssignedWeight;
 
-        /// @dev update SV weights
-        SV.weights = newWeights;
-        SV.superformIds = finalSuperformIds;
-        SV.numberOfSuperforms = length;
+        /// @dev update SV data
+        weights = newWeights;
+        superformIds = finalSuperformIds;
+        numberOfSuperforms = length;
 
         emit RebalanceComplete(finalSuperformIds, newWeights);
     }
