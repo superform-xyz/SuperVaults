@@ -3,12 +3,13 @@ pragma solidity ^0.8.23;
 
 import "superform-core/test/utils/ProtocolActions.sol";
 import { VaultMock } from "superform-core/test/mocks/VaultMock.sol";
+
+import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
-import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
-import { ISuperVault } from "../src/ISuperVault.sol";
 import { SuperVault } from "../src/SuperVault.sol";
+import { ISuperVault } from "../src/interfaces/ISuperVault.sol";
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 
 contract SuperVaultHarness is SuperVault {

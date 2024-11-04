@@ -2,8 +2,8 @@
 pragma solidity ^0.8.23;
 
 import { SuperVault } from "./SuperVault.sol";
-import { ISuperVault } from "./ISuperVault.sol";
-import { ISuperVaultFactory } from "./ISuperVaultFactory.sol";
+import { ISuperVault } from "./interfaces/ISuperVault.sol";
+import { ISuperVaultFactory } from "./interfaces/ISuperVaultFactory.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { DataLib } from "superform-core/src/libraries/DataLib.sol";
 import { IBaseForm } from "superform-core/src/interfaces/IBaseForm.sol";

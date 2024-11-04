@@ -15,10 +15,12 @@ import { IBaseForm } from "superform-core/src/interfaces/IBaseForm.sol";
 import { IBaseRouter } from "superform-core/src/interfaces/IBaseRouter.sol";
 import { ISuperformRouterPlus } from "superform-core/src/interfaces/ISuperformRouterPlus.sol";
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
+
+import { ISuperVault, IERC1155Receiver } from "./interfaces/ISuperVault.sol";
 import { ISuperformFactory } from "superform-core/src/interfaces/ISuperformFactory.sol";
+
 import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
-import { ISuperVault, IERC1155Receiver } from "./ISuperVault.sol";
 
 /// @title SuperVault
 /// @notice A vault contract that manages multiple Superform positions
