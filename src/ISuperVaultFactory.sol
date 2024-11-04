@@ -95,7 +95,6 @@ interface ISuperVaultFactory {
     /// @dev Sets pending management to deployer, deployer will have to accept management in SuperVault
     /// @param asset_ Address of the asset token
     /// @param strategist_ Address of the strategist
-    /// @param vaultManager_ Address of the vault manager
     /// @param name_ Name of the strategy
     /// @param depositLimit_ Maximum deposit limit
     /// @param superformIds_ Array of Superform IDs
@@ -103,7 +102,6 @@ interface ISuperVaultFactory {
     function createSuperVault(
         address asset_,
         address strategist_,
-        address vaultManager_,
         string memory name_,
         uint256 depositLimit_,
         uint256[] memory superformIds_,
