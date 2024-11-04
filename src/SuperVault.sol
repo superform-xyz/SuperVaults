@@ -169,6 +169,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         strategist = strategist_;
         vaultManager = vaultManager_;
+        //superformIds = new uint256[](superformIds_.length);
         superformIds = superformIds_;
         weights = startingWeights_;
         depositLimit = depositLimit_;
@@ -302,15 +303,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
     //////////////////////////////////////////////////////////////
     //                 EXTERNAL VIEW/PURE FUNCTIONS             //
     //////////////////////////////////////////////////////////////
-
-    /// @inheritdoc ISuperVault
-    function getSuperVaultData()
-        external
-        view
-        returns (uint256 numberOfSuperforms, uint256[] memory superformIds, uint256[] memory weights)
-    {
-        return (numberOfSuperforms, superformIds, weights);
-    }
 
     /// @inheritdoc ISuperVault
     function getIsWhitelisted(uint256[] memory superformIds) external view returns (bool[] memory isWhitelisted) {
