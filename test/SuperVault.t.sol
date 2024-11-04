@@ -131,7 +131,6 @@ contract SuperVaultTest is ProtocolActions {
             getContract(ETH, "SuperRegistry"),
             getContract(ETH, "USDC"),
             deployer,
-            deployer,
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
@@ -281,7 +280,6 @@ contract SuperVaultTest is ProtocolActions {
             getContract(ETH, "SuperRegistry"),
             getContract(ETH, "USDC"),
             deployer,
-            deployer,
             "TestSuperVault",
             type(uint256).max,
             superformIds,
@@ -311,20 +309,16 @@ contract SuperVaultTest is ProtocolActions {
 
         // Test 1: ZERO_SUPERFORMS revert
         vm.expectRevert(abi.encodeWithSignature("ZERO_SUPERFORMS()"));
-        new SuperVault(superRegistry, asset, deployer, deployer, name, depositLimit, superformIds, startingWeights);
+        new SuperVault(superRegistry, asset, deployer, name, depositLimit, superformIds, startingWeights);
         superformIds = underlyingSuperformIds;
 
         // Test 2.1: ZERO_ADDRESS revert
         vm.expectRevert(abi.encodeWithSignature("ZERO_ADDRESS()"));
-        new SuperVault(address(0), asset, deployer, deployer, name, depositLimit, superformIds, startingWeights);
+        new SuperVault(address(0), asset, deployer, name, depositLimit, superformIds, startingWeights);
 
-        // Test 2.2: ZERO_ADDRESS revert
+        // Test 2: ZERO_ADDRESS revert
         vm.expectRevert(abi.encodeWithSignature("ZERO_ADDRESS()"));
-        new SuperVault(superRegistry, asset, address(0), deployer, name, depositLimit, superformIds, startingWeights);
-
-        // Test 2.3: ZERO_ADDRESS revert
-        vm.expectRevert(abi.encodeWithSignature("ZERO_ADDRESS()"));
-        new SuperVault(superRegistry, asset, deployer, address(0), name, depositLimit, superformIds, startingWeights);
+        new SuperVault(superRegistry, asset, address(0), name, depositLimit, superformIds, startingWeights);
 
         // Test 3: ARRAY_LENGTH_MISMATCH revert
         uint256[] memory mismatchedWeights = new uint256[](2);
@@ -340,7 +334,6 @@ contract SuperVaultTest is ProtocolActions {
             superRegistry,
             getContract(ETH, "DAI"),
             deployer,
-            deployer,
             name,
             depositLimit,
             superformIds,
@@ -354,7 +347,7 @@ contract SuperVaultTest is ProtocolActions {
         invalidWeights[2] = 3000;
 
         vm.expectRevert(abi.encodeWithSignature("INVALID_WEIGHTS()"));
-        new SuperVault(superRegistry, asset, deployer, deployer, name, depositLimit, superformIds, invalidWeights);
+        new SuperVault(superRegistry, asset, deployer, name, depositLimit, superformIds, invalidWeights);
     }
 
     function test_superVault_assertSuperPositions_splitAccordingToWeights() public {
