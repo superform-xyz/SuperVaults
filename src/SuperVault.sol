@@ -52,6 +52,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice The maximum allowed slippage (1% = 100)
     uint256 public constant MAX_SLIPPAGE = 100;
 
+    /// @notice The number of superforms in the vault
+    uint256 numberOfSuperforms;
+
+    /// @notice The deposit limit for the vault
+    uint256 depositLimit;
+
     /// @notice Struct containing SuperVault strategy data
     SuperVaultStrategyData private SV;
 
@@ -60,6 +66,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
     /// @notice Array of whitelisted Superform IDs for easy access
     uint256[] public whitelistedSuperformIdArray;
+
+    /// @notice Array of superform IDs in the vault
+    uint256[] superformIds;
+
+    /// @notice Array of weights for each superform in the vault
+    uint256[] weights;
 
     //////////////////////////////////////////////////////////////
     //                       MODIFIERS                          //
