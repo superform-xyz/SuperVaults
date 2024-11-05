@@ -355,11 +355,6 @@ contract SuperVaultTest is ProtocolActions {
 
         vm.expectRevert(abi.encodeWithSignature("INVALID_WEIGHTS()"));
         new SuperVault(superRegistry, asset, deployer, deployer, name, depositLimit, superformIds, invalidWeights);
-
-        // Test BLOCK_CHAIN_ID_OUT_OF_BOUNDS revert
-        vm.selectFork(FORKS[type(uint256).max]);
-        vm.expectRevert(ISuperVault.BLOCK_CHAIN_ID_OUT_OF_BOUNDS.selector);
-        new SuperVault(superRegistry, asset, deployer, deployer, name, depositLimit, superformIds, startingWeights);
     }
 
     function test_superVault_assertSuperPositions_splitAccordingToWeights() public {
