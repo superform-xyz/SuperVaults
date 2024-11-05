@@ -76,6 +76,11 @@ contract SuperVaultFactoryTest is ProtocolActions {
             }
         }
 
+        // Test zero address for superRegistry
+        vm.expectRevert(ISuperVaultFactory.ZERO_ADDRESS.selector);
+        factory = new SuperVaultFactory(address(0));
+
+        // Deploy the factory
         factory = new SuperVaultFactory(getContract(SOURCE_CHAIN, "SuperRegistry"));
 
         vm.stopPrank();
@@ -146,6 +151,20 @@ contract SuperVaultFactoryTest is ProtocolActions {
             type(uint256).max,
             new uint256[](0),
             new uint256[](0)
+        );
+        vm.stopPrank();
+
+        // Test caller not management
+        vm.startPrank(address(0xDEAD));
+        vm.expectRevert(ISuperVaultFactory.NOT_MANAGEMENT.selector);
+        factory.createSuperVault(
+            getContract(ETH, "USDC"),
+            deployer,
+            deployer,
+            "USDCSuperVaultMorphoEulerAave",
+            type(uint256).max,
+            underlyingSuperformIds,
+            weights
         );
         vm.stopPrank();
     }
