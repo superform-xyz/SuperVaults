@@ -141,13 +141,4 @@ contract SuperVaultFactory is ISuperVaultFactory, AccessControl {
     function getSuperVaultCount() external view returns (uint256) {
         return superVaults.length;
     }
-
-    //////////////////////////////////////////////////////////////
-    //                      INTERNAL FUNCTIONS                  //
-    //////////////////////////////////////////////////////////////
-
-    /// @dev returns the address for id_ from super registry
-    function _getAddress(bytes32 id_) internal view returns (address) {
-        return superRegistry.getAddress(id_);
-    }
 }
