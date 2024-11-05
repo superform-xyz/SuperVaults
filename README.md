@@ -24,6 +24,7 @@ SuperVaults allow users to deposit assets and automatically distribute them acro
 1. Clone the repository
 2. Install dependencies: `forge install`
 3. Compile contracts: `make build`
+4. Run tests: `make ftest`
 
 ## Tests
 
