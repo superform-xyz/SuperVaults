@@ -41,6 +41,50 @@ contract SuperVaultHarness is SuperVault {
     }
 }
 
+contract Mock5115VaultWithRewards is Test {
+    address public constant asset = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
+
+    address constant USDT = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
+    address constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
+
+    function getRewardTokens() external pure returns (address[] memory) {
+        address[] memory rewardTokens = new address[](2);
+        rewardTokens[0] = USDT;
+        rewardTokens[1] = USDC;
+
+        return rewardTokens;
+    }
+
+    function claimRewards(address user) external returns (uint256[] memory rewardAmounts) {
+        deal(USDT, user, 1e6);
+        deal(USDC, user, 2e6);
+
+        rewardAmounts = new uint256[](2);
+        rewardAmounts[0] = 1e6;
+        rewardAmounts[1] = 2e6;
+    }
+
+    function accruedRewards(address) external pure returns (uint256[] memory rewardAmounts) {
+        rewardAmounts = new uint256[](2);
+        rewardAmounts[0] = 1e6;
+        rewardAmounts[1] = 2e6;
+    }
+
+    function rewardIndexesStored() external pure returns (uint256[] memory indices) {
+        indices = new uint256[](2);
+        indices[0] = 1;
+        indices[1] = 2;
+    }
+
+    function isValidTokenIn(address) external pure returns (bool isValid) {
+        isValid = true;
+    }
+
+    function isValidTokenOut(address) external pure returns (bool isValid) {
+        isValid = true;
+    }
+}
+
 contract SuperVaultTest is ProtocolActions {
     using Math for uint256;
 
