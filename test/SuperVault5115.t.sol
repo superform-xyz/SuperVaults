@@ -18,6 +18,22 @@ contract Mock5115VaultWithRewards is Test {
     address constant USDT = 0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9;
     address constant USDC = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
 
+    function deposit(uint256 amount) external {
+        deal(USDC, msg.sender, amount);
+    }
+
+    function previewDeposit(uint256 amount) external view returns (uint256) {
+        return amount;
+    }
+
+    function withdraw(uint256 amount) external {
+        deal(USDT, msg.sender, amount);
+    }
+
+    function previewWithdraw(uint256 amount) external view returns (uint256) {
+        return amount;
+    }
+
     function getRewardTokens() external pure returns (address[] memory) {
         address[] memory rewardTokens = new address[](2);
         rewardTokens[0] = USDT;
@@ -109,22 +125,28 @@ contract SuperVault5115Test is ProtocolActions {
 
         targetVault = IStandardizedYield(targetSuperform.vault());
 
-        //(uint256[] memory idsByVault, ) = superformFactory.getAllSuperformsFromVault(address(targetVault));
-        //uint256 targetSuperformId = idsByVault[0];
+      //   (uint256[] memory idsByVault, ) = superformFactory.getAllSuperformsFromVault(address(targetVault));
+      //  uint256 targetSuperformId = idsByVault[0];
 
         superformFactory = ISuperformFactory(getContract(ARBI, "SuperformFactory"));
 
         (uint256 rewardsSuperformId, address rewardsSuperformCreated) =
             superformFactory.createSuperform(FORM_ID, address(rewardsVault));
         rewardsSuperform = ERC5115Form(rewardsSuperformCreated);
+        // rewardsWrapper = new ERC5115To4626Wrapper(
+        //     address(rewardsVault), 
+        //     getContract(ARBI, "wstETH"), 
+        //     USDC
+        // );
         rewardsWrapper = new ERC5115To4626Wrapper(
             address(rewardsVault), 
-            getContract(ARBI, "wstETH"), 
+            USDT, 
             USDC
         );
 
         superform5115Ids = new uint256[](1);
         superform5115Ids[0] = rewardsSuperformId;
+        //superform5115Ids[0] = targetSuperformId;
 
         uint256[] memory weights = new uint256[](1);
         weights[0] = 10000;
@@ -145,6 +167,8 @@ contract SuperVault5115Test is ProtocolActions {
         isWhitelisted5115[0] = true;
 
         ISuperVault(address(superVaultWith5115)).setWhitelist(superform5115Ids, isWhitelisted5115);
+
+        deal(USDT, deployer, 1e18);
 
         /// @dev after deploying superVault, deployer (a FB role) needs to accept management
         /// @dev also needs to be set as keeper (a new FB role)
@@ -191,7 +215,7 @@ contract SuperVault5115Test is ProtocolActions {
         superVaultWith5115.setVaultManager(newVaultManager);
     }
 
-    function test_superVault_assertSuperPositions_splitAccordingToWeights() public {
+    function test_superVault5115_depositAndWithdraw() public {
         vm.startPrank(deployer);
         vm.selectFork(FORKS[ARBI]);
 
