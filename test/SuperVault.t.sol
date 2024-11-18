@@ -10,6 +10,7 @@ import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol"
 
 import { SuperVault } from "../src/SuperVault.sol";
 import { ISuperVault } from "../src/interfaces/ISuperVault.sol";
+import { IStandardizedYield } from "../test/pendle/IStandardizedYield.sol";
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 
 contract SuperVaultHarness is SuperVault {
