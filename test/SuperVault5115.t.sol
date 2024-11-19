@@ -112,12 +112,6 @@ contract SuperVault5115Test is ProtocolActions {
         vm.startPrank(deployer);
 
         rewardsVault = new Mock5115VaultWithRewards();
-        
-        rewardsWrapper = new ERC5115To4626Wrapper(
-            address(rewardsVault),
-            getContract(ARBI, "wstETH"),
-            USDC
-        );
 
         targetSuperform = ERC5115Form(getContract(ARBI, "wstETHERC5115Superform3"));
 
@@ -133,6 +127,7 @@ contract SuperVault5115Test is ProtocolActions {
         (uint256 rewardsSuperformId, address rewardsSuperformCreated) =
             superformFactory.createSuperform(FORM_ID, address(rewardsVault));
         rewardsSuperform = ERC5115Form(rewardsSuperformCreated);
+        
         // rewardsWrapper = new ERC5115To4626Wrapper(
         //     address(rewardsVault), 
         //     getContract(ARBI, "wstETH"), 
@@ -224,11 +219,11 @@ contract SuperVault5115Test is ProtocolActions {
         // Perform a direct deposit to the SuperVault
         _directDeposit(SUPER_VAULT_ID, amount);
 
-        //_assertSuperPositionsSplitAccordingToWeights(ETH);
+        //_assertSuperPositionsSplitAccordingToWeights(ARBI);
 
         _directWithdraw(SUPER_VAULT_ID);
 
-        //_assertSuperPositionsAfterWithdraw(ETH);
+        //_assertSuperPositionsAfterWithdraw(ARBI);
 
         vm.stopPrank();
     }
