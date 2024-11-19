@@ -97,30 +97,40 @@ contract SuperVaultTest is ProtocolActions {
         address aaveUsdcVault = 0x73edDFa87C71ADdC275c2b9890f5c3a8480bC9E6;
         address eulerUsdcVault = 0x797DD80692c3b2dAdabCe8e30C07fDE5307D48a9;
         address sandclockUSDCVault = 0x096697720056886b905D0DEB0f06AfFB8e4665E5;
+        address syFUSDCVault = 0xf94A3798B18140b9Bc322314bbD36BC8e245E29B;
 
-        address[] memory vaultAddresses = new address[](4);
+        address syFUSDCVaultWrapper = ERC5115To4626WrapperFactory(
+            getContract(SOURCE_CHAIN, "ERC5115To4626WrapperFactory")
+        ).createWrapper(syFUSDCVault, getContract(SOURCE_CHAIN, "USDC"), getContract(SOURCE_CHAIN, "USDC"));
+
+        address[] memory vaultAddresses = new address[](5);
         vaultAddresses[0] = morphoVault;
         vaultAddresses[1] = aaveUsdcVault;
         vaultAddresses[2] = eulerUsdcVault;
         vaultAddresses[3] = sandclockUSDCVault;
+        vaultAddresses[4] = syFUSDCVaultWrapper;
 
         // Get the SuperformFactory
         SuperformFactory superformFactory = SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory"));
-        underlyingSuperformIds = new uint256[](vaultAddresses.length - 1);
+        underlyingSuperformIds = new uint256[](vaultAddresses.length - 2);
         allSuperformIds = new uint256[](vaultAddresses.length);
         address superformAddress;
         for (uint256 i = 0; i < vaultAddresses.length; i++) {
-            (allSuperformIds[i], superformAddress) = superformFactory.createSuperform(1, vaultAddresses[i]);
+            if (i != 4) {
+                (allSuperformIds[i], superformAddress) = superformFactory.createSuperform(1, vaultAddresses[i]);
+            } else {
+                (allSuperformIds[i], superformAddress) = superformFactory.createSuperform(3, vaultAddresses[i]);
+            }
         }
 
         sortAllSuperformIds();
 
-        for (uint256 i = 0; i < vaultAddresses.length - 1; i++) {
+        for (uint256 i = 0; i < vaultAddresses.length - 2; i++) {
             underlyingSuperformIds[i] = allSuperformIds[i];
         }
 
-        uint256[] memory weights = new uint256[](vaultAddresses.length - 1);
-        for (uint256 i = 0; i < vaultAddresses.length - 1; i++) {
+        uint256[] memory weights = new uint256[](vaultAddresses.length - 2);
+        for (uint256 i = 0; i < vaultAddresses.length - 2; i++) {
             weights[i] = uint256(10_000) / 3;
             if (i == 2) {
                 weights[i] += 1;
@@ -138,10 +148,13 @@ contract SuperVaultTest is ProtocolActions {
             underlyingSuperformIds,
             weights
         );
-        uint256[] memory superformIds = new uint256[](1);
+        uint256[] memory superformIds = new uint256[](2);
         superformIds[0] = allSuperformIds[3];
-        bool[] memory isWhitelisted = new bool[](1);
+        superformIds[1] = allSuperformIds[4];
+
+        bool[] memory isWhitelisted = new bool[](2);
         isWhitelisted[0] = true;
+        isWhitelisted[1] = true;
 
         ISuperVault(superVault).setWhitelist(superformIds, isWhitelisted);
 
@@ -650,6 +663,31 @@ contract SuperVaultTest is ProtocolActions {
         indexesRebalanceFrom = new uint256[](2);
         indexesRebalanceFrom[0] = 0;
         indexesRebalanceFrom[1] = 3;
+
+        _performRebalance(finalIndexes, finalWeightsTargets, indexesRebalanceFrom);
+        _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
+    }
+
+    function test_superVault_rebalance_5115() public {
+        vm.startPrank(deployer);
+        SOURCE_CHAIN = ETH;
+
+        uint256 amount = 10_000e6;
+        // Perform a direct deposit to the SuperVault
+        _directDeposit(SUPER_VAULT_ID1, amount);
+
+        _assertSuperPositionsSplitAccordingToWeights(ETH);
+
+        // This test will calculate an increase to index 0, put indexes 1 and 2 to 0% and add the rest to index 3
+        uint256[] memory finalIndexes = new uint256[](2);
+        finalIndexes[0] = 0;
+        finalIndexes[1] = 4;
+        uint256[] memory finalWeightsTargets = new uint256[](2);
+        finalWeightsTargets[0] = 3000;
+        finalWeightsTargets[1] = 7000;
+        uint256[] memory indexesRebalanceFrom = new uint256[](2);
+        indexesRebalanceFrom[0] = 1;
+        indexesRebalanceFrom[1] = 2;
 
         _performRebalance(finalIndexes, finalWeightsTargets, indexesRebalanceFrom);
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
