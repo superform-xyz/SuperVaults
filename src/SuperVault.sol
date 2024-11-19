@@ -131,6 +131,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
             revert ZERO_ADDRESS();
         }
 
+        if (block.chainid > type(uint64).max) {
+            revert BLOCK_CHAIN_ID_OUT_OF_BOUNDS();
+        }
+
         CHAIN_ID = uint64(block.chainid);
 
         superRegistry = ISuperRegistry(superRegistry_);
