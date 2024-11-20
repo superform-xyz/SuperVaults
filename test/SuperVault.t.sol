@@ -85,10 +85,6 @@ contract SuperVaultTest is ProtocolActions {
         SOURCE_CHAIN = ETH;
 
         SUPER_POSITIONS_SOURCE = getContract(SOURCE_CHAIN, "SuperPositions");
-        //vm.makePersistent(SUPER_POSITIONS_SOURCE);
-
-        // 1 - USDC SuperVault: Morpho + Euler + Aave USDC (3 vaults total to start)) -> ETH
-        //      Asset: USDC
 
         // Setup
         vm.selectFork(FORKS[SOURCE_CHAIN]);
@@ -119,7 +115,7 @@ contract SuperVaultTest is ProtocolActions {
             if (i != 4) {
                 (allSuperformIds[i], superformAddress) = superformFactory.createSuperform(1, vaultAddresses[i]);
             } else {
-                (allSuperformIds[i], superformAddress) = superformFactory.createSuperform(3, vaultAddresses[i]);
+                (allSuperformIds[i], superformAddress) = superformFactory.createSuperform(4, vaultAddresses[i]);
             }
         }
 
