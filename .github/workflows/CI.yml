@@ -52,7 +52,7 @@ jobs:
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: 9d74675bae8bfbd83428ff1343cbe2ae206c3383
+          version: nightly
 
       - name: Run Forge Tests
         run: "make ftest"
@@ -74,7 +74,7 @@ jobs:
       - name: "Install Foundry"
         uses: "foundry-rs/foundry-toolchain@v1"
         with:
-          version: 9d74675bae8bfbd83428ff1343cbe2ae206c3383
+          version: nightly
 
       - name: "Install Tenderly CLI"
         run: curl https://raw.githubusercontent.com/Tenderly/tenderly-cli/master/scripts/install-linux.sh | sudo sh
