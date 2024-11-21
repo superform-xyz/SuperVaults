@@ -58,6 +58,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice The maximum allowed slippage (1% = 100)
     uint256 public constant MAX_SLIPPAGE = 100;
 
+    /// @dev Tolerance constant to account for minAmountOut check in 5115
+    uint256 constant TOLERANCE_CONSTANT = 10 wei;
+
     /// @notice The number of Superforms in the vault
     uint256 public numberOfSuperforms;
 
@@ -431,11 +434,16 @@ contract SuperVault is BaseStrategy, ISuperVault {
     //////////////////////////////////////////////////////////////
     //                     INTERNAL FUNCTIONS                   //
     //////////////////////////////////////////////////////////////
-
+    struct PrepareMultiVaultDataLocalVars {
+        uint256 totalAssetsInVaults;
+        uint256[] spBalances;
+        uint256[] assetBalances;
+    }
     /// @notice Prepares multi-vault data for deposit or withdrawal
     /// @param amount_ The amount to deposit or withdraw
     /// @param isDeposit_ True if depositing, false if withdrawing
     /// @return mvData The prepared multi-vault data
+
     function _prepareMultiVaultData(
         uint256 amount_,
         bool isDeposit_
@@ -458,12 +466,32 @@ contract SuperVault is BaseStrategy, ISuperVault {
         mvData.outputAmounts = new uint256[](_numberOfSuperforms_);
 
         if (isDeposit_) {
-            mvData.extraFormData = _prepareDepositExtraFormData(_superformIds_, _numberOfSuperforms_);
+            mvData.extraFormData = _prepareDepositExtraFormData(mvData.superformIds, _numberOfSuperforms_);
         }
 
         /// @dev caching to avoid multiple MLOADs
         address superform;
         IBaseForm superformContract;
+
+        PrepareMultiVaultDataLocalVars memory vars;
+        vars.totalAssetsInVaults = 0;
+        vars.spBalances = new uint256[](_numberOfSuperforms_);
+        vars.assetBalances = new uint256[](_numberOfSuperforms_);
+
+        // First pass: get total assets and SP balances
+        for (uint256 i; i < _numberOfSuperforms_; ++i) {
+            (superform,,) = _superformIds_[i].getSuperform();
+            superformContract = IBaseForm(superform);
+
+            vars.spBalances[i] =
+                ISuperPositions(_getAddress(keccak256("SUPER_POSITIONS"))).balanceOf(address(this), _superformIds_[i]);
+            console.log("vars.spBalances[i]", vars.spBalances[i]);
+            vars.assetBalances[i] = superformContract.previewRedeemFrom(vars.spBalances[i]);
+            vars.totalAssetsInVaults += vars.assetBalances[i];
+        }
+
+        console.log("amount_", amount_);
+        console.log("totalAssetsInVaults", vars.totalAssetsInVaults);
 
         for (uint256 i; i < _numberOfSuperforms_; ++i) {
             mvData.liqRequests[i].token = address(asset);
@@ -476,24 +504,45 @@ contract SuperVault is BaseStrategy, ISuperVault {
                 mvData.amounts[i] = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
                 mvData.outputAmounts[i] = superformContract.previewDepositTo(mvData.amounts[i]);
             } else {
-                console.log("amount_", amount_);
-                console.log("superform", superform);
-                console.log("i", i);
-                console.log("weights[i]", weights[i]);
-                /// @dev assets
-                mvData.outputAmounts[i] = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
-                console.log("mvData.outputAmounts[i]", mvData.outputAmounts[i]);
-                /// @dev shares - in 4626Form this uses convertToShares in 5115Form this uses previewDeposit
-                mvData.amounts[i] = superformContract.previewDepositTo(mvData.outputAmounts[i]);
-                console.log("mvData.amounts[i]", mvData.amounts[i]);
-                uint256 spBalance = ISuperPositions(_getAddress(keccak256("SUPER_POSITIONS"))).balanceOf(
-                    address(this), _superformIds_[i]
-                );
-                console.log("spBalance", spBalance);
-                console.log(
-                    "delta",
-                    spBalance > mvData.amounts[i] ? spBalance - mvData.amounts[i] : mvData.amounts[i] - spBalance
-                );
+                // Check if vault is ERC5115
+                bool isERC5115;
+                try IERC5115To4626Wrapper(IBaseForm(superform).getVaultAddress()).getUnderlying5115Vault() returns (
+                    address
+                ) {
+                    mvData.liqRequests[i].interimToken = address(asset);
+                    isERC5115 = true;
+                } catch {
+                    // Not an ERC5115 vault, leave interimToken as default zero address
+                }
+
+                // Second pass: calculate proportional amounts
+                if (amount_ >= vars.totalAssetsInVaults) {
+                    // If withdrawing everything, use full SP balance
+                    mvData.amounts[i] = vars.spBalances[i];
+                    mvData.outputAmounts[i] =
+                        isERC5115 ? vars.assetBalances[i] - TOLERANCE_CONSTANT : vars.assetBalances[i];
+                    console.log("using full SP balance");
+                    console.log("i", i);
+                    console.log("mvData.amounts[i]", mvData.amounts[i]);
+                    console.log("mvData.outputAmounts[i]", mvData.outputAmounts[i]);
+                } else {
+                    // For partial withdrawals, use proportional amounts
+                    uint256 amountOut = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
+
+                    mvData.outputAmounts[i] = isERC5115 ? amountOut - TOLERANCE_CONSTANT : amountOut;
+
+                    mvData.amounts[i] = superformContract.previewDepositTo(amountOut);
+                    console.log("mvData.amounts[i]", mvData.amounts[i]);
+                    console.log("mvData.outputAmounts[i] (aka min tokenOut)", mvData.outputAmounts[i]);
+                    // cap at available balance
+                    if (mvData.amounts[i] > vars.spBalances[i]) {
+                        mvData.amounts[i] = vars.spBalances[i];
+                        console.log("capped at available balance");
+                        console.log("i", i);
+                        console.log("mvData.amounts[i]", mvData.amounts[i]);
+                        console.log("mvData.outputAmounts[i]", mvData.outputAmounts[i]);
+                    }
+                }
             }
 
             mvData.maxSlippages[i] = MAX_SLIPPAGE;
@@ -579,7 +628,18 @@ contract SuperVault is BaseStrategy, ISuperVault {
             (address superform,,) = superformIds_[i].getSuperform();
 
             if (isWithdraw_) {
-                data.outputAmounts[i] = IBaseForm(superform).previewRedeemFrom(amounts_[i]);
+                // Check if vault is ERC5115
+                bool isERC5115;
+                try IERC5115To4626Wrapper(IBaseForm(superform).getVaultAddress()).getUnderlying5115Vault() returns (
+                    address
+                ) {
+                    data.liqRequests[i].interimToken = address(asset);
+                    isERC5115 = true;
+                } catch {
+                    // Not an ERC5115 vault, leave interimToken as default zero address
+                }
+                uint256 amountOut = IBaseForm(superform).previewRedeemFrom(amounts_[i]);
+                data.outputAmounts[i] = isERC5115 ? amountOut - TOLERANCE_CONSTANT : amountOut;
             } else {
                 data.outputAmounts[i] = IBaseForm(superform).previewDepositTo(amounts_[i]);
             }
@@ -635,7 +695,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
                 // ERC4626 vault - no extra data needed
             } catch {
                 // ERC5115 vault - include asset address
-                extraData = abi.encode(IERC4626(vaultAddress).asset());
+                extraData = abi.encode(address(asset));
             }
 
             dataToEncode[i] = abi.encode(superformIds_[i], extraData);
