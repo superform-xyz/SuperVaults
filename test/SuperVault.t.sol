@@ -380,7 +380,7 @@ contract SuperVaultTest is ProtocolActions {
 
         _directWithdraw(SUPER_VAULT_ID1, false);
 
-        _assertSuperPositionsAfterFullWithdraw(ETH);
+        _assertUnderlyingBalanceAfterFullWithdraw(ETH);
 
         vm.stopPrank();
     }
@@ -437,7 +437,7 @@ contract SuperVaultTest is ProtocolActions {
 
         _xChainWithdraw(SUPER_VAULT_ID1, ETH, 2);
 
-        _assertSuperPositionsAfterFullWithdraw(ETH);
+        _assertUnderlyingBalanceAfterFullWithdraw(ETH);
 
         vm.stopPrank();
     }
@@ -706,17 +706,27 @@ contract SuperVaultTest is ProtocolActions {
         // Withdraw full balance
         _directWithdraw(SUPER_VAULT_ID1, false);
 
-        _assertSuperPositionsAfterFullWithdraw(ETH);
+        _assertUnderlyingBalanceAfterFullWithdraw(ETH);
     }
 
     function test_superVault_rebalance_5115_stress() public {
         vm.startPrank(deployer);
         SOURCE_CHAIN = ETH;
 
+        (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
+        address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
+
         // Initial deposit
         uint256 amount = 50_000e6; // Larger initial deposit
         _directDeposit(SUPER_VAULT_ID1, amount);
         _assertSuperPositionsSplitAccordingToWeights(ETH);
+
+        for (uint256 i = 0; i < allSuperformIds.length; i++) {
+            uint256 spBalanceInSuperVault =
+                SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(superVaultAddress, allSuperformIds[i]);
+
+            console.log("SuperPosition balance for underlying Superform", i, ":", spBalanceInSuperVault);
+        }
 
         // First rebalance: Move everything to index 4 (5115)
         uint256[] memory finalIndexes = new uint256[](1);
@@ -731,6 +741,13 @@ contract SuperVaultTest is ProtocolActions {
 
         _performRebalance(finalIndexes, finalWeightsTargets, indexesRebalanceFrom);
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
+
+        for (uint256 i = 0; i < allSuperformIds.length; i++) {
+            uint256 spBalanceInSuperVault =
+                SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(superVaultAddress, allSuperformIds[i]);
+
+            console.log("SuperPosition balance for underlying Superform", i, ":", spBalanceInSuperVault);
+        }
 
         console.log("----additional deposit----");
         // Additional deposit
@@ -750,6 +767,12 @@ contract SuperVaultTest is ProtocolActions {
         _performRebalance(finalIndexes, finalWeightsTargets, indexesRebalanceFrom);
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
 
+        for (uint256 i = 0; i < allSuperformIds.length; i++) {
+            uint256 spBalanceInSuperVault =
+                SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(superVaultAddress, allSuperformIds[i]);
+
+            console.log("SuperPosition balance for underlying Superform", i, ":", spBalanceInSuperVault);
+        }
         console.log("----partial withdraw----");
         // Partial withdraw
         _directWithdraw(SUPER_VAULT_ID1, true);
@@ -765,10 +788,16 @@ contract SuperVaultTest is ProtocolActions {
         _performRebalance(finalIndexes, finalWeightsTargets, indexesRebalanceFrom);
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
 
+        for (uint256 i = 0; i < allSuperformIds.length; i++) {
+            uint256 spBalanceInSuperVault =
+                SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(superVaultAddress, allSuperformIds[i]);
+
+            console.log("SuperPosition balance for underlying Superform", i, ":", spBalanceInSuperVault);
+        }
         // Final withdrawal
         console.log("----withdrawing remaining balance----");
         _directWithdraw(SUPER_VAULT_ID1, false);
-        _assertSuperPositionsAfterFullWithdraw(ETH);
+        _assertUnderlyingBalanceAfterFullWithdraw(ETH);
 
         vm.stopPrank();
     }
@@ -1398,7 +1427,7 @@ contract SuperVaultTest is ProtocolActions {
         return calculatedWeights;
     }
 
-    function _assertSuperPositionsAfterFullWithdraw(uint64 dstChain) internal {
+    function _assertUnderlyingBalanceAfterFullWithdraw(uint64 dstChain) internal {
         vm.selectFork(FORKS[dstChain]);
 
         (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
@@ -1409,10 +1438,11 @@ contract SuperVaultTest is ProtocolActions {
             uint256 spBalanceInSuperVault =
                 SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(superVaultAddress, underlyingSuperformIds[i]);
 
-            console.log("SuperPosition balance for underlying Superform", i, ":", spBalanceInSuperVault);
+            (address underlyingSuperform,,) = underlyingSuperformIds[i].getSuperform();
 
+            uint256 underlyingBalance = IBaseForm(underlyingSuperform).previewRedeemFrom(spBalanceInSuperVault);
             // Allow for 5 units of difference
-            assertLe(spBalanceInSuperVault, 5, "SuperPosition balance should not exceed 5 units after full withdrawal");
+            assertLe(underlyingBalance, 5, "Underlying balance should not exceed 5 units after full withdrawal");
         }
     }
 

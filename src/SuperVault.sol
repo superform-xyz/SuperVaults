@@ -21,8 +21,6 @@ import { IERC5115To4626Wrapper } from "superform-core/src/forms/interfaces/IERC5
 import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 
-import "forge-std/console.sol";
-
 /// @title SuperVault
 /// @notice A vault contract that manages multiple Superform positions
 /// @dev Inherits from BaseStrategy and implements ISuperVault and IERC1155Receiver
@@ -485,13 +483,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
             vars.spBalances[i] =
                 ISuperPositions(_getAddress(keccak256("SUPER_POSITIONS"))).balanceOf(address(this), _superformIds_[i]);
-            console.log("vars.spBalances[i]", vars.spBalances[i]);
             vars.assetBalances[i] = superformContract.previewRedeemFrom(vars.spBalances[i]);
             vars.totalAssetsInVaults += vars.assetBalances[i];
         }
-
-        console.log("amount_", amount_);
-        console.log("totalAssetsInVaults", vars.totalAssetsInVaults);
 
         for (uint256 i; i < _numberOfSuperforms_; ++i) {
             mvData.liqRequests[i].token = address(asset);
@@ -521,10 +515,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
                     mvData.amounts[i] = vars.spBalances[i];
                     mvData.outputAmounts[i] =
                         isERC5115 ? vars.assetBalances[i] - TOLERANCE_CONSTANT : vars.assetBalances[i];
-                    console.log("using full SP balance");
-                    console.log("i", i);
-                    console.log("mvData.amounts[i]", mvData.amounts[i]);
-                    console.log("mvData.outputAmounts[i]", mvData.outputAmounts[i]);
                 } else {
                     // For partial withdrawals, use proportional amounts
                     uint256 amountOut = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
@@ -532,15 +522,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
                     mvData.outputAmounts[i] = isERC5115 ? amountOut - TOLERANCE_CONSTANT : amountOut;
 
                     mvData.amounts[i] = superformContract.previewDepositTo(amountOut);
-                    console.log("mvData.amounts[i]", mvData.amounts[i]);
-                    console.log("mvData.outputAmounts[i] (aka min tokenOut)", mvData.outputAmounts[i]);
                     // cap at available balance
                     if (mvData.amounts[i] > vars.spBalances[i]) {
                         mvData.amounts[i] = vars.spBalances[i];
-                        console.log("capped at available balance");
-                        console.log("i", i);
-                        console.log("mvData.amounts[i]", mvData.amounts[i]);
-                        console.log("mvData.outputAmounts[i]", mvData.outputAmounts[i]);
                     }
                 }
             }
