@@ -24,6 +24,7 @@ remappings = [
     'tokenized-strategy/=lib/tokenized-strategy/src/',
     'superform-core/=lib/superform-core/',
     'ERC1155A/=lib/superform-core/lib/ERC1155A/src/',
+    'pigeon/=lib/superform-core/lib/pigeon/src/',
     'solady/=lib/superform-core/lib/pigeon/lib/solady/',
 ]
 
