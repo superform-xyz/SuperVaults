@@ -681,12 +681,19 @@ contract SuperVaultTest is ProtocolActions {
         uint256[] memory finalWeightsTargets = new uint256[](2);
         finalWeightsTargets[0] = 3000;
         finalWeightsTargets[1] = 7000;
-        uint256[] memory indexesRebalanceFrom = new uint256[](2);
-        indexesRebalanceFrom[0] = 1;
-        indexesRebalanceFrom[1] = 2;
+        uint256[] memory indexesRebalanceFrom = new uint256[](3);
+        indexesRebalanceFrom[0] = 0;
+        indexesRebalanceFrom[1] = 1;
+        indexesRebalanceFrom[2] = 2;
 
         _performRebalance(finalIndexes, finalWeightsTargets, indexesRebalanceFrom);
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
+
+        // Perform a direct deposit to the SuperVault
+        _directDeposit(SUPER_VAULT_ID1, amount);
+        console.log("----withdrawing full balance----");
+        // Withdraw full balance
+        _directWithdraw(SUPER_VAULT_ID1);
     }
 
     function test_superVault_rebalance_emptyAmountsRebalanceFrom() public {
@@ -1294,8 +1301,7 @@ contract SuperVaultTest is ProtocolActions {
             uint256 spBalanceInSuperVault =
                 SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(superVaultAddress, superformId);
             (address superform,,) = superformId.getSuperform();
-            underlyingBalanceOfSuperVault[i] =
-                IERC4626(IBaseForm(superform).getVaultAddress()).convertToAssets(spBalanceInSuperVault);
+            underlyingBalanceOfSuperVault[i] = IBaseForm(superform).previewRedeemFrom(spBalanceInSuperVault);
             totalUnderlyingBalanceOfSuperVault += underlyingBalanceOfSuperVault[i];
         }
 

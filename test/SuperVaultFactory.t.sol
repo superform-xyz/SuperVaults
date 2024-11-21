@@ -204,7 +204,9 @@ contract SuperVaultFactoryTest is ProtocolActions {
             underlyingSuperformIds,
             weights
         );
-        address(superVaultTest).call(abi.encodeWithSelector(ITokenizedStrategy.acceptManagement.selector));
+        (bool success,) =
+            address(superVaultTest).call(abi.encodeWithSelector(ITokenizedStrategy.acceptManagement.selector));
+        assertTrue(success);
         SuperVault(superVaultTest).setStrategist(address(0xdead));
         vm.stopPrank();
         assertEq(SuperVault(superVaultTest).strategist(), address(0xdead));
