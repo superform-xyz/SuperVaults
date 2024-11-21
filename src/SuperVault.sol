@@ -3,6 +3,7 @@ pragma solidity ^0.8.23;
 
 import { Address } from "openzeppelin/contracts/utils/Address.sol";
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
+import { EnumerableSet } from "openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
@@ -27,10 +28,11 @@ import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStra
 /// @dev Inherits from BaseStrategy and implements ISuperVault and IERC1155Receiver
 /// @author Superform Labs
 contract SuperVault is BaseStrategy, ISuperVault {
-    using Math for uint256;
-    using DataLib for uint256;
-    using SafeERC20 for ERC20;
+    using EnumerableSet for EnumerableSet.UintSet;
     using SafeERC20 for IERC20;
+    using SafeERC20 for ERC20;
+    using DataLib for uint256;
+    using Math for uint256;
 
     //////////////////////////////////////////////////////////////
     //                     STATE VARIABLES                      //
@@ -68,6 +70,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
     /// @notice Array of whitelisted Superform IDs for easy access
     uint256[] public whitelistedSuperformIdArray;
+
+    EnumerableSet.UintSet whitelistedSuperformIdsSet;
 
     /// @notice Array of Superform IDs in the vault
     uint256[] public superformIds;
