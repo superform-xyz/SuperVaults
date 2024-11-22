@@ -68,9 +68,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Mapping to track whitelisted Superform IDs
     mapping(uint256 => bool) public whitelistedSuperformIds;
 
-    /// @notice Array of whitelisted Superform IDs for easy access
-    uint256[] public whitelistedSuperformIdArray;
-
+    /// @notice Set of whitelisted Superform IDs for easy access
     EnumerableSet.UintSet whitelistedSuperformIdsSet;
 
     /// @notice Array of Superform IDs in the vault
@@ -319,7 +317,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
     /// @inheritdoc ISuperVault
     function getWhitelist() external view override returns (uint256[] memory) {
-        return whitelistedSuperformIdArray;
+        return whitelistedSuperformIdsSet.values();
     }
 
     /// @inheritdoc IERC1155Receiver
@@ -717,25 +715,16 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Adds a superform ID to the whitelist array
     /// @param superformId The Superform ID to add
     function _addToWhitelist(uint256 superformId) internal {
-        whitelistedSuperformIds[superformId] = true;
-        whitelistedSuperformIdArray.push(superformId);
+        if (!whitelistedSuperformIdsSet.contains(superformId)) {
+            whitelistedSuperformIds[superformId] = true;
+            whitelistedSuperformIdsSet.add(superformId);
+        }
     }
 
     /// @notice Removes a superform ID from the whitelist array
     /// @param superformId The Superform ID to remove
     function _removeFromWhitelist(uint256 superformId) internal {
         whitelistedSuperformIds[superformId] = false;
-
-        uint256 length = whitelistedSuperformIdArray.length;
-        // Find and remove the superformId from the array
-        for (uint256 i; i < length; ++i) {
-            if (whitelistedSuperformIdArray[i] == superformId) {
-                // Move the last element to the position being deleted
-                whitelistedSuperformIdArray[i] = whitelistedSuperformIdArray[length - 1];
-                // Remove the last element
-                whitelistedSuperformIdArray.pop();
-                break;
-            }
-        }
+        whitelistedSuperformIdsSet.remove(superformId);
     }
 }
