@@ -144,6 +144,8 @@ contract SuperVaultTest is ProtocolActions {
             underlyingSuperformIds,
             weights
         );
+        superVault.setValidFormImplementationIds(1);
+        superVault.setValidFormImplementationIds(4);
         uint256[] memory superformIds = new uint256[](2);
         superformIds[0] = allSuperformIds[3];
         superformIds[1] = allSuperformIds[4];

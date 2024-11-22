@@ -21,6 +21,7 @@ import { ISuperformFactory } from "superform-core/src/interfaces/ISuperformFacto
 import { IERC5115To4626Wrapper } from "superform-core/src/forms/interfaces/IERC5115To4626Wrapper.sol";
 import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
+import { ISuperformFactoryMinimal } from "./interfaces/ISuperformFactoryMinimal.sol";
 
 /// @title SuperVault
 /// @notice A vault contract that manages multiple Superform positions
@@ -51,6 +52,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
     /// @notice The address of the SuperformFactory contract
     ISuperformFactory public immutable superformFactory;
+
+    /// @notice The ID of the ERC5115 form implementation
+    uint32 public ERC5115FormImplementationId;
 
     /// @notice The total weight used for calculating proportions (10000 = 100%)
     uint256 public constant TOTAL_WEIGHT = 10_000;
@@ -191,6 +195,14 @@ contract SuperVault is BaseStrategy, ISuperVault {
         strategist = strategist_;
 
         emit StrategistSet(strategist_);
+    }
+
+    /// @notice Sets the valid form implementation IDs for the vault
+    /// @param ERC5115FormImplementationId_ The ID of the ERC5115 form implementation
+    function setValidFormImplementationIds(uint32 ERC5115FormImplementationId_) external onlyManagement {
+        if (ERC5115FormImplementationId_ == 0) revert ZERO_ID();
+
+        ERC5115FormImplementationId = ERC5115FormImplementationId_;
     }
 
     /// @inheritdoc ISuperVault
@@ -367,7 +379,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     }
 
     //////////////////////////////////////////////////////////////
-    //                     BASESTRATEGY OVERRIDES               //
+    //            BASESTRATEGY INTERNAL OVERRIDES               //
     //////////////////////////////////////////////////////////////
 
     /// @notice Deploys funds to the underlying Superforms
@@ -476,7 +488,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         vars.spBalances = new uint256[](_numberOfSuperforms_);
         vars.assetBalances = new uint256[](_numberOfSuperforms_);
 
-        // First pass: get total assets and SP balances
+        // 1. Snapshot assets and SP balances. This is relevant for withdraws and must be calculated in advance
         for (uint256 i; i < _numberOfSuperforms_; ++i) {
             (superform,,) = _superformIds_[i].getSuperform();
             superformContract = IBaseForm(superform);
@@ -487,6 +499,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             vars.totalAssetsInVaults += vars.assetBalances[i];
         }
 
+        // 2. Add logic for deposit/withdraw cases to calculate amounts
         for (uint256 i; i < _numberOfSuperforms_; ++i) {
             mvData.liqRequests[i].token = address(asset);
 
@@ -499,20 +512,18 @@ contract SuperVault is BaseStrategy, ISuperVault {
                 mvData.outputAmounts[i] = superformContract.previewDepositTo(mvData.amounts[i]);
             } else {
                 // Check if vault is ERC5115
-                bool isERC5115;
-                try IERC5115To4626Wrapper(IBaseForm(superform).getVaultAddress()).getUnderlying5115Vault() returns (
-                    address
-                ) {
+                bool isERC5115 = _isERC5115Vault(mvData.superformIds[i]);
+
+                if (isERC5115) {
                     mvData.liqRequests[i].interimToken = address(asset);
-                    isERC5115 = true;
-                } catch {
-                    // Not an ERC5115 vault, leave interimToken as default zero address
                 }
 
-                // Second pass: calculate proportional amounts
                 if (amount_ >= vars.totalAssetsInVaults) {
                     // If withdrawing everything, use full SP balance
                     mvData.amounts[i] = vars.spBalances[i];
+
+                    // If vault is ERC5115, subtract tolerance constant because of minAmountOut check to avoid errors.
+                    // This is slippage protected anyway at the form level
                     mvData.outputAmounts[i] =
                         isERC5115 ? vars.assetBalances[i] - TOLERANCE_CONSTANT : vars.assetBalances[i];
                 } else {
@@ -522,7 +533,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
                     mvData.outputAmounts[i] = isERC5115 ? amountOut - TOLERANCE_CONSTANT : amountOut;
 
                     mvData.amounts[i] = superformContract.previewDepositTo(amountOut);
-                    // cap at available balance
+
+                    // cap at available balance in case of an edge case to allow withdraw to succeed
                     if (mvData.amounts[i] > vars.spBalances[i]) {
                         mvData.amounts[i] = vars.spBalances[i];
                     }
@@ -530,6 +542,25 @@ contract SuperVault is BaseStrategy, ISuperVault {
             }
 
             mvData.maxSlippages[i] = MAX_SLIPPAGE;
+        }
+    }
+
+    /// @notice Checks if a vault is ERC5115 and validates form implementation IDs
+    /// @param superformId_ The superform ID to check
+    /// @return isERC5115 True if the vault is ERC5115
+    function _isERC5115Vault(uint256 superformId_) internal view returns (bool isERC5115) {
+        ISuperformFactoryMinimal factory = ISuperformFactoryMinimal(_getAddress(keccak256("SUPERFORM_FACTORY")));
+
+        address erc5115Implementation = factory.getFormImplementation(ERC5115FormImplementationId);
+
+        (address superform,,) = superformId_.getSuperform();
+
+        uint256 superFormId = factory.vaultFormImplCombinationToSuperforms(
+            keccak256(abi.encode(erc5115Implementation, IBaseForm(superform).getVaultAddress()))
+        );
+
+        if (superFormId == superformId_) {
+            isERC5115 = true;
         }
     }
 
@@ -613,15 +644,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
             if (isWithdraw_) {
                 // Check if vault is ERC5115
-                bool isERC5115;
-                try IERC5115To4626Wrapper(IBaseForm(superform).getVaultAddress()).getUnderlying5115Vault() returns (
-                    address
-                ) {
+                bool isERC5115 = _isERC5115Vault(superformIds_[i]);
+
+                if (isERC5115) {
                     data.liqRequests[i].interimToken = address(asset);
-                    isERC5115 = true;
-                } catch {
-                    // Not an ERC5115 vault, leave interimToken as default zero address
                 }
+
                 uint256 amountOut = IBaseForm(superform).previewRedeemFrom(amounts_[i]);
                 data.outputAmounts[i] = isERC5115 ? amountOut - TOLERANCE_CONSTANT : amountOut;
             } else {
