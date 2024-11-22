@@ -715,10 +715,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Adds a superform ID to the whitelist array
     /// @param superformId The Superform ID to add
     function _addToWhitelist(uint256 superformId) internal {
-        if (!whitelistedSuperformIdsSet.contains(superformId)) {
-            whitelistedSuperformIds[superformId] = true;
-            whitelistedSuperformIdsSet.add(superformId);
-        }
+        whitelistedSuperformIds[superformId] = true;
+        whitelistedSuperformIdsSet.add(superformId);
     }
 
     /// @notice Removes a superform ID from the whitelist array
