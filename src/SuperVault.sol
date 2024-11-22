@@ -475,10 +475,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
         mvData.receiverAddressSP = address(this);
         mvData.outputAmounts = new uint256[](_numberOfSuperforms_);
 
-        if (isDeposit_) {
-            mvData.extraFormData = _prepareDepositExtraFormData(mvData.superformIds, _numberOfSuperforms_);
-        }
-
         /// @dev caching to avoid multiple MLOADs
         address superform;
         IBaseForm superformContract;
@@ -498,6 +494,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             vars.assetBalances[i] = superformContract.previewRedeemFrom(vars.spBalances[i]);
             vars.totalAssetsInVaults += vars.assetBalances[i];
         }
+        bytes[] memory dataToEncode = new bytes[](_numberOfSuperforms_);
 
         // 2. Add logic for deposit/withdraw cases to calculate amounts
         for (uint256 i; i < _numberOfSuperforms_; ++i) {
@@ -507,6 +504,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
             superformContract = IBaseForm(superform);
 
             if (isDeposit_) {
+                dataToEncode[i] = _prepareDepositExtraFormDataForSuperform(mvData.superformIds[i]);
+
                 /// @notice rounding down to avoid one-off issue
                 mvData.amounts[i] = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
                 mvData.outputAmounts[i] = superformContract.previewDepositTo(mvData.amounts[i]);
@@ -542,6 +541,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
             }
 
             mvData.maxSlippages[i] = MAX_SLIPPAGE;
+        }
+
+        if (isDeposit_) {
+            mvData.extraFormData = abi.encode(_numberOfSuperforms_, dataToEncode);
         }
     }
 
@@ -634,12 +637,13 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         address routerPlus = _getAddress(keccak256("SUPERFORM_ROUTER_PLUS"));
 
-        uint256 length = superformIds_.length;
-        data.outputAmounts = new uint256[](length);
-        data.maxSlippages = new uint256[](length);
-        data.liqRequests = new LiqRequest[](length);
+        uint256 _numberOfSuperforms_ = superformIds_.length;
+        data.outputAmounts = new uint256[](_numberOfSuperforms_);
+        data.maxSlippages = new uint256[](_numberOfSuperforms_);
+        data.liqRequests = new LiqRequest[](_numberOfSuperforms_);
+        bytes[] memory dataToEncode = new bytes[](_numberOfSuperforms_);
 
-        for (uint256 i; i < length; ++i) {
+        for (uint256 i; i < _numberOfSuperforms_; ++i) {
             (address superform,,) = superformIds_[i].getSuperform();
 
             if (isWithdraw_) {
@@ -653,6 +657,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
                 uint256 amountOut = IBaseForm(superform).previewRedeemFrom(amounts_[i]);
                 data.outputAmounts[i] = isERC5115 ? amountOut - TOLERANCE_CONSTANT : amountOut;
             } else {
+                dataToEncode[i] = _prepareDepositExtraFormDataForSuperform(superformIds_[i]);
+
                 data.outputAmounts[i] = IBaseForm(superform).previewDepositTo(amounts_[i]);
             }
 
@@ -663,7 +669,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             data.liqRequests[i].liqDstChainId = CHAIN_ID;
         }
 
-        data.hasDstSwaps = new bool[](length);
+        data.hasDstSwaps = new bool[](_numberOfSuperforms_);
         data.retain4626s = data.hasDstSwaps;
         /// @dev routerPlus receives assets to continue the rebalance
         data.receiverAddress = routerPlus;
@@ -671,49 +677,25 @@ contract SuperVault is BaseStrategy, ISuperVault {
         data.receiverAddressSP = address(this);
 
         if (!isWithdraw_) {
-            data.extraFormData = _prepareDepositExtraFormData(superformIds_, length);
+            data.extraFormData = abi.encode(_numberOfSuperforms_, dataToEncode);
         }
         req.superformData = data;
     }
 
-    /// @notice Prepares extra form data to allow 5115 underlying superforms to succeed
-    /// @param superformIds_ Array of superform IDs
-    /// @param numberOfSuperforms_ Number of superforms
-    /// @return bytes Encoded extra form data
-    function _prepareDepositExtraFormData(
-        uint256[] memory superformIds_,
-        uint256 numberOfSuperforms_
-    )
-        internal
-        view
-        returns (bytes memory)
-    {
-        bytes[] memory dataToEncode = new bytes[](numberOfSuperforms_);
+    /// @notice Prepares deposit extra form data for a single superform
+    /// @param superformId_ The superform ID
+    /// @return bytes Encoded data for the superform
+    function _prepareDepositExtraFormDataForSuperform(uint256 superformId_) internal view returns (bytes memory) {
+        bool isERC5115 = _isERC5115Vault(superformId_);
 
-        for (uint256 i; i < numberOfSuperforms_; ++i) {
-            (address superform,,) = superformIds_[i].getSuperform();
-            address vaultAddress = IBaseForm(superform).getVaultAddress();
-            address underlyingVaultAddress = vaultAddress;
-
-            // Check if vault is ERC5115 and get underlying vault if so
-            try IERC5115To4626Wrapper(vaultAddress).getUnderlying5115Vault() returns (address underlyingVault) {
-                underlyingVaultAddress = underlyingVault;
-            } catch { }
-
-            // For ERC4626 vaults, no extra data needed
-            // For ERC5115 vaults, include asset address
-            bytes memory extraData;
-            try IERC4626(underlyingVaultAddress).asset() {
-                // ERC4626 vault - no extra data needed
-            } catch {
-                // ERC5115 vault - include asset address
-                extraData = abi.encode(address(asset));
-            }
-
-            dataToEncode[i] = abi.encode(superformIds_[i], extraData);
+        // For ERC4626 vaults, no extra data needed
+        // For ERC5115 vaults, include asset address
+        bytes memory extraData;
+        if (isERC5115) {
+            extraData = abi.encode(address(asset));
         }
 
-        return abi.encode(numberOfSuperforms_, dataToEncode);
+        return abi.encode(superformId_, extraData);
     }
 
     /// @notice Calculates amounts based on total output amount and weights
