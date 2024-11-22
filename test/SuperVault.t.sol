@@ -626,6 +626,13 @@ contract SuperVaultTest is ProtocolActions {
         vm.startPrank(deployer);
         SOURCE_CHAIN = ETH;
 
+        uint256[] memory superformIds = new uint256[](1);
+        superformIds[0] = allSuperformIds[3];
+        bool[] memory isWhitelisted = new bool[](1);
+        isWhitelisted[0] = true;
+
+        ISuperVault(superVault).setWhitelist(superformIds, isWhitelisted);
+
         uint256 amount = 10_000e6;
         // Perform a direct deposit to the SuperVault
         _directDeposit(SUPER_VAULT_ID1, amount);
