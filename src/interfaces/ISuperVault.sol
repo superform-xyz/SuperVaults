@@ -32,6 +32,9 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Error thrown when no superforms are provided in constructor
     error ZERO_SUPERFORMS();
 
+    /// @notice Error thrown when the ID is zero
+    error ZERO_ID();
+
     /// @notice Error thrown when the address is zero
     error ZERO_ADDRESS();
 
