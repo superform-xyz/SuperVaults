@@ -7,3 +7,6 @@
 [submodule "lib/superform-core"]
 	path = lib/superform-core
 	url = https://github.com/superform-xyz/superform-core
+[submodule "lib/superform-core.git"]
+	path = lib/superform-core.git
+	url = https://github.com/superform-xyz/superform-core.git
