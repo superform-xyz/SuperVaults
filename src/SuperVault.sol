@@ -8,7 +8,6 @@ import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/Sa
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { IERC165 } from "openzeppelin/contracts/utils/introspection/IERC165.sol";
-import { IERC4626 } from "openzeppelin/contracts/interfaces/IERC4626.sol";
 import { SingleDirectMultiVaultStateReq, MultiVaultSFData, LiqRequest } from "superform-core/src/types/DataTypes.sol";
 import { ISuperPositions } from "superform-core/src/interfaces/ISuperPositions.sol";
 import { DataLib } from "superform-core/src/libraries/DataLib.sol";
@@ -18,9 +17,7 @@ import { ISuperformRouterPlus } from "superform-core/src/interfaces/ISuperformRo
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
 import { ISuperVault, IERC1155Receiver } from "./interfaces/ISuperVault.sol";
 import { ISuperformFactory } from "superform-core/src/interfaces/ISuperformFactory.sol";
-import { IERC5115To4626Wrapper } from "superform-core/src/forms/interfaces/IERC5115To4626Wrapper.sol";
 import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
-import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 import { ISuperformFactoryMinimal } from "./interfaces/ISuperformFactoryMinimal.sol";
 
 /// @title SuperVault

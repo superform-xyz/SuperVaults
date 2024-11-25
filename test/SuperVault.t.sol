@@ -376,11 +376,11 @@ contract SuperVaultTest is ProtocolActions {
 
         uint256 amount = 500e6;
         // Perform a direct deposit to the SuperVault
-        _directDeposit(SUPER_VAULT_ID1, amount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, amount);
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
-        _directWithdraw(SUPER_VAULT_ID1, false);
+        _directWithdraw(deployer, SUPER_VAULT_ID1, false);
 
         _assertUnderlyingBalanceAfterFullWithdraw(ETH);
 
@@ -592,7 +592,7 @@ contract SuperVaultTest is ProtocolActions {
 
         uint256 amount = 10_000e6;
         // Perform a direct deposit to the SuperVault
-        _directDeposit(SUPER_VAULT_ID1, amount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, amount);
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
@@ -637,7 +637,7 @@ contract SuperVaultTest is ProtocolActions {
 
         uint256 amount = 10_000e6;
         // Perform a direct deposit to the SuperVault
-        _directDeposit(SUPER_VAULT_ID1, amount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, amount);
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
@@ -679,7 +679,7 @@ contract SuperVaultTest is ProtocolActions {
 
         uint256 amount = 10_000e6;
         // Perform a direct deposit to the SuperVault
-        _directDeposit(SUPER_VAULT_ID1, amount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, amount);
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
@@ -713,7 +713,7 @@ contract SuperVaultTest is ProtocolActions {
         console.log("----withdrawing full balance----");
 
         // Withdraw full balance
-        _directWithdraw(SUPER_VAULT_ID1, false);
+        _directWithdraw(deployer, SUPER_VAULT_ID1, false);
 
         _assertUnderlyingBalanceAfterFullWithdraw(ETH);
     }
@@ -727,7 +727,7 @@ contract SuperVaultTest is ProtocolActions {
 
         // Initial deposit
         uint256 amount = 50_000e6; // Larger initial deposit
-        _directDeposit(SUPER_VAULT_ID1, amount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, amount);
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
         for (uint256 i = 0; i < allSuperformIds.length; i++) {
@@ -760,7 +760,7 @@ contract SuperVaultTest is ProtocolActions {
 
         console.log("----additional deposit----");
         // Additional deposit
-        _directDeposit(SUPER_VAULT_ID1, amount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, amount);
 
         // Second rebalance: Split between index 0 and 4
         finalIndexes = new uint256[](2);
@@ -784,7 +784,7 @@ contract SuperVaultTest is ProtocolActions {
         }
         console.log("----partial withdraw----");
         // Partial withdraw
-        _directWithdraw(SUPER_VAULT_ID1, true);
+        _directWithdraw(deployer, SUPER_VAULT_ID1, true);
 
         // Third rebalance: Move everything back to index 4
         finalIndexes = new uint256[](1);
@@ -805,10 +805,144 @@ contract SuperVaultTest is ProtocolActions {
         }
         // Final withdrawal
         console.log("----withdrawing remaining balance----");
-        _directWithdraw(SUPER_VAULT_ID1, false);
+        _directWithdraw(deployer, SUPER_VAULT_ID1, false);
         _assertUnderlyingBalanceAfterFullWithdraw(ETH);
 
         vm.stopPrank();
+    }
+
+    function test_superVault_multiUser_stress() public {
+        vm.startPrank(deployer);
+        SOURCE_CHAIN = ETH;
+
+        (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
+        address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
+        address usdcToken = getContract(ETH, "USDC");
+
+        // Setup 5 users with different deposit amounts
+        address[] memory users_ = new address[](5);
+        uint256[] memory depositAmounts = new uint256[](5);
+        for (uint256 i = 0; i < 5; i++) {
+            users_[i] = address(uint160(0x1000 + i));
+            depositAmounts[i] = (i + 1) * 10_000e6; // 10k, 20k, 30k, 40k, 50k USDC
+            vm.deal(users_[i], 10 ether);
+            deal(usdcToken, users_[i], depositAmounts[i]);
+        }
+
+        // First wave of deposits (users 0, 1, 2)
+        for (uint256 i = 0; i < 3; i++) {
+            vm.startPrank(users_[i]);
+            _directDeposit(users_[i], SUPER_VAULT_ID1, depositAmounts[i]);
+            vm.stopPrank();
+        }
+
+        _assertSuperPositionsSplitAccordingToWeights(ETH);
+        console.log("----Initial deposits completed----");
+        _logSuperPositionBalances(superVaultAddress);
+
+        // First rebalance: Move majority to indexes 0 and 1
+        uint256[] memory finalIndexes = new uint256[](2);
+        finalIndexes[0] = 0;
+        finalIndexes[1] = 1;
+        uint256[] memory finalWeightsTargets = new uint256[](2);
+        finalWeightsTargets[0] = 6000; // 60%
+        finalWeightsTargets[1] = 4000; // 40%
+        uint256[] memory indexesRebalanceFrom = new uint256[](1);
+        indexesRebalanceFrom[0] = 2;
+
+        console.log("----First rebalance: 60% index 0, 40% index 1----");
+        vm.startPrank(deployer);
+        _performRebalance(finalIndexes, finalWeightsTargets, indexesRebalanceFrom);
+        _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
+        vm.stopPrank();
+        _logSuperPositionBalances(superVaultAddress);
+
+        console.log("----Second wave of deposits (users 3, 4) and first withdrawal (user 0)----");
+        vm.startPrank(users_[0]);
+        _directWithdraw(users_[0], SUPER_VAULT_ID1, true); // Partial withdrawal
+        vm.stopPrank();
+
+        for (uint256 i = 3; i < 5; i++) {
+            vm.startPrank(users_[i]);
+            _directDeposit(users_[i], SUPER_VAULT_ID1, depositAmounts[i]);
+            vm.stopPrank();
+        }
+
+        console.log("----After more deposits and first withdrawal----");
+        _logSuperPositionBalances(superVaultAddress);
+
+        // Second rebalance: Redistribute across all three indexes
+        finalIndexes = new uint256[](3);
+        finalIndexes[0] = 0;
+        finalIndexes[1] = 1;
+        finalIndexes[2] = 4;
+        finalWeightsTargets = new uint256[](3);
+        finalWeightsTargets[0] = 4000; // 40%
+        finalWeightsTargets[1] = 3000; // 30%
+        finalWeightsTargets[2] = 3000; // 30%
+        indexesRebalanceFrom = new uint256[](2);
+        indexesRebalanceFrom[0] = 0;
+        indexesRebalanceFrom[1] = 1;
+
+        console.log("----Second rebalance: 40/30/30 split----");
+        vm.startPrank(deployer);
+        _performRebalance(finalIndexes, finalWeightsTargets, indexesRebalanceFrom);
+        _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
+        vm.stopPrank();
+        _logSuperPositionBalances(superVaultAddress);
+
+        console.log("----Final wave of mixed actions----");
+        vm.startPrank(users_[1]);
+        _directWithdraw(users_[1], SUPER_VAULT_ID1, false); // Full withdrawal
+        vm.stopPrank();
+
+        vm.startPrank(users_[2]);
+        _directWithdraw(users_[2], SUPER_VAULT_ID1, true); // Partial withdrawal
+        vm.stopPrank();
+
+        vm.startPrank(users_[3]);
+        deal(usdcToken, users_[3], depositAmounts[3]); // Give more USDC
+        _directDeposit(users_[3], SUPER_VAULT_ID1, depositAmounts[3]); // Additional deposit
+        vm.stopPrank();
+
+        console.log("----After final wave of actions----");
+        _logSuperPositionBalances(superVaultAddress);
+
+        // Final withdrawals
+        for (uint256 i = 0; i < 5; i++) {
+            vm.startPrank(users_[i]);
+            uint256 spBalance = SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(users_[i], SUPER_VAULT_ID1);
+            if (spBalance > 0) {
+                _directWithdraw(users_[i], SUPER_VAULT_ID1, false);
+            }
+            vm.stopPrank();
+        }
+
+        console.log("----After all withdrawals----");
+        _logSuperPositionBalances(superVaultAddress);
+        _assertUnderlyingBalanceAfterFullWithdraw(ETH);
+
+        vm.stopPrank();
+    }
+
+    function _logSuperPositionBalances(address superVaultAddress) internal view {
+        for (uint256 i = 0; i < allSuperformIds.length; i++) {
+            uint256 spBalanceInSuperVault =
+                SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(superVaultAddress, allSuperformIds[i]);
+            (address superform,,) = allSuperformIds[i].getSuperform();
+            uint256 underlyingBalance = IBaseForm(superform).previewRedeemFrom(spBalanceInSuperVault);
+            console.log(
+                string.concat(
+                    "SuperPosition ",
+                    Strings.toString(i),
+                    " balance: ",
+                    Strings.toString(spBalanceInSuperVault),
+                    " (",
+                    Strings.toString(underlyingBalance),
+                    " underlying)"
+                )
+            );
+        }
     }
 
     function test_superVault_rebalance_emptyAmountsRebalanceFrom() public {
@@ -922,7 +1056,7 @@ contract SuperVaultTest is ProtocolActions {
 
             // Perform direct deposit for the current user
             vm.startPrank(depositUsers[i]);
-            _directDeposit(SUPER_VAULT_ID1, depositAmount);
+            _directDeposit(depositUsers[i], SUPER_VAULT_ID1, depositAmount);
             vm.stopPrank();
 
             // Warp 1 day
@@ -1001,7 +1135,7 @@ contract SuperVaultTest is ProtocolActions {
         // Perform a direct deposit to the SuperVault
         (address superform,,) = SUPER_VAULT_ID1.getSuperform();
         deal(IBaseForm(superform).getVaultAsset(), deployer, amount);
-        _directDeposit(SUPER_VAULT_ID1, amount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, amount);
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
@@ -1048,7 +1182,7 @@ contract SuperVaultTest is ProtocolActions {
     //               INTERNAL HELPERS                           //
     //////////////////////////////////////////////////////////////
 
-    function _directDeposit(uint256 superformId, uint256 amount) internal {
+    function _directDeposit(address user, uint256 superformId, uint256 amount) internal {
         vm.selectFork(FORKS[SOURCE_CHAIN]);
         (address superform,,) = superformId.getSuperform();
 
@@ -1061,8 +1195,8 @@ contract SuperVaultTest is ProtocolActions {
             "",
             false,
             false,
-            deployer,
-            deployer,
+            user,
+            user,
             ""
         );
 
@@ -1077,11 +1211,11 @@ contract SuperVaultTest is ProtocolActions {
         }(req);
     }
 
-    function _directWithdraw(uint256 superformId, bool partialWithdraw) internal {
+    function _directWithdraw(address user, uint256 superformId, bool partialWithdraw) internal {
         vm.selectFork(FORKS[SOURCE_CHAIN]);
         (address superform,,) = superformId.getSuperform();
         address superPositions = getContract(SOURCE_CHAIN, "SuperPositions");
-        uint256 amountToWithdraw = SuperPositions(superPositions).balanceOf(deployer, superformId);
+        uint256 amountToWithdraw = SuperPositions(superPositions).balanceOf(user, superformId);
 
         if (partialWithdraw) {
             amountToWithdraw = amountToWithdraw / 2;
@@ -1096,8 +1230,8 @@ contract SuperVaultTest is ProtocolActions {
             "",
             false,
             false,
-            deployer,
-            deployer,
+            user,
+            user,
             ""
         );
 
