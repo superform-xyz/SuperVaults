@@ -33,9 +33,13 @@ contract MainnetDeploySuperVaultFactory is CREATE3Script {
         /// @dev VAULT MANAGER is EMERGENCY ADMIN FOR NOW
         address VAULT_MANAGER = isStaging ? 0x6A5DD913fE3CB5193E09D1810a3b9ff1C0f9c0D6 : address(0);
         assert(VAULT_MANAGER != address(0));
+
+        console2.log("SuperRegistry:", superRegistry);
+        console2.log("Vault Manager:", VAULT_MANAGER);
         /// @notice Deploy SuperVaultFactory
+
         address superVaultFactory = create3.deploy(
-            getCreate3ContractSalt("SuperVaultFactory_V1"),
+            getCreate3ContractSalt("SuperVaultFactory"),
             abi.encodePacked(type(SuperVaultFactory).creationCode, abi.encode(superRegistry, VAULT_MANAGER))
         );
 

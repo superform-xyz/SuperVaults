@@ -99,8 +99,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
             1,
             4
         );
-        assertTrue(factory.isSuperVault(superVaultTest));
-        assertEq(factory.getSuperVaultCount(), 1);
+        assertEq(factory.getSuperVaults().length, 1);
         assert(superVaultTest != address(0));
     }
 
@@ -204,7 +203,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
             4
         );
         vm.stopPrank();
-        assertEq(factory.getSuperVaultCount(), 2);
+        assertEq(factory.getSuperVaults().length, 2);
     }
 
     function test_deployerIsPendingVaultManagement() public {
@@ -269,10 +268,9 @@ contract SuperVaultFactoryTest is ProtocolActions {
 
         // New owner should be able to create vault
         vm.startPrank(newOwner);
-        address superVaultTest = factory.createSuperVault(
+        factory.createSuperVault(
             USDC, deployer, deployer, "TestVault", type(uint256).max, underlyingSuperformIds, weights, 1, 4
         );
-        assertTrue(factory.isSuperVault(superVaultTest));
         vm.stopPrank();
     }
 }

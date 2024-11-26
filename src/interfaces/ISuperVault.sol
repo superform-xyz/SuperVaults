@@ -122,6 +122,14 @@ interface ISuperVault is IERC1155Receiver {
     /// @param depositLimit_ The new deposit limit
     function setDepositLimit(uint256 depositLimit_) external;
 
+    /// @notice Sets the strategist for the vault
+    /// @param strategist_ The new strategist
+    function setStrategist(address strategist_) external;
+
+    /// @notice Sets the valid form implementation IDs for the vault
+    /// @param formImplementationId_ The form implementation ID
+    function setValidFormImplementationIds(uint32 formImplementationId_) external;
+
     /// @notice Rebalances the SuperVault
     /// @notice rebalanceArgs_.superformIdsRebalanceFrom must be an ordered array of superform IDs with no duplicates
     /// @notice the logic is as follows:

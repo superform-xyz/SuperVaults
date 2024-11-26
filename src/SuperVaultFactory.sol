@@ -4,6 +4,7 @@ pragma solidity ^0.8.23;
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 import { SuperVault } from "./SuperVault.sol";
+import { ISuperVault } from "./interfaces/ISuperVault.sol";
 import { ISuperVaultFactory } from "./interfaces/ISuperVaultFactory.sol";
 
 /// @title SuperVaultFactory
@@ -16,13 +17,10 @@ contract SuperVaultFactory is ISuperVaultFactory, Ownable {
     //////////////////////////////////////////////////////////////
 
     /// @notice The SuperRegistry contract
-    address public immutable superRegistry;
+    address private immutable superRegistry;
 
     /// @notice The array of registered SuperVaults
-    address[] public superVaults;
-
-    /// @notice The mapping of registered SuperVaults
-    mapping(address superVault => bool registered) public registeredSuperVaults;
+    address[] private superVaults;
 
     //////////////////////////////////////////////////////////////
     //                       CONSTRUCTOR                        //
@@ -55,7 +53,7 @@ contract SuperVaultFactory is ISuperVaultFactory, Ownable {
     )
         external
         onlyOwner
-        returns (address)
+        returns (address superVault)
     {
         if (asset_ == address(0) || strategist_ == address(0)) {
             revert ZERO_ADDRESS();
@@ -72,7 +70,7 @@ contract SuperVaultFactory is ISuperVaultFactory, Ownable {
         }
 
         bytes32 salt = keccak256(abi.encodePacked(asset_, name_, superformIds_, startingWeights_, "SuperVault"));
-        address superVault = address(
+        superVault = address(
             new SuperVault{ salt: salt }(
                 superRegistry, asset_, strategist_, vaultManager_, name_, depositLimit_, superformIds_, startingWeights_
             )
@@ -82,8 +80,8 @@ contract SuperVaultFactory is ISuperVaultFactory, Ownable {
             revert ZERO_FORM_IMPLEMENTATION_ID();
         }
 
-        SuperVault(superVault).setValidFormImplementationIds(formImplementationId4626_);
-        SuperVault(superVault).setValidFormImplementationIds(formImplementationId5115_);
+        _setValidFormImplementationId(superVault, formImplementationId4626_);
+        _setValidFormImplementationId(superVault, formImplementationId5115_);
 
         /// @dev set performance fee to 0
         (bool success,) = address(superVault).call(abi.encodeCall(ITokenizedStrategy.setPerformanceFee, (0)));
@@ -99,9 +97,8 @@ contract SuperVaultFactory is ISuperVaultFactory, Ownable {
         }
 
         superVaults.push(superVault);
-        registeredSuperVaults[superVault] = true;
 
-        return superVault;
+        emit SuperVaultCreated(superVault);
     }
 
     //////////////////////////////////////////////////////////////
@@ -109,12 +106,15 @@ contract SuperVaultFactory is ISuperVaultFactory, Ownable {
     //////////////////////////////////////////////////////////////
 
     /// @inheritdoc ISuperVaultFactory
-    function isSuperVault(address superVault_) external view returns (bool) {
-        return registeredSuperVaults[superVault_];
+    function getSuperVaults() external view override returns (address[] memory) {
+        return superVaults;
     }
 
-    /// @inheritdoc ISuperVaultFactory
-    function getSuperVaultCount() external view returns (uint256) {
-        return superVaults.length;
+    //////////////////////////////////////////////////////////////
+    //                  INTERNAL FUNCTIONS                      //
+    //////////////////////////////////////////////////////////////
+
+    function _setValidFormImplementationId(address superVault_, uint32 formImplementationId_) internal {
+        ISuperVault(superVault_).setValidFormImplementationIds(formImplementationId_);
     }
 }
