@@ -78,10 +78,10 @@ contract SuperVaultFactoryTest is ProtocolActions {
 
         // Test zero address for superRegistry
         vm.expectRevert(ISuperVaultFactory.ZERO_ADDRESS.selector);
-        factory = new SuperVaultFactory(address(0));
+        factory = new SuperVaultFactory(address(0), deployer);
 
         // Deploy the factory
-        factory = new SuperVaultFactory(getContract(SOURCE_CHAIN, "SuperRegistry"));
+        factory = new SuperVaultFactory(getContract(SOURCE_CHAIN, "SuperRegistry"), deployer);
 
         vm.stopPrank();
     }

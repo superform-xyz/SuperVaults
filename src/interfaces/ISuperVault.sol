@@ -5,6 +5,7 @@ import { IERC1155Receiver } from "openzeppelin-contracts/contracts/token/ERC1155
 
 /// @title ISuperVault Interface
 /// @notice Interface for the SuperVault contract
+/// @author SuperForm Labs
 interface ISuperVault is IERC1155Receiver {
     //////////////////////////////////////////////////////////////
     //                  STRUCTS                                   //

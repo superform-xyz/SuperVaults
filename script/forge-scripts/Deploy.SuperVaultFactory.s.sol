@@ -4,8 +4,12 @@ pragma solidity ^0.8.23;
 import { Script } from "forge-std/Script.sol";
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
 import { SuperVaultFactory } from "src/SuperVaultFactory.sol";
+import "forge-std/console2.sol";
+import { CREATE3Script } from "../base/CREATE3Script.sol";
 
-contract MainnetDeploySuperVaultFactory is Script {
+contract MainnetDeploySuperVaultFactory is CREATE3Script {
+    constructor() CREATE3Script("V1") { }
+
     function deploySuperVaultFactory(bool isStaging, uint256 chainId) external {
         vm.startBroadcast();
 
@@ -26,9 +30,16 @@ contract MainnetDeploySuperVaultFactory is Script {
         }
 
         assert(superRegistry != address(0));
-
+        /// @dev VAULT MANAGER is EMERGENCY ADMIN FOR NOW
+        address VAULT_MANAGER = isStaging ? 0x6A5DD913fE3CB5193E09D1810a3b9ff1C0f9c0D6 : address(0);
+        assert(VAULT_MANAGER != address(0));
         /// @notice Deploy SuperVaultFactory
-        new SuperVaultFactory(superRegistry);
+        address superVaultFactory = create3.deploy(
+            getCreate3ContractSalt("SuperVaultFactory_V1"),
+            abi.encodePacked(type(SuperVaultFactory).creationCode, abi.encode(superRegistry, VAULT_MANAGER))
+        );
+
+        console2.log("SuperVaultFactory deployed to:", superVaultFactory);
 
         vm.stopBroadcast();
     }

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
+/// @title ISuperformFactoryMinimal Interface
+/// @notice Minimal interface for the SuperformFactory contract
+/// @author SuperForm Labs
 interface ISuperformFactoryMinimal {
     function vaultFormImplCombinationToSuperforms(bytes32 vaultFormImplementationCombination)
         external

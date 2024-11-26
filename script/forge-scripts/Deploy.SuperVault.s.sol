@@ -6,8 +6,7 @@ import { SuperVault } from "src/SuperVault.sol";
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
-
-import { console } from "forge-std/console.sol";
+import "forge-std/console2.sol";
 
 contract MainnetDeploySuperVault is Script {
     function deploySuperVault(bool isStaging, uint256 chainId) external {
@@ -76,7 +75,7 @@ contract MainnetDeploySuperVault is Script {
             revert("Set performance fee failed");
         }
 
-        /// @dev MANAGEMENT is PAYMENT ADMIN FOR NOW
+        /// @dev MANAGEMENT is PAYMENT ADMIN FOR NOW, will be EMERGENCY ADMIN ON PROD
         address MANAGEMENT = isStaging ? 0xc5c971e6B9F01dcf06bda896AEA3648eD6e3EFb3 : address(0);
 
         assert(MANAGEMENT != address(0));
@@ -88,7 +87,7 @@ contract MainnetDeploySuperVault is Script {
             revert("Set pending management failed");
         }
 
-        console.log("SuperVault deployed at: %s", superVault);
+        console2.log("SuperVault deployed at: %s", superVault);
 
         vm.stopBroadcast();
     }

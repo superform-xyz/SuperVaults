@@ -1,10 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.23;
 
-import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
-import { DataLib } from "superform-core/src/libraries/DataLib.sol";
 import { SuperVault } from "./SuperVault.sol";
 import { ISuperVaultFactory } from "./interfaces/ISuperVaultFactory.sol";
 
@@ -13,24 +11,12 @@ import { ISuperVaultFactory } from "./interfaces/ISuperVaultFactory.sol";
 /// @dev Implements the ISuperVaultFactory interface
 /// @author SuperForm Labs
 contract SuperVaultFactory is ISuperVaultFactory, Ownable {
-    using Math for uint256;
-    using DataLib for uint256;
-
     //////////////////////////////////////////////////////////////
     //                     STATE VARIABLES                      //
     //////////////////////////////////////////////////////////////
 
     /// @notice The SuperRegistry contract
     address public immutable superRegistry;
-
-    /// @notice The TokenizedStrategy contract
-    ITokenizedStrategy public immutable tokenizedStrategy;
-
-    /// @notice The number of SuperVaults created
-    uint256 public superVaultCount;
-
-    /// @notice The total weight used for calculating proportions (10000 = 100%)
-    uint256 public constant TOTAL_WEIGHT = 10_000;
 
     /// @notice The array of registered SuperVaults
     address[] public superVaults;
@@ -43,8 +29,8 @@ contract SuperVaultFactory is ISuperVaultFactory, Ownable {
     //////////////////////////////////////////////////////////////
 
     /// @param superRegistry_ Address of the SuperRegistry
-    constructor(address superRegistry_) Ownable(msg.sender) {
-        if (superRegistry_ == address(0)) {
+    constructor(address superRegistry_, address vaultManager_) Ownable(vaultManager_) {
+        if (superRegistry_ == address(0) || vaultManager_ == address(0)) {
             revert ZERO_ADDRESS();
         }
         superRegistry = superRegistry_;
@@ -86,7 +72,6 @@ contract SuperVaultFactory is ISuperVaultFactory, Ownable {
         }
 
         bytes32 salt = keccak256(abi.encodePacked(asset_, name_, superformIds_, startingWeights_, "SuperVault"));
-
         address superVault = address(
             new SuperVault{ salt: salt }(
                 superRegistry, asset_, strategist_, vaultManager_, name_, depositLimit_, superformIds_, startingWeights_
