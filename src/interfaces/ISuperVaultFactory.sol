@@ -11,11 +11,11 @@ interface ISuperVaultFactory {
     //                          ERRORS                          //
     //////////////////////////////////////////////////////////////
 
-    /// @notice Error thrown when the caller is not the management role
-    error NOT_MANAGEMENT();
-
     /// @notice Error thrown when the pending management is not set
     error FAILED_TO_SET_PENDING_MANAGEMENT();
+
+    /// @notice Error thrown when the performance fee is not set
+    error FAILED_TO_SET_PERFORMANCE_FEE();
 
     /// @notice Error thrown when duplicate final superform IDs are provided
     error DUPLICATE_FINAL_SUPERFORM_IDS();
@@ -25,6 +25,9 @@ interface ISuperVaultFactory {
 
     /// @notice Error thrown when the number of superforms is zero
     error ZERO_SUPERFORMS();
+
+    /// @notice Error thrown when the form implementation ID is zero
+    error ZERO_FORM_IMPLEMENTATION_ID();
 
     /// @notice Error thrown when the caller is not the Super Vaults strategist
     error NOT_SUPER_VAULTS_STRATEGIST();
@@ -85,6 +88,8 @@ interface ISuperVaultFactory {
     /// @param depositLimit_ Maximum deposit limit
     /// @param superformIds_ Array of Superform IDs
     /// @param startingWeights_ Array of starting weights for each Superform
+    /// @param formImplementationId4626_ Form implementation ID for 4626
+    /// @param formImplementationId5115_ Form implementation ID for 5115
     function createSuperVault(
         address asset_,
         address strategist_,
@@ -92,7 +97,9 @@ interface ISuperVaultFactory {
         string memory name_,
         uint256 depositLimit_,
         uint256[] memory superformIds_,
-        uint256[] memory startingWeights_
+        uint256[] memory startingWeights_,
+        uint32 formImplementationId4626_,
+        uint32 formImplementationId5115_
     )
         external
         returns (address);
