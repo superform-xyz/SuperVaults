@@ -5,6 +5,7 @@ import { IERC1155Receiver } from "openzeppelin-contracts/contracts/token/ERC1155
 
 /// @title ISuperVault Interface
 /// @notice Interface for the SuperVault contract
+/// @author SuperForm Labs
 interface ISuperVault is IERC1155Receiver {
     //////////////////////////////////////////////////////////////
     //                  STRUCTS                                   //
@@ -120,6 +121,14 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Sets the deposit limit for the vault
     /// @param depositLimit_ The new deposit limit
     function setDepositLimit(uint256 depositLimit_) external;
+
+    /// @notice Sets the strategist for the vault
+    /// @param strategist_ The new strategist
+    function setStrategist(address strategist_) external;
+
+    /// @notice Sets the valid form implementation IDs for the vault
+    /// @param formImplementationId_ The form implementation ID
+    function setValidFormImplementationIds(uint32 formImplementationId_) external;
 
     /// @notice Rebalances the SuperVault
     /// @notice rebalanceArgs_.superformIdsRebalanceFrom must be an ordered array of superform IDs with no duplicates

@@ -144,6 +144,9 @@ contract SuperVaultTest is ProtocolActions {
             underlyingSuperformIds,
             weights
         );
+        vm.expectRevert(ISuperVault.ZERO_ID.selector);
+        superVault.setValidFormImplementationIds(0);
+
         superVault.setValidFormImplementationIds(1);
         superVault.setValidFormImplementationIds(4);
         uint256[] memory superformIds = new uint256[](2);
@@ -1026,6 +1029,36 @@ contract SuperVaultTest is ProtocolActions {
         vm.expectRevert(abi.encodeWithSignature("ARRAY_LENGTH_MISMATCH()"));
 
         // Call rebalance function
+        SuperVault(payable(superVaultAddress)).rebalance(
+            ISuperVault.RebalanceArgs(
+                superformIdsRebalanceFrom, amountsRebalanceFrom, superformIdsRebalanceTo, weightsOfRedistribution, 100
+            )
+        );
+        vm.stopPrank();
+    }
+
+    function test_rebalance_onlyStrategist() public {
+        // Setup rebalance parameters
+        uint256[] memory superformIdsRebalanceFrom = new uint256[](1);
+        superformIdsRebalanceFrom[0] = underlyingSuperformIds[0];
+
+        uint256[] memory amountsRebalanceFrom = new uint256[](1);
+        amountsRebalanceFrom[0] = 1 ether;
+
+        uint256[] memory superformIdsRebalanceTo = new uint256[](1);
+        superformIdsRebalanceTo[0] = underlyingSuperformIds[1];
+
+        uint256[] memory weightsOfRedistribution = new uint256[](1);
+        weightsOfRedistribution[0] = 10_000;
+
+        // Get SuperVault address
+        (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
+        address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
+
+        // Try to call rebalance from a non-strategist address
+        address nonStrategist = address(0xdead);
+        vm.startPrank(nonStrategist);
+        vm.expectRevert(ISuperVault.NOT_SUPER_VAULTS_STRATEGIST.selector);
         SuperVault(payable(superVaultAddress)).rebalance(
             ISuperVault.RebalanceArgs(
                 superformIdsRebalanceFrom, amountsRebalanceFrom, superformIdsRebalanceTo, weightsOfRedistribution, 100

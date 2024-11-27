@@ -78,10 +78,10 @@ contract SuperVaultFactoryTest is ProtocolActions {
 
         // Test zero address for superRegistry
         vm.expectRevert(ISuperVaultFactory.ZERO_ADDRESS.selector);
-        factory = new SuperVaultFactory(address(0));
+        factory = new SuperVaultFactory(address(0), deployer);
 
         // Deploy the factory
-        factory = new SuperVaultFactory(getContract(SOURCE_CHAIN, "SuperRegistry"));
+        factory = new SuperVaultFactory(getContract(SOURCE_CHAIN, "SuperRegistry"), deployer);
 
         vm.stopPrank();
     }
@@ -95,10 +95,11 @@ contract SuperVaultFactoryTest is ProtocolActions {
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
-            weights
+            weights,
+            1,
+            4
         );
-        assertTrue(factory.isSuperVault(superVaultTest));
-        assertEq(factory.getSuperVaultCount(), 1);
+        assertEq(factory.getSuperVaults().length, 1);
         assert(superVaultTest != address(0));
     }
 
@@ -114,7 +115,9 @@ contract SuperVaultFactoryTest is ProtocolActions {
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
-            weights
+            weights,
+            1,
+            4
         );
 
         /// Test zero address for strategist
@@ -126,7 +129,9 @@ contract SuperVaultFactoryTest is ProtocolActions {
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
-            weights
+            weights,
+            1,
+            4
         );
 
         /// Test superform ids and weights length mismatch
@@ -138,7 +143,9 @@ contract SuperVaultFactoryTest is ProtocolActions {
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
-            new uint256[](underlyingSuperformIds.length - 1)
+            new uint256[](underlyingSuperformIds.length - 1),
+            1,
+            4
         );
 
         /// Test no superforms
@@ -150,13 +157,13 @@ contract SuperVaultFactoryTest is ProtocolActions {
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             new uint256[](0),
-            new uint256[](0)
+            new uint256[](0),
+            1,
+            4
         );
-        vm.stopPrank();
 
-        // Test caller not management
-        vm.startPrank(address(0xDEAD));
-        vm.expectRevert(ISuperVaultFactory.NOT_MANAGEMENT.selector);
+        /// Test zero formImplementationId
+        vm.expectRevert(ISuperVaultFactory.ZERO_FORM_IMPLEMENTATION_ID.selector);
         factory.createSuperVault(
             getContract(ETH, "USDC"),
             deployer,
@@ -164,7 +171,9 @@ contract SuperVaultFactoryTest is ProtocolActions {
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
-            weights
+            weights,
+            0, // Set formImplementationId to 0
+            4
         );
         vm.stopPrank();
     }
@@ -178,7 +187,9 @@ contract SuperVaultFactoryTest is ProtocolActions {
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
-            weights
+            weights,
+            1,
+            4
         );
         factory.createSuperVault(
             getContract(ETH, "USDC"),
@@ -187,10 +198,12 @@ contract SuperVaultFactoryTest is ProtocolActions {
             "TestSuperVault",
             100e18,
             underlyingSuperformIds,
-            weights
+            weights,
+            1,
+            4
         );
         vm.stopPrank();
-        assertEq(factory.getSuperVaultCount(), 2);
+        assertEq(factory.getSuperVaults().length, 2);
     }
 
     function test_deployerIsPendingVaultManagement() public {
@@ -202,7 +215,9 @@ contract SuperVaultFactoryTest is ProtocolActions {
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
-            weights
+            weights,
+            1,
+            4
         );
         (bool success,) =
             address(superVaultTest).call(abi.encodeWithSelector(ITokenizedStrategy.acceptManagement.selector));
@@ -221,7 +236,9 @@ contract SuperVaultFactoryTest is ProtocolActions {
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
-            weights
+            weights,
+            1,
+            4
         );
         vm.expectRevert();
         factory.createSuperVault(
@@ -231,7 +248,28 @@ contract SuperVaultFactoryTest is ProtocolActions {
             "USDCSuperVaultMorphoEulerAave",
             type(uint256).max,
             underlyingSuperformIds,
-            weights
+            weights,
+            1,
+            4
+        );
+        vm.stopPrank();
+    }
+
+    function test_transferOwnership() public {
+        address newOwner = address(0xBEEF);
+
+        address USDC = getContract(ETH, "USDC");
+
+        vm.startPrank(deployer);
+
+        console.log("current owner", factory.owner());
+        // Transfer ownership to new address
+        factory.transferOwnership(newOwner);
+
+        // New owner should be able to create vault
+        vm.startPrank(newOwner);
+        factory.createSuperVault(
+            USDC, deployer, deployer, "TestVault", type(uint256).max, underlyingSuperformIds, weights, 1, 4
         );
         vm.stopPrank();
     }

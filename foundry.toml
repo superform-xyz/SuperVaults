@@ -26,6 +26,8 @@ remappings = [
     'ERC1155A/=lib/superform-core/lib/ERC1155A/src/',
     'pigeon/=lib/superform-core/lib/pigeon/src/',
     'solady/=lib/superform-core/lib/pigeon/lib/solady/',
+    'solmate/=lib/create3-factory/lib/solmate/src/',
+    'create3-factory/=lib/create3-factory/',
 ]
 
 [profile.production]

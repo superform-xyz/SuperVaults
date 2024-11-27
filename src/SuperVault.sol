@@ -186,17 +186,15 @@ contract SuperVault is BaseStrategy, ISuperVault {
         emit DepositLimitSet(depositLimit_);
     }
 
-    /// @notice Sets the strategist for the vault
-    /// @param strategist_ The new strategist
-    function setStrategist(address strategist_) external onlyManagement {
+    /// @inheritdoc ISuperVault
+    function setStrategist(address strategist_) external override onlyManagement {
         strategist = strategist_;
 
         emit StrategistSet(strategist_);
     }
 
-    /// @notice Sets the valid form implementation IDs for the vault
-    /// @param ERC5115FormImplementationId_ The ID of the ERC5115 form implementation
-    function setValidFormImplementationIds(uint32 ERC5115FormImplementationId_) external onlyManagement {
+    /// @inheritdoc ISuperVault
+    function setValidFormImplementationIds(uint32 ERC5115FormImplementationId_) external override onlyManagement {
         if (ERC5115FormImplementationId_ == 0) revert ZERO_ID();
 
         ERC5115FormImplementationId = ERC5115FormImplementationId_;

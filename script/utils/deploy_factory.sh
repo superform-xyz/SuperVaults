@@ -9,9 +9,9 @@ export OPTIMISM_RPC_URL=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/OPTIMISM_RPC_U
 export BASE_RPC_URL=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/BASE_RPC_URL/credential)
 export FANTOM_RPC_URL=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/FANTOM_RPC_URL/credential)
 
-Run the script
-echo Deploying super vault: ...
+# Run the script
+echo Deploying super vault factory: ...
 
-forge script script/forge-scripts/Deploy.SuperVault.s.sol:MainnetDeploySuperVault --sig "deploySuperVault(bool,uint256)" true 8453 --rpc-url $BASE_RPC_URL --legacy --account default --sender 0x48aB8AdF869Ba9902Ad483FB1Ca2eFDAb6eabe92 --broadcast
+forge script script/forge-scripts/Deploy.SuperVaultFactory.s.sol:MainnetDeploySuperVaultFactory --sig "deploySuperVaultFactory(bool,uint256)" true 8453 --rpc-url $BASE_RPC_URL --account default --sender 0x48aB8AdF869Ba9902Ad483FB1Ca2eFDAb6eabe92 --broadcast
 
 

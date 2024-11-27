@@ -10,3 +10,6 @@
 [submodule "lib/superform-core.git"]
 	path = lib/superform-core.git
 	url = https://github.com/superform-xyz/superform-core.git
+[submodule "lib/create3-factory"]
+	path = lib/create3-factory
+	url = https://github.com/ZeframLou/create3-factory
