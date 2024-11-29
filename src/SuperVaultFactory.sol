@@ -48,7 +48,6 @@ contract SuperVaultFactory is ISuperVaultFactory, Ownable {
         uint256 depositLimit_,
         uint256[] memory superformIds_,
         uint256[] memory startingWeights_,
-        uint32 formImplementationId4626_,
         uint32 formImplementationId5115_
     )
         external
@@ -76,12 +75,11 @@ contract SuperVaultFactory is ISuperVaultFactory, Ownable {
             )
         );
 
-        if (formImplementationId4626_ == 0 || formImplementationId5115_ == 0) {
+        if (formImplementationId5115_ == 0) {
             revert ZERO_FORM_IMPLEMENTATION_ID();
         }
 
-        _setValidFormImplementationId(superVault, formImplementationId4626_);
-        _setValidFormImplementationId(superVault, formImplementationId5115_);
+        ISuperVault(superVault).setValidFormImplementationIds(formImplementationId5115_);
 
         /// @dev set performance fee to 0
         (bool success,) = address(superVault).call(abi.encodeCall(ITokenizedStrategy.setPerformanceFee, (0)));
@@ -108,13 +106,5 @@ contract SuperVaultFactory is ISuperVaultFactory, Ownable {
     /// @inheritdoc ISuperVaultFactory
     function getNumberOfSuperVaults() external view override returns (uint256) {
         return superVaults.length;
-    }
-
-    //////////////////////////////////////////////////////////////
-    //                  INTERNAL FUNCTIONS                      //
-    //////////////////////////////////////////////////////////////
-
-    function _setValidFormImplementationId(address superVault_, uint32 formImplementationId_) internal {
-        ISuperVault(superVault_).setValidFormImplementationIds(formImplementationId_);
     }
 }

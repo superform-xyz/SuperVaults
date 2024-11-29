@@ -96,7 +96,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
             type(uint256).max,
             underlyingSuperformIds,
             weights,
-            1,
             4
         );
         assertEq(factory.getNumberOfSuperVaults(), 1);
@@ -116,7 +115,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
             type(uint256).max,
             underlyingSuperformIds,
             weights,
-            1,
             4
         );
 
@@ -130,7 +128,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
             type(uint256).max,
             underlyingSuperformIds,
             weights,
-            1,
             4
         );
 
@@ -144,7 +141,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
             type(uint256).max,
             underlyingSuperformIds,
             new uint256[](underlyingSuperformIds.length - 1),
-            1,
             4
         );
 
@@ -158,7 +154,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
             type(uint256).max,
             new uint256[](0),
             new uint256[](0),
-            1,
             4
         );
 
@@ -172,8 +167,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
             type(uint256).max,
             underlyingSuperformIds,
             weights,
-            0, // Set formImplementationId to 0
-            4
+            0
         );
         vm.stopPrank();
     }
@@ -188,7 +182,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
             type(uint256).max,
             underlyingSuperformIds,
             weights,
-            1,
             4
         );
         factory.createSuperVault(
@@ -199,7 +192,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
             100e18,
             underlyingSuperformIds,
             weights,
-            1,
             4
         );
         vm.stopPrank();
@@ -216,7 +208,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
             type(uint256).max,
             underlyingSuperformIds,
             weights,
-            1,
             4
         );
         (bool success,) =
@@ -237,7 +228,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
             type(uint256).max,
             underlyingSuperformIds,
             weights,
-            1,
             4
         );
         vm.expectRevert();
@@ -249,7 +239,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
             type(uint256).max,
             underlyingSuperformIds,
             weights,
-            1,
             4
         );
         vm.stopPrank();
@@ -269,7 +258,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
         // New owner should be able to create vault
         vm.startPrank(newOwner);
         factory.createSuperVault(
-            USDC, deployer, deployer, "TestVault", type(uint256).max, underlyingSuperformIds, weights, 1, 4
+            USDC, deployer, deployer, "TestVault", type(uint256).max, underlyingSuperformIds, weights, 4
         );
         vm.stopPrank();
     }
