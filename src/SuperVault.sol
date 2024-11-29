@@ -440,12 +440,14 @@ contract SuperVault is BaseStrategy, ISuperVault {
         uint256 totalAssetsInVaults;
         uint256[] spBalances;
         uint256[] assetBalances;
+        address superform;
+        address superPositions;
     }
+
     /// @notice Prepares multi-vault data for deposit or withdrawal
     /// @param amount_ The amount to deposit or withdraw
     /// @param isDeposit_ True if depositing, false if withdrawing
     /// @return mvData The prepared multi-vault data
-
     function _prepareMultiVaultData(
         uint256 amount_,
         bool isDeposit_
@@ -468,21 +470,20 @@ contract SuperVault is BaseStrategy, ISuperVault {
         mvData.outputAmounts = new uint256[](_numberOfSuperforms_);
 
         /// @dev caching to avoid multiple MLOADs
-        address superform;
+
         IBaseForm superformContract;
 
         PrepareMultiVaultDataLocalVars memory vars;
         vars.totalAssetsInVaults = 0;
         vars.spBalances = new uint256[](_numberOfSuperforms_);
         vars.assetBalances = new uint256[](_numberOfSuperforms_);
-
+        vars.superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
         // 1. Snapshot assets and SP balances. This is relevant for withdraws and must be calculated in advance
         for (uint256 i; i < _numberOfSuperforms_; ++i) {
-            (superform,,) = _superformIds_[i].getSuperform();
-            superformContract = IBaseForm(superform);
+            (vars.superform,,) = _superformIds_[i].getSuperform();
+            superformContract = IBaseForm(vars.superform);
 
-            vars.spBalances[i] =
-                ISuperPositions(_getAddress(keccak256("SUPER_POSITIONS"))).balanceOf(address(this), _superformIds_[i]);
+            vars.spBalances[i] = ISuperPositions(vars.superPositions).balanceOf(address(this), _superformIds_[i]);
             vars.assetBalances[i] = superformContract.previewRedeemFrom(vars.spBalances[i]);
             vars.totalAssetsInVaults += vars.assetBalances[i];
         }
@@ -492,8 +493,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
         for (uint256 i; i < _numberOfSuperforms_; ++i) {
             mvData.liqRequests[i].token = address(asset);
 
-            (superform,,) = mvData.superformIds[i].getSuperform();
-            superformContract = IBaseForm(superform);
+            (vars.superform,,) = mvData.superformIds[i].getSuperform();
+            superformContract = IBaseForm(vars.superform);
 
             if (isDeposit_) {
                 dataToEncode[i] = _prepareDepositExtraFormDataForSuperform(mvData.superformIds[i]);
