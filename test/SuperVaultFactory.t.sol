@@ -99,7 +99,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
             1,
             4
         );
-        assertEq(factory.getSuperVaults().length, 1);
+        assertEq(factory.getNumberOfSuperVaults(), 1);
         assert(superVaultTest != address(0));
     }
 
@@ -203,7 +203,7 @@ contract SuperVaultFactoryTest is ProtocolActions {
             4
         );
         vm.stopPrank();
-        assertEq(factory.getSuperVaults().length, 2);
+        assertEq(factory.getNumberOfSuperVaults(), 2);
     }
 
     function test_deployerIsPendingVaultManagement() public {

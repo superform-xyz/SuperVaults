@@ -20,7 +20,7 @@ contract SuperVaultFactory is ISuperVaultFactory, Ownable {
     address private immutable superRegistry;
 
     /// @notice The array of registered SuperVaults
-    address[] private superVaults;
+    address[] public superVaults;
 
     //////////////////////////////////////////////////////////////
     //                       CONSTRUCTOR                        //
@@ -106,8 +106,8 @@ contract SuperVaultFactory is ISuperVaultFactory, Ownable {
     //////////////////////////////////////////////////////////////
 
     /// @inheritdoc ISuperVaultFactory
-    function getSuperVaults() external view override returns (address[] memory) {
-        return superVaults;
+    function getNumberOfSuperVaults() external view override returns (uint256) {
+        return superVaults.length;
     }
 
     //////////////////////////////////////////////////////////////

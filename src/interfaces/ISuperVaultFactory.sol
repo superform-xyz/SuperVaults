@@ -43,8 +43,8 @@ interface ISuperVaultFactory {
     //////////////////////////////////////////////////////////////
 
     /// @notice Returns all SuperVaults
-    /// @return Array of SuperVault addresses
-    function getSuperVaults() external view returns (address[] memory);
+    /// @return Number of SuperVaults
+    function getNumberOfSuperVaults() external view returns (uint256);
 
     //////////////////////////////////////////////////////////////
     //              EXTERNAL WRITE FUNCTIONS                    //
