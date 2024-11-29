@@ -223,6 +223,23 @@ contract SuperVaultTest is ProtocolActions {
         superVault.setWhitelist(superformIds, isWhitelisted);
     }
 
+    function test_RevertWhen_AddingDuplicateToWhitelist() public {
+        // Get initial whitelist
+        uint256[] memory initialWhitelist = superVault.getWhitelist();
+        assertGt(initialWhitelist.length, 0, "Initial whitelist should not be empty");
+
+        // Try to add an already whitelisted superformId again
+        uint256[] memory superformIds = new uint256[](1);
+        superformIds[0] = initialWhitelist[0]; // Use first whitelisted ID
+
+        bool[] memory isWhitelisted = new bool[](1);
+        isWhitelisted[0] = true;
+
+        vm.prank(deployer);
+        vm.expectRevert(ISuperVault.SUPERFORM_ALREADY_WHITELISTED.selector);
+        superVault.setWhitelist(superformIds, isWhitelisted);
+    }
+
     function test_setVaultManager() public {
         address newVaultManager = address(0xDEAD);
         // Test successful vault manager update

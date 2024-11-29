@@ -68,9 +68,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice The deposit limit for the vault
     uint256 public depositLimit;
 
-    /// @notice Mapping to track whitelisted Superform IDs
-    mapping(uint256 => bool) public whitelistedSuperformIds;
-
     /// @notice Set of whitelisted Superform IDs for easy access
     EnumerableSet.UintSet whitelistedSuperformIdsSet;
 
@@ -241,7 +238,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             if (i >= 1 && rebalanceArgs_.finalSuperformIds[i] <= rebalanceArgs_.finalSuperformIds[i - 1]) {
                 revert DUPLICATE_FINAL_SUPERFORM_IDS();
             }
-            if (!whitelistedSuperformIds[rebalanceArgs_.finalSuperformIds[i]]) {
+            if (!whitelistedSuperformIdsSet.contains(rebalanceArgs_.finalSuperformIds[i])) {
                 revert SUPERFORM_NOT_WHITELISTED();
             }
         }
@@ -316,7 +313,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         isWhitelisted = new bool[](length);
 
         for (uint256 i; i < length; ++i) {
-            isWhitelisted[i] = whitelistedSuperformIds[superformIds_[i]];
+            isWhitelisted[i] = whitelistedSuperformIdsSet.contains(superformIds_[i]);
         }
 
         return isWhitelisted;
@@ -806,12 +803,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @param superformId_ The Superform ID to change
     /// @param isWhitelisted_ Whether to whitelist or blacklist
     function _changeSuperformWhitelist(uint256 superformId_, bool isWhitelisted_) internal {
-        bool currentlyWhitelisted = whitelistedSuperformIds[superformId_];
+        bool currentlyWhitelisted = whitelistedSuperformIdsSet.contains(superformId_);
 
         // Only process if there's an actual change
         if (currentlyWhitelisted != isWhitelisted_) {
-            whitelistedSuperformIds[superformId_] = isWhitelisted_;
-
             if (isWhitelisted_) {
                 _addToWhitelist(superformId_);
             } else {
@@ -825,14 +820,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Adds a superform ID to the whitelist array
     /// @param superformId The Superform ID to add
     function _addToWhitelist(uint256 superformId) internal {
-        whitelistedSuperformIds[superformId] = true;
         whitelistedSuperformIdsSet.add(superformId);
     }
 
     /// @notice Removes a superform ID from the whitelist array
     /// @param superformId The Superform ID to remove
     function _removeFromWhitelist(uint256 superformId) internal {
-        whitelistedSuperformIds[superformId] = false;
         whitelistedSuperformIdsSet.remove(superformId);
     }
 }
