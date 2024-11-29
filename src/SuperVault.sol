@@ -68,9 +68,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice The deposit limit for the vault
     uint256 public depositLimit;
 
-    /// @notice Mapping to track whitelisted Superform IDs
-    mapping(uint256 => bool) public whitelistedSuperformIds;
-
     /// @notice Set of whitelisted Superform IDs for easy access
     EnumerableSet.UintSet whitelistedSuperformIdsSet;
 
@@ -241,7 +238,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             if (i >= 1 && rebalanceArgs_.finalSuperformIds[i] <= rebalanceArgs_.finalSuperformIds[i - 1]) {
                 revert DUPLICATE_FINAL_SUPERFORM_IDS();
             }
-            if (!whitelistedSuperformIds[rebalanceArgs_.finalSuperformIds[i]]) {
+            if (!whitelistedSuperformIdsSet.contains(rebalanceArgs_.finalSuperformIds[i])) {
                 revert SUPERFORM_NOT_WHITELISTED();
             }
         }
@@ -316,7 +313,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         isWhitelisted = new bool[](length);
 
         for (uint256 i; i < length; ++i) {
-            isWhitelisted[i] = whitelistedSuperformIds[superformIds_[i]];
+            isWhitelisted[i] = whitelistedSuperformIdsSet.contains(superformIds_[i]);
         }
 
         return isWhitelisted;
@@ -443,12 +440,14 @@ contract SuperVault is BaseStrategy, ISuperVault {
         uint256 totalAssetsInVaults;
         uint256[] spBalances;
         uint256[] assetBalances;
+        address superform;
+        address superPositions;
     }
+
     /// @notice Prepares multi-vault data for deposit or withdrawal
     /// @param amount_ The amount to deposit or withdraw
     /// @param isDeposit_ True if depositing, false if withdrawing
     /// @return mvData The prepared multi-vault data
-
     function _prepareMultiVaultData(
         uint256 amount_,
         bool isDeposit_
@@ -471,21 +470,20 @@ contract SuperVault is BaseStrategy, ISuperVault {
         mvData.outputAmounts = new uint256[](_numberOfSuperforms_);
 
         /// @dev caching to avoid multiple MLOADs
-        address superform;
+
         IBaseForm superformContract;
 
         PrepareMultiVaultDataLocalVars memory vars;
         vars.totalAssetsInVaults = 0;
         vars.spBalances = new uint256[](_numberOfSuperforms_);
         vars.assetBalances = new uint256[](_numberOfSuperforms_);
-
+        vars.superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
         // 1. Snapshot assets and SP balances. This is relevant for withdraws and must be calculated in advance
         for (uint256 i; i < _numberOfSuperforms_; ++i) {
-            (superform,,) = _superformIds_[i].getSuperform();
-            superformContract = IBaseForm(superform);
+            (vars.superform,,) = _superformIds_[i].getSuperform();
+            superformContract = IBaseForm(vars.superform);
 
-            vars.spBalances[i] =
-                ISuperPositions(_getAddress(keccak256("SUPER_POSITIONS"))).balanceOf(address(this), _superformIds_[i]);
+            vars.spBalances[i] = ISuperPositions(vars.superPositions).balanceOf(address(this), _superformIds_[i]);
             vars.assetBalances[i] = superformContract.previewRedeemFrom(vars.spBalances[i]);
             vars.totalAssetsInVaults += vars.assetBalances[i];
         }
@@ -495,8 +493,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
         for (uint256 i; i < _numberOfSuperforms_; ++i) {
             mvData.liqRequests[i].token = address(asset);
 
-            (superform,,) = mvData.superformIds[i].getSuperform();
-            superformContract = IBaseForm(superform);
+            (vars.superform,,) = mvData.superformIds[i].getSuperform();
+            superformContract = IBaseForm(vars.superform);
 
             if (isDeposit_) {
                 dataToEncode[i] = _prepareDepositExtraFormDataForSuperform(mvData.superformIds[i]);
@@ -518,13 +516,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
                     // If vault is ERC5115, subtract tolerance constant because of minAmountOut check to avoid errors.
                     // This is slippage protected anyway at the form level
-                    mvData.outputAmounts[i] =
-                        isERC5115 ? vars.assetBalances[i] - TOLERANCE_CONSTANT : vars.assetBalances[i];
+                    mvData.outputAmounts[i] = _tolerance(isERC5115, vars.assetBalances[i]);
                 } else {
                     // For partial withdrawals, use proportional amounts
                     uint256 amountOut = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
 
-                    mvData.outputAmounts[i] = isERC5115 ? amountOut - TOLERANCE_CONSTANT : amountOut;
+                    mvData.outputAmounts[i] = _tolerance(isERC5115, amountOut);
 
                     mvData.amounts[i] = superformContract.previewDepositTo(amountOut);
 
@@ -650,7 +647,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
                 }
 
                 uint256 amountOut = IBaseForm(superform).previewRedeemFrom(amounts_[i]);
-                data.outputAmounts[i] = isERC5115 ? amountOut - TOLERANCE_CONSTANT : amountOut;
+                data.outputAmounts[i] = _tolerance(isERC5115, amountOut);
             } else {
                 dataToEncode[i] = _prepareDepositExtraFormDataForSuperform(superformIds_[i]);
 
@@ -806,12 +803,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @param superformId_ The Superform ID to change
     /// @param isWhitelisted_ Whether to whitelist or blacklist
     function _changeSuperformWhitelist(uint256 superformId_, bool isWhitelisted_) internal {
-        bool currentlyWhitelisted = whitelistedSuperformIds[superformId_];
+        bool currentlyWhitelisted = whitelistedSuperformIdsSet.contains(superformId_);
 
         // Only process if there's an actual change
         if (currentlyWhitelisted != isWhitelisted_) {
-            whitelistedSuperformIds[superformId_] = isWhitelisted_;
-
             if (isWhitelisted_) {
                 _addToWhitelist(superformId_);
             } else {
@@ -825,14 +820,20 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Adds a superform ID to the whitelist array
     /// @param superformId The Superform ID to add
     function _addToWhitelist(uint256 superformId) internal {
-        whitelistedSuperformIds[superformId] = true;
         whitelistedSuperformIdsSet.add(superformId);
     }
 
     /// @notice Removes a superform ID from the whitelist array
     /// @param superformId The Superform ID to remove
     function _removeFromWhitelist(uint256 superformId) internal {
-        whitelistedSuperformIds[superformId] = false;
         whitelistedSuperformIdsSet.remove(superformId);
+    }
+
+    /// @notice Calculates the tolerance for ERC5115 vaults
+    /// @param isERC5115 Whether the vault is ERC5115
+    /// @param amount The amount to calculate tolerance for
+    /// @return The calculated tolerance
+    function _tolerance(bool isERC5115, uint256 amount) internal view returns (uint256) {
+        return isERC5115 ? amount - TOLERANCE_CONSTANT : amount;
     }
 }

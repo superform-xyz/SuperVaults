@@ -43,8 +43,8 @@ interface ISuperVaultFactory {
     //////////////////////////////////////////////////////////////
 
     /// @notice Returns all SuperVaults
-    /// @return Array of SuperVault addresses
-    function getSuperVaults() external view returns (address[] memory);
+    /// @return Number of SuperVaults
+    function getNumberOfSuperVaults() external view returns (uint256);
 
     //////////////////////////////////////////////////////////////
     //              EXTERNAL WRITE FUNCTIONS                    //
@@ -59,7 +59,6 @@ interface ISuperVaultFactory {
     /// @param depositLimit_ Maximum deposit limit
     /// @param superformIds_ Array of Superform IDs
     /// @param startingWeights_ Array of starting weights for each Superform
-    /// @param formImplementationId4626_ Form implementation ID for 4626
     /// @param formImplementationId5115_ Form implementation ID for 5115
     function createSuperVault(
         address asset_,
@@ -69,7 +68,6 @@ interface ISuperVaultFactory {
         uint256 depositLimit_,
         uint256[] memory superformIds_,
         uint256[] memory startingWeights_,
-        uint32 formImplementationId4626_,
         uint32 formImplementationId5115_
     )
         external
