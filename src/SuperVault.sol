@@ -516,13 +516,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
                     // If vault is ERC5115, subtract tolerance constant because of minAmountOut check to avoid errors.
                     // This is slippage protected anyway at the form level
-                    mvData.outputAmounts[i] =
-                        isERC5115 ? vars.assetBalances[i] - TOLERANCE_CONSTANT : vars.assetBalances[i];
+                    mvData.outputAmounts[i] = _tolerance(isERC5115, vars.assetBalances[i]);
                 } else {
                     // For partial withdrawals, use proportional amounts
                     uint256 amountOut = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
 
-                    mvData.outputAmounts[i] = isERC5115 ? amountOut - TOLERANCE_CONSTANT : amountOut;
+                    mvData.outputAmounts[i] = _tolerance(isERC5115, amountOut);
 
                     mvData.amounts[i] = superformContract.previewDepositTo(amountOut);
 
@@ -648,7 +647,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
                 }
 
                 uint256 amountOut = IBaseForm(superform).previewRedeemFrom(amounts_[i]);
-                data.outputAmounts[i] = isERC5115 ? amountOut - TOLERANCE_CONSTANT : amountOut;
+                data.outputAmounts[i] = _tolerance(isERC5115, amountOut);
             } else {
                 dataToEncode[i] = _prepareDepositExtraFormDataForSuperform(superformIds_[i]);
 
@@ -828,5 +827,13 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @param superformId The Superform ID to remove
     function _removeFromWhitelist(uint256 superformId) internal {
         whitelistedSuperformIdsSet.remove(superformId);
+    }
+
+    /// @notice Calculates the tolerance for ERC5115 vaults
+    /// @param isERC5115 Whether the vault is ERC5115
+    /// @param amount The amount to calculate tolerance for
+    /// @return The calculated tolerance
+    function _tolerance(bool isERC5115, uint256 amount) internal view returns (uint256) {
+        return isERC5115 ? amount - TOLERANCE_CONSTANT : amount;
     }
 }

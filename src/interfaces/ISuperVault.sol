@@ -84,9 +84,6 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Error thrown when a superform ID is not whitelisted
     error SUPERFORM_NOT_WHITELISTED();
 
-    /// @notice Error thrown when a superform ID is already whitelisted
-    error SUPERFORM_ALREADY_WHITELISTED();
-
     //////////////////////////////////////////////////////////////
     //                  EVENTS                                   //
     //////////////////////////////////////////////////////////////
