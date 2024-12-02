@@ -64,9 +64,8 @@ contract MainnetDeploySuperVault is Script {
                 startingWeights
             )
         );
-        /// @dev set valid form implementation IDs
-        SuperVault(superVault).setValidFormImplementationIds(1);
-        SuperVault(superVault).setValidFormImplementationIds(isStaging ? 5 : 3);
+        /// @dev set valid 5115 form implementation ID
+        SuperVault(superVault).setValid5115FormImplementationId(isStaging ? 5 : 3);
 
         /// @dev set performance fee to 0
         (bool success,) =

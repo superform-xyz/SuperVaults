@@ -191,10 +191,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
     }
 
     /// @inheritdoc ISuperVault
-    function setValidFormImplementationIds(uint32 ERC5115FormImplementationId_) external override onlyManagement {
-        if (ERC5115FormImplementationId_ == 0) revert ZERO_ID();
+    function setValid5115FormImplementationId(uint32 formImplementationId_) external override onlyManagement {
+        if (formImplementationId_ == 0) revert ZERO_ID();
 
-        ERC5115FormImplementationId = ERC5115FormImplementationId_;
+        ERC5115FormImplementationId = formImplementationId_;
     }
 
     /// @inheritdoc ISuperVault
@@ -322,6 +322,11 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @inheritdoc ISuperVault
     function getWhitelist() external view override returns (uint256[] memory) {
         return whitelistedSuperformIdsSet.values();
+    }
+
+    /// @inheritdoc ISuperVault
+    function getSuperVaultData() external view returns (uint256[] memory superformIds_, uint256[] memory weights_) {
+        return (superformIds, weights);
     }
 
     /// @inheritdoc IERC1155Receiver

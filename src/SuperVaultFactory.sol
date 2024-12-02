@@ -75,11 +75,7 @@ contract SuperVaultFactory is ISuperVaultFactory, Ownable {
             )
         );
 
-        if (formImplementationId5115_ == 0) {
-            revert ZERO_FORM_IMPLEMENTATION_ID();
-        }
-
-        ISuperVault(superVault).setValidFormImplementationIds(formImplementationId5115_);
+        ISuperVault(superVault).setValid5115FormImplementationId(formImplementationId5115_);
 
         /// @dev set performance fee to 0
         (bool success,) = address(superVault).call(abi.encodeCall(ITokenizedStrategy.setPerformanceFee, (0)));

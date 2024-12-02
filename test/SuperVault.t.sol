@@ -145,10 +145,9 @@ contract SuperVaultTest is ProtocolActions {
             weights
         );
         vm.expectRevert(ISuperVault.ZERO_ID.selector);
-        superVault.setValidFormImplementationIds(0);
+        superVault.setValid5115FormImplementationId(0);
 
-        superVault.setValidFormImplementationIds(1);
-        superVault.setValidFormImplementationIds(4);
+        superVault.setValid5115FormImplementationId(4);
         uint256[] memory superformIds = new uint256[](2);
         superformIds[0] = allSuperformIds[3];
         superformIds[1] = allSuperformIds[4];
@@ -183,6 +182,7 @@ contract SuperVaultTest is ProtocolActions {
             underlyingSuperformIds,
             weights
         );
+        superVaultHarness.getSuperVaultData();
 
         (bool success2,) = address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.performanceFee.selector));
         require(success2, "Failed to get performance fee");
