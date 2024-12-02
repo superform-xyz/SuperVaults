@@ -157,18 +157,6 @@ contract SuperVaultFactoryTest is ProtocolActions {
             4
         );
 
-        /// Test zero formImplementationId
-        vm.expectRevert(ISuperVaultFactory.ZERO_FORM_IMPLEMENTATION_ID.selector);
-        factory.createSuperVault(
-            getContract(ETH, "USDC"),
-            deployer,
-            deployer,
-            "USDCSuperVaultMorphoEulerAave",
-            type(uint256).max,
-            underlyingSuperformIds,
-            weights,
-            0
-        );
         vm.stopPrank();
     }
 

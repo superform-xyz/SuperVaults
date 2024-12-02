@@ -21,9 +21,6 @@ interface ISuperVaultFactory {
     /// @notice Error thrown when the number of superforms is zero
     error ZERO_SUPERFORMS();
 
-    /// @notice Error thrown when the form implementation ID is zero
-    error ZERO_FORM_IMPLEMENTATION_ID();
-
     /// @notice Error thrown when a zero address is provided
     error ZERO_ADDRESS();
 

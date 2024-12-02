@@ -126,9 +126,9 @@ interface ISuperVault is IERC1155Receiver {
     /// @param strategist_ The new strategist
     function setStrategist(address strategist_) external;
 
-    /// @notice Sets the valid form implementation IDs for the vault
+    /// @notice Sets the valid 5115 form implementation ID for the vault
     /// @param formImplementationId_ The form implementation ID
-    function setValidFormImplementationIds(uint32 formImplementationId_) external;
+    function setValid5115FormImplementationId(uint32 formImplementationId_) external;
 
     /// @notice Rebalances the SuperVault
     /// @notice rebalanceArgs_.superformIdsRebalanceFrom must be an ordered array of superform IDs with no duplicates
@@ -158,4 +158,9 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Returns the array of whitelisted Superform IDs
     /// @return Array of whitelisted Superform IDs
     function getWhitelist() external view returns (uint256[] memory);
+
+    /// @notice Returns the superform IDs and weights of the SuperVault
+    /// @return superformIds_ Array of superform IDs
+    /// @return weights_ Array of weights
+    function getSuperVaultData() external view returns (uint256[] memory superformIds_, uint256[] memory weights_);
 }
