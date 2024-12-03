@@ -650,7 +650,7 @@ contract SuperVaultTest is ProtocolActions {
 
         _performRebalance(finalIndexes, finalWeightsTargets, indexesRebalanceFrom);
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
-        /*
+
         // Test case 2
         finalIndexes = new uint256[](2);
         finalIndexes[0] = 0;
@@ -664,7 +664,6 @@ contract SuperVaultTest is ProtocolActions {
 
         _performRebalance(finalIndexes, finalWeightsTargets, indexesRebalanceFrom);
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
-        */
     }
 
     function test_superVault_rebalance_newVault() public {
