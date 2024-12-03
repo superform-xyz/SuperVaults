@@ -84,6 +84,9 @@ interface ISuperVault is IERC1155Receiver {
     /// @notice Error thrown when a superform ID is not whitelisted
     error SUPERFORM_NOT_WHITELISTED();
 
+    /// @notice Error thrown when a superform is fully rebalanced
+    error INVALID_SP_FULL_REBALANCE(uint256 superformId);
+
     //////////////////////////////////////////////////////////////
     //                  EVENTS                                   //
     //////////////////////////////////////////////////////////////

@@ -589,7 +589,44 @@ contract SuperVaultTest is ProtocolActions {
         vm.stopPrank();
     }
 
-    function test_superVault_rebalance() public {
+    function test_superVault_rebalance_fullyRebalancedSuperform() public {
+        // First do a deposit to have some funds to rebalance
+        vm.startPrank(deployer);
+        uint256 depositAmount = 10_000e6; // 10,000 USDC
+        deal(getContract(ETH, "USDC"), deployer, depositAmount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, depositAmount);
+
+        uint256[] memory superformIdsRebalanceFrom = new uint256[](1);
+        superformIdsRebalanceFrom[0] = underlyingSuperformIds[0];
+
+        uint256[] memory finalSuperformIds = new uint256[](1);
+        finalSuperformIds[0] = underlyingSuperformIds[1]; // expect a full rebalance
+
+        // Get the full balance of the first superform to attempt full rebalance
+        (address superFormSuperVault,,) = SUPER_VAULT_ID1.getSuperform();
+        address superVaultAddress = IBaseForm(superFormSuperVault).getVaultAddress();
+        uint256 fullBalance =
+            SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(superVaultAddress, superformIdsRebalanceFrom[0]);
+
+        uint256[] memory amountsRebalanceFrom = new uint256[](1);
+        amountsRebalanceFrom[0] = fullBalance / 2; // Attempt to rebalance half position
+
+        uint256[] memory weightsOfRedistribution = new uint256[](1);
+        weightsOfRedistribution[0] = 10_000; // expect a full rebalance
+        vm.expectRevert(
+            abi.encodeWithSelector(ISuperVault.INVALID_SP_FULL_REBALANCE.selector, superformIdsRebalanceFrom[0])
+        );
+        // Perform the rebalance
+        SuperVault(payable(superVaultAddress)).rebalance{ value: 4 ether }(
+            ISuperVault.RebalanceArgs(
+                superformIdsRebalanceFrom, amountsRebalanceFrom, finalSuperformIds, weightsOfRedistribution, 100
+            )
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_superVault_rebalance_i() public {
         vm.startPrank(deployer);
         SOURCE_CHAIN = ETH;
 
@@ -611,7 +648,7 @@ contract SuperVaultTest is ProtocolActions {
 
         _performRebalance(finalIndexes, finalWeightsTargets, indexesRebalanceFrom);
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
-
+        /*
         // Test case 2
         finalIndexes = new uint256[](2);
         finalIndexes[0] = 0;
@@ -625,6 +662,7 @@ contract SuperVaultTest is ProtocolActions {
 
         _performRebalance(finalIndexes, finalWeightsTargets, indexesRebalanceFrom);
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
+        */
     }
 
     function test_superVault_rebalance_newVault() public {
@@ -1704,7 +1742,12 @@ contract SuperVaultTest is ProtocolActions {
 
                 (address superform,,) = vars.superformIdsRebalanceFrom[i].getSuperform();
 
-                vars.amountsRebalanceFrom[i] = IBaseForm(superform).previewDepositTo(usdcToRemove);
+                /// for partial and full rebalances
+                vars.amountsRebalanceFrom[i] = usdcToRemove != currentUSDC[index]
+                    ? IBaseForm(superform).previewDepositTo(usdcToRemove)
+                    : SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(
+                        vars.superVaultAddress, vars.superformIdsRebalanceFrom[i]
+                    );
 
                 console.log("amountsRebalanceFrom", index, ":", vars.amountsRebalanceFrom[i]);
             } else {

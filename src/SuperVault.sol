@@ -754,8 +754,39 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @param superPositions_ Address of the SuperPositions contract
     /// @param finalSuperformIds_ Array of Superform IDs to rebalance to
     function _updateSVData(address superPositions_, uint256[] memory finalSuperformIds_) internal {
-        uint256 totalWeight;
+        // Cache current superform IDs
+        uint256[] memory currentSuperformIds = superformIds;
 
+        // Find fully rebalanced superforms (those in current but not in final)
+        uint256[] memory fullyRebalancedSuperformIds = new uint256[](currentSuperformIds.length);
+        uint256 fullyRebalancedCount;
+
+        // For each current superform ID
+        for (uint256 i; i < currentSuperformIds.length; ++i) {
+            bool found;
+            // Check if it exists in finalSuperformIds_
+            for (uint256 j; j < finalSuperformIds_.length; ++j) {
+                if (currentSuperformIds[i] == finalSuperformIds_[j]) {
+                    found = true;
+                    break;
+                }
+            }
+            // If not found in final IDs, it should be fully rebalanced
+            if (!found) {
+                fullyRebalancedSuperformIds[fullyRebalancedCount] = currentSuperformIds[i];
+                ++fullyRebalancedCount;
+            }
+        }
+
+        // Check balances of fully rebalanced superforms
+        for (uint256 i; i < fullyRebalancedCount; ++i) {
+            if (ISuperPositions(superPositions_).balanceOf(address(this), fullyRebalancedSuperformIds[i]) != 0) {
+                revert INVALID_SP_FULL_REBALANCE(fullyRebalancedSuperformIds[i]);
+            }
+        }
+
+        // Continue with existing logic...
+        uint256 totalWeight;
         uint256 length = finalSuperformIds_.length;
         if (length == 0) revert ZERO_SUPERFORMS();
 
