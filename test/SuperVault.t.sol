@@ -113,9 +113,11 @@ contract SuperVaultTest is ProtocolActions {
         address superformAddress;
         for (uint256 i = 0; i < vaultAddresses.length; i++) {
             if (i != 4) {
-                (allSuperformIds[i], superformAddress) = superformFactory.createSuperform(1, vaultAddresses[i]);
+                (allSuperformIds[i], superformAddress) =
+                    superformFactory.createSuperform(FORM_IMPLEMENTATION_IDS[0], vaultAddresses[i]);
             } else {
-                (allSuperformIds[i], superformAddress) = superformFactory.createSuperform(4, vaultAddresses[i]);
+                (allSuperformIds[i], superformAddress) =
+                    superformFactory.createSuperform(FORM_IMPLEMENTATION_IDS[1], vaultAddresses[i]);
             }
         }
 
@@ -147,7 +149,7 @@ contract SuperVaultTest is ProtocolActions {
         vm.expectRevert(ISuperVault.ZERO_ID.selector);
         superVault.setValid5115FormImplementationId(0);
 
-        superVault.setValid5115FormImplementationId(4);
+        superVault.setValid5115FormImplementationId(FORM_IMPLEMENTATION_IDS[1]);
         uint256[] memory superformIds = new uint256[](2);
         superformIds[0] = allSuperformIds[3];
         superformIds[1] = allSuperformIds[4];
@@ -626,7 +628,7 @@ contract SuperVaultTest is ProtocolActions {
         vm.stopPrank();
     }
 
-    function test_superVault_rebalance_i() public {
+    function test_superVault_rebalance() public {
         vm.startPrank(deployer);
         SOURCE_CHAIN = ETH;
 

@@ -869,7 +869,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @param isERC5115 Whether the vault is ERC5115
     /// @param amount The amount to calculate tolerance for
     /// @return The calculated tolerance
-    function _tolerance(bool isERC5115, uint256 amount) internal view returns (uint256) {
+    function _tolerance(bool isERC5115, uint256 amount) internal pure returns (uint256) {
         return isERC5115 ? amount - TOLERANCE_CONSTANT : amount;
     }
 }
