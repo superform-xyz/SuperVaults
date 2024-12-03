@@ -7,3 +7,6 @@
 [submodule "lib/create3-factory"]
 	path = lib/create3-factory
 	url = https://github.com/ZeframLou/create3-factory
+[submodule "lib/superform-core"]
+	path = lib/superform-core
+	url = https://github.com/superform-xyz/superform-core
