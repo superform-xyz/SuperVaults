@@ -2,7 +2,7 @@
 pragma solidity ^0.8.23;
 
 import { Script } from "forge-std/Script.sol";
-import { SuperVault } from "src/SuperVault.sol";
+import { SuperVault } from "../../src/SuperVault.sol";
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
