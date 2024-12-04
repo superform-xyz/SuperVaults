@@ -779,10 +779,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
         // Cache current superform IDs
         uint256[] memory currentSuperformIds = superformIds;
 
-        // Find fully rebalanced superforms (those in current but not in final)
-        uint256[] memory fullyRebalancedSuperformIds = new uint256[](currentSuperformIds.length);
-        uint256 fullyRebalancedCount;
-
         // For each current superform ID
         for (uint256 i; i < currentSuperformIds.length; ++i) {
             bool found;
@@ -795,19 +791,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
             }
             // If not found in final IDs, it should be fully rebalanced
             if (!found) {
-                fullyRebalancedSuperformIds[fullyRebalancedCount] = currentSuperformIds[i];
-                ++fullyRebalancedCount;
+                if (_getSuperPositionBalance(superPositions_, currentSuperformIds[i]) != 0) {
+                    revert INVALID_SP_FULL_REBALANCE(currentSuperformIds[i]);
+                }
             }
         }
 
-        // Check balances of fully rebalanced superforms
-        for (uint256 i; i < fullyRebalancedCount; ++i) {
-            if (_getSuperPositionBalance(superPositions_, fullyRebalancedSuperformIds[i]) != 0) {
-                revert INVALID_SP_FULL_REBALANCE(fullyRebalancedSuperformIds[i]);
-            }
-        }
-
-        // Continue with existing logic...
         uint256 totalWeight;
         uint256 length = finalSuperformIds_.length;
         if (length == 0) revert ZERO_SUPERFORMS();

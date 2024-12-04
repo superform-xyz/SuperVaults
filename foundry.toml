@@ -29,6 +29,7 @@ remappings = [
     'solmate/=lib/create3-factory/lib/solmate/src/',
     'create3-factory/=lib/create3-factory/',
 ]
+cbor_metadata = true
 
 [profile.production]
 out = 'out'       # separates optimized build folder (default profile) from localdev folder. Faster to build and deploy
@@ -49,3 +50,7 @@ wrap_comments = true
 
 [fuzz]
 runs = 200
+
+[etherscan]
+# Note to Tenderly: we hid on purpose key below. For accessing the secrets please create them in .env file as we use 1password
+unknown_chain = { key = "TENDERLY_ACCESS_KEY", chain = 95, url = "${TENDERLY_VIRTUAL_TESTNET_RPC_URL}/f9c0ff1e-9d4a-4ffa-970f-7c2b60249b87/verify/etherscan" } #                   Paste TENDERLY_ACCESS_TOKEN            Chain ID         Verifier URL: RPC_URL/verify/etherscan
