@@ -30,9 +30,11 @@ contract MainnetDeploySuperVault is Script {
 
         assert(superRegistry != address(0));
 
-        /// @notice Deploy SuperVault (Euler USDC)
+        /// @notice Deploy SuperVault
         uint256[] memory superformIds = new uint256[](1);
-        superformIds[0] = 6_277_101_738_094_410_093_849_154_803_755_231_404_199_879_241_263_958_603_447;
+        superformIds[0] = chainId == 1
+            ? 6_277_101_738_094_410_093_849_154_803_755_231_404_199_879_241_263_958_603_447 // (Euler USDC)
+            : 53_060_340_969_226_327_679_691_964_126_799_737_454_608_928_190_443_144_923_035_525;
 
         uint256[] memory startingWeights = new uint256[](1);
         startingWeights[0] = 10_000;
@@ -48,16 +50,17 @@ contract MainnetDeploySuperVault is Script {
             VAULT_MANAGER = 0x6A5DD913fE3CB5193E09D1810a3b9ff1C0f9c0D6;
             MANAGEMENT = 0xc5c971e6B9F01dcf06bda896AEA3648eD6e3EFb3;
         } else if (env == 0) {
-            STRATEGIST = address(0);
-            VAULT_MANAGER = address(0);
-            MANAGEMENT = address(0);
+            STRATEGIST = 0x01d9944787045A431DA61F3be137Ba07b5dd8d6C;
+            VAULT_MANAGER = 0x01d9944787045A431DA61F3be137Ba07b5dd8d6C;
+            MANAGEMENT = 0x73009CE7cFFc6C4c5363734d1b429f0b848e0490;
         } else if (env == 2) {
             STRATEGIST = 0xde587D0C7773BD239fF1bE87d32C876dEd4f7879;
             VAULT_MANAGER = 0xde587D0C7773BD239fF1bE87d32C876dEd4f7879;
             MANAGEMENT = 0xde587D0C7773BD239fF1bE87d32C876dEd4f7879;
         }
         // USDC on mainnet
-        address ASSET = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+        address ASSET =
+            chainId == 1 ? 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 : 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
 
         assert(STRATEGIST != address(0));
         assert(VAULT_MANAGER != address(0));
