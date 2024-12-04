@@ -10,3 +10,4 @@
 [submodule "lib/superform-core"]
 	path = lib/superform-core
 	url = https://github.com/superform-xyz/superform-core
+	branch = v1.5
