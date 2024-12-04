@@ -2,8 +2,8 @@
 pragma solidity ^0.8.23;
 
 import { Script } from "forge-std/Script.sol";
-import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
-import { SuperVaultFactory } from "src/SuperVaultFactory.sol";
+import { ISuperRegistry } from "../../lib/superform-core/src/interfaces/ISuperRegistry.sol";
+import { SuperVaultFactory } from "../../src/SuperVaultFactory.sol";
 import "forge-std/console2.sol";
 import { CREATE3Script } from "../base/CREATE3Script.sol";
 

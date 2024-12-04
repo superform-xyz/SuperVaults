@@ -39,8 +39,8 @@ update:; forge update
 # Build & test
 build :; FOUNDRY_PROFILE=production forge build
 build-sizes :; FOUNDRY_PROFILE=production forge build --sizes
-test-vvv   :; forge test --match-test test_superVault_rebalance --evm-version cancun -vvv
-ftest   :; forge test --evm-version cancun
+test-vvv   :; forge test --match-test test_superVault_rebalance --evm-version cancun --gas-report -vvv
+ftest   :; forge test --evm-version cancun --gas-report
 coverage :; forge coverage  --evm-version cancun --report lcov
 clean  :; forge clean
 snapshot :; forge snapshot

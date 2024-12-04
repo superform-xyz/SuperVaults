@@ -383,7 +383,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Deploys funds to the underlying Superforms
     /// @param amount_ The amount of funds to deploy
     function _deployFunds(uint256 amount_) internal override {
-        MultiVaultSFData memory mvData = _prepareMultiVaultData(amount_, true);
+        MultiVaultSFData memory mvData = _prepareMultiVaultDepositData(amount_);
         address router = _getAddress(keccak256("SUPERFORM_ROUTER"));
 
         bytes memory callData = abi.encodeWithSelector(
@@ -403,7 +403,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Frees funds from the underlying Superforms
     /// @param amount_ The amount of funds to free
     function _freeFunds(uint256 amount_) internal override {
-        (MultiVaultSFData memory mvData) = _prepareMultiVaultData(amount_, false);
+        (MultiVaultSFData memory mvData) = _prepareMultiVaultWithdrawData(amount_);
         address router = _getAddress(keccak256("SUPERFORM_ROUTER"));
         bytes memory callData = abi.encodeWithSelector(
             IBaseRouter.singleDirectMultiVaultWithdraw.selector, SingleDirectMultiVaultStateReq(mvData)
@@ -448,18 +448,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         address superPositions;
     }
 
-    /// @notice Prepares multi-vault data for deposit or withdrawal
-    /// @param amount_ The amount to deposit or withdraw
-    /// @param isDeposit_ True if depositing, false if withdrawing
-    /// @return mvData The prepared multi-vault data
-    function _prepareMultiVaultData(
-        uint256 amount_,
-        bool isDeposit_
-    )
-        internal
-        view
-        returns (MultiVaultSFData memory mvData)
-    {
+    function _prepareMultiVaultDepositData(uint256 amount_) internal view returns (MultiVaultSFData memory mvData) {
         uint256 _numberOfSuperforms_ = numberOfSuperforms;
 
         mvData.superformIds = superformIds;
@@ -472,75 +461,81 @@ contract SuperVault is BaseStrategy, ISuperVault {
         mvData.receiverAddressSP = address(this);
         mvData.outputAmounts = new uint256[](_numberOfSuperforms_);
 
-        /// @dev caching to avoid multiple MLOADs
-
-        IBaseForm superformContract;
-
-        PrepareMultiVaultDataLocalVars memory vars;
-        vars.totalAssetsInVaults = 0;
-        vars.spBalances = new uint256[](_numberOfSuperforms_);
-        vars.assetBalances = new uint256[](_numberOfSuperforms_);
-        vars.superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
-        // 1. Snapshot assets and SP balances. This is relevant for withdraws and must be calculated in advance
-        for (uint256 i; i < _numberOfSuperforms_; ++i) {
-            (vars.superform,,) = mvData.superformIds[i].getSuperform();
-            superformContract = IBaseForm(vars.superform);
-
-            vars.spBalances[i] = _getSuperPositionBalance(vars.superPositions, mvData.superformIds[i]);
-            vars.assetBalances[i] = superformContract.previewRedeemFrom(vars.spBalances[i]);
-            vars.totalAssetsInVaults += vars.assetBalances[i];
-        }
         bytes[] memory dataToEncode = new bytes[](_numberOfSuperforms_);
 
-        // 2. Add logic for deposit/withdraw cases to calculate amounts
         for (uint256 i; i < _numberOfSuperforms_; ++i) {
             mvData.liqRequests[i].token = address(asset);
 
-            (vars.superform,,) = mvData.superformIds[i].getSuperform();
-            superformContract = IBaseForm(vars.superform);
+            (address superform,,) = mvData.superformIds[i].getSuperform();
 
-            if (isDeposit_) {
-                dataToEncode[i] = _prepareDepositExtraFormDataForSuperform(mvData.superformIds[i]);
+            dataToEncode[i] = _prepareDepositExtraFormDataForSuperform(mvData.superformIds[i]);
 
-                /// @notice rounding down to avoid one-off issue
-                mvData.amounts[i] = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
-                mvData.outputAmounts[i] = superformContract.previewDepositTo(mvData.amounts[i]);
+            /// @notice rounding down to avoid one-off issue
+            mvData.amounts[i] = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
+            mvData.outputAmounts[i] = IBaseForm(superform).previewDepositTo(mvData.amounts[i]);
+            mvData.maxSlippages[i] = MAX_SLIPPAGE;
+        }
+
+        mvData.extraFormData = abi.encode(_numberOfSuperforms_, dataToEncode);
+        return mvData;
+    }
+
+    function _prepareMultiVaultWithdrawData(uint256 amount_) internal view returns (MultiVaultSFData memory mvData) {
+        uint256 _numberOfSuperforms_ = numberOfSuperforms;
+
+        mvData.superformIds = superformIds;
+        mvData.amounts = new uint256[](_numberOfSuperforms_);
+        mvData.maxSlippages = new uint256[](_numberOfSuperforms_);
+        mvData.liqRequests = new LiqRequest[](_numberOfSuperforms_);
+        mvData.hasDstSwaps = new bool[](_numberOfSuperforms_);
+        mvData.retain4626s = mvData.hasDstSwaps;
+        mvData.receiverAddress = address(this);
+        mvData.receiverAddressSP = address(this);
+        mvData.outputAmounts = new uint256[](_numberOfSuperforms_);
+
+        address superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
+        uint256 totalAssetsInVaults;
+        uint256[] memory spBalances = new uint256[](_numberOfSuperforms_);
+        uint256[] memory assetBalances = new uint256[](_numberOfSuperforms_);
+
+        // Snapshot assets and SP balances
+        for (uint256 i; i < _numberOfSuperforms_; ++i) {
+            (address superform,,) = mvData.superformIds[i].getSuperform();
+
+            spBalances[i] = _getSuperPositionBalance(superPositions, mvData.superformIds[i]);
+            assetBalances[i] = IBaseForm(superform).previewRedeemFrom(spBalances[i]);
+            totalAssetsInVaults += assetBalances[i];
+        }
+
+        // Calculate withdrawal amounts
+        for (uint256 i; i < _numberOfSuperforms_; ++i) {
+            mvData.liqRequests[i].token = address(asset);
+
+            (address superform,,) = mvData.superformIds[i].getSuperform();
+
+            bool isERC5115 = _isERC5115Vault(mvData.superformIds[i]);
+
+            if (isERC5115) {
+                mvData.liqRequests[i].interimToken = address(asset);
+            }
+
+            if (amount_ >= totalAssetsInVaults) {
+                mvData.amounts[i] = spBalances[i];
+                mvData.outputAmounts[i] = _tolerance(isERC5115, assetBalances[i]);
             } else {
-                // Check if vault is ERC5115
-                bool isERC5115 = _isERC5115Vault(mvData.superformIds[i]);
+                uint256 amountOut = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
+                mvData.outputAmounts[i] = _tolerance(isERC5115, amountOut);
+                mvData.amounts[i] = IBaseForm(superform).previewDepositTo(amountOut);
 
-                if (isERC5115) {
-                    mvData.liqRequests[i].interimToken = address(asset);
-                }
-
-                if (amount_ >= vars.totalAssetsInVaults) {
-                    // If withdrawing everything, use full SP balance
-                    mvData.amounts[i] = vars.spBalances[i];
-
-                    // If vault is ERC5115, subtract tolerance constant because of minAmountOut check to avoid errors.
-                    // This is slippage protected anyway at the form level
-                    mvData.outputAmounts[i] = _tolerance(isERC5115, vars.assetBalances[i]);
-                } else {
-                    // For partial withdrawals, use proportional amounts
-                    uint256 amountOut = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
-
-                    mvData.outputAmounts[i] = _tolerance(isERC5115, amountOut);
-
-                    mvData.amounts[i] = superformContract.previewDepositTo(amountOut);
-
-                    // cap at available balance in case of an edge case to allow withdraw to succeed
-                    if (mvData.amounts[i] > vars.spBalances[i]) {
-                        mvData.amounts[i] = vars.spBalances[i];
-                    }
+                if (mvData.amounts[i] > spBalances[i]) {
+                    mvData.amounts[i] = spBalances[i];
                 }
             }
 
             mvData.maxSlippages[i] = MAX_SLIPPAGE;
         }
 
-        if (isDeposit_) {
-            mvData.extraFormData = abi.encode(_numberOfSuperforms_, dataToEncode);
-        }
+        return mvData;
     }
 
     /// @notice Checks if a vault is ERC5115 and validates form implementation IDs

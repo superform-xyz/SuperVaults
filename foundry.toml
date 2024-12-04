@@ -28,6 +28,7 @@ remappings = [
     'solady/=lib/superform-core/lib/pigeon/lib/solady/',
     'solmate/=lib/create3-factory/lib/solmate/src/',
     'create3-factory/=lib/create3-factory/',
+    "src/=lib/superform-core/src/",
 ]
 cbor_metadata = true
 
