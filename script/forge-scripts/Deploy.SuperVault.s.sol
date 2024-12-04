@@ -79,6 +79,8 @@ contract MainnetDeploySuperVault is Script {
                 startingWeights
             )
         );
+        console2.log("SuperVault deployed at:", superVault);
+
         /// @dev set valid 5115 form implementation ID
         SuperVault(superVault).setValid5115FormImplementationId(env == 1 ? 5 : 3);
 
@@ -96,8 +98,6 @@ contract MainnetDeploySuperVault is Script {
         if (!success) {
             revert("Set pending management failed");
         }
-
-        console2.log("SuperVault deployed at: %s", superVault);
 
         vm.stopBroadcast();
     }
