@@ -53,4 +53,5 @@ wrap_comments = true
 runs = 200
 
 [etherscan]
+#base = { key = "${TENDERLY_ACCESS_KEY}", chain = 8453, url = "https://api.tenderly.co/api/v1/account/superform/project/v1/etherscan/verify/network/8453" }
 unknown_chain = { key = "${TENDERLY_ACCESS_KEY}", chain = 95, url = "${TENDERLY_VIRTUAL_TESTNET_RPC_URL}/verify/etherscan" }

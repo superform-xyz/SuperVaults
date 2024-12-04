@@ -788,7 +788,7 @@ contract SuperVaultTest is ProtocolActions {
         indexesRebalanceFrom[0] = 0;
         indexesRebalanceFrom[1] = 1;
         indexesRebalanceFrom[2] = 2;
-        console.log("----rebalancing to 100% in index 0----");
+        console.log("----rebalancing to 100% in index 4----");
 
         _performRebalance(finalIndexes, finalWeightsTargets, indexesRebalanceFrom);
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
@@ -801,8 +801,10 @@ contract SuperVaultTest is ProtocolActions {
         }
 
         console.log("----additional deposit----");
-        // Additional deposit
+        // Additional single deposit
         _directDeposit(deployer, SUPER_VAULT_ID1, amount);
+        // Partial single withdraw
+        _directWithdraw(deployer, SUPER_VAULT_ID1, true);
 
         // Second rebalance: Split between index 0 and 4
         finalIndexes = new uint256[](2);

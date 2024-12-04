@@ -34,7 +34,7 @@ contract MainnetDeploySuperVault is Script {
         uint256[] memory superformIds = new uint256[](1);
         superformIds[0] = chainId == 1
             ? 6_277_101_738_094_410_093_849_154_803_755_231_404_199_879_241_263_958_603_447 // (Euler USDC)
-            : 53_060_340_969_226_327_679_691_964_126_799_737_454_608_928_190_443_144_923_035_525;
+            : 53_060_340_969_225_424_123_272_122_895_191_053_251_498_236_784_870_936_252_229_868;
 
         uint256[] memory startingWeights = new uint256[](1);
         startingWeights[0] = 10_000;

@@ -8,7 +8,13 @@ import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/Sa
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import { IERC20 } from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import { IERC165 } from "openzeppelin/contracts/utils/introspection/IERC165.sol";
-import { SingleDirectMultiVaultStateReq, MultiVaultSFData, LiqRequest } from "superform-core/src/types/DataTypes.sol";
+import {
+    SingleDirectSingleVaultStateReq,
+    SingleDirectMultiVaultStateReq,
+    MultiVaultSFData,
+    SingleVaultSFData,
+    LiqRequest
+} from "superform-core/src/types/DataTypes.sol";
 import { ISuperPositions } from "superform-core/src/interfaces/ISuperPositions.sol";
 import { DataLib } from "superform-core/src/libraries/DataLib.sol";
 import { IBaseForm } from "superform-core/src/interfaces/IBaseForm.sol";
@@ -383,12 +389,19 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Deploys funds to the underlying Superforms
     /// @param amount_ The amount of funds to deploy
     function _deployFunds(uint256 amount_) internal override {
-        MultiVaultSFData memory mvData = _prepareMultiVaultDepositData(amount_);
+        bytes memory callData;
+        if (numberOfSuperforms == 1) {
+            callData = abi.encodeWithSelector(
+                IBaseRouter.singleDirectSingleVaultDeposit.selector,
+                SingleDirectSingleVaultStateReq(_prepareSingleVaultDepositData(amount_))
+            );
+        } else {
+            callData = abi.encodeWithSelector(
+                IBaseRouter.singleDirectMultiVaultDeposit.selector,
+                SingleDirectMultiVaultStateReq(_prepareMultiVaultDepositData(amount_))
+            );
+        }
         address router = _getAddress(keccak256("SUPERFORM_ROUTER"));
-
-        bytes memory callData = abi.encodeWithSelector(
-            IBaseRouter.singleDirectMultiVaultDeposit.selector, SingleDirectMultiVaultStateReq(mvData)
-        );
 
         asset.safeIncreaseAllowance(router, amount_);
 
@@ -403,13 +416,22 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Frees funds from the underlying Superforms
     /// @param amount_ The amount of funds to free
     function _freeFunds(uint256 amount_) internal override {
-        (MultiVaultSFData memory mvData) = _prepareMultiVaultWithdrawData(amount_);
+        bytes memory callData;
         address router = _getAddress(keccak256("SUPERFORM_ROUTER"));
-        bytes memory callData = abi.encodeWithSelector(
-            IBaseRouter.singleDirectMultiVaultWithdraw.selector, SingleDirectMultiVaultStateReq(mvData)
-        );
 
-        _setSuperPositionsApproval(router, mvData.superformIds, mvData.amounts);
+        if (numberOfSuperforms == 1) {
+            SingleVaultSFData memory svData = _prepareSingleVaultWithdrawData(amount_);
+            callData = abi.encodeWithSelector(
+                IBaseRouter.singleDirectSingleVaultWithdraw.selector, SingleDirectSingleVaultStateReq(svData)
+            );
+            _setSuperPositionApproval(router, svData.superformId, svData.amount);
+        } else {
+            MultiVaultSFData memory mvData = _prepareMultiVaultWithdrawData(amount_);
+            callData = abi.encodeWithSelector(
+                IBaseRouter.singleDirectMultiVaultWithdraw.selector, SingleDirectMultiVaultStateReq(mvData)
+            );
+            _setSuperPositionsApproval(router, mvData.superformIds, mvData.amounts);
+        }
 
         /// @dev this call has to be enforced with 0 msg.value not to break the 4626 standard
         (bool success, bytes memory returndata) = router.call(callData);
@@ -440,13 +462,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
     //////////////////////////////////////////////////////////////
     //                     INTERNAL FUNCTIONS                   //
     //////////////////////////////////////////////////////////////
-    struct PrepareMultiVaultDataLocalVars {
-        uint256 totalAssetsInVaults;
-        uint256[] spBalances;
-        uint256[] assetBalances;
-        address superform;
-        address superPositions;
-    }
 
     function _prepareMultiVaultDepositData(uint256 amount_) internal view returns (MultiVaultSFData memory mvData) {
         uint256 _numberOfSuperforms_ = numberOfSuperforms;
@@ -478,6 +493,26 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         mvData.extraFormData = abi.encode(_numberOfSuperforms_, dataToEncode);
         return mvData;
+    }
+
+    function _prepareSingleVaultDepositData(uint256 amount_) internal view returns (SingleVaultSFData memory svData) {
+        svData.superformId = superformIds[0];
+        svData.amount = amount_;
+        svData.maxSlippage = MAX_SLIPPAGE;
+        svData.liqRequest.token = address(asset);
+        svData.hasDstSwap = false;
+        svData.retain4626 = false;
+        svData.receiverAddress = address(this);
+        svData.receiverAddressSP = address(this);
+
+        (address superform,,) = svData.superformId.getSuperform();
+        svData.outputAmount = IBaseForm(superform).previewDepositTo(amount_);
+        bytes memory dataToEncode = _prepareDepositExtraFormDataForSuperform(svData.superformId);
+        bytes[] memory finalDataToEncode = new bytes[](1);
+        finalDataToEncode[0] = dataToEncode;
+        svData.extraFormData = abi.encode(1, finalDataToEncode);
+
+        return svData;
     }
 
     function _prepareMultiVaultWithdrawData(uint256 amount_) internal view returns (MultiVaultSFData memory mvData) {
@@ -538,6 +573,46 @@ contract SuperVault is BaseStrategy, ISuperVault {
         return mvData;
     }
 
+    function _prepareSingleVaultWithdrawData(uint256 amount_) internal view returns (SingleVaultSFData memory svData) {
+        address superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
+
+        svData.superformId = superformIds[0];
+        (address superform,,) = svData.superformId.getSuperform();
+
+        // Get current balances
+        uint256 spBalance = _getSuperPositionBalance(superPositions, svData.superformId);
+        uint256 assetBalance = IBaseForm(superform).previewRedeemFrom(spBalance);
+
+        // Set up basic data
+        svData.liqRequest.token = address(asset);
+        bool isERC5115 = _isERC5115Vault(svData.superformId);
+
+        if (isERC5115) {
+            svData.liqRequest.interimToken = address(asset);
+        }
+
+        // Calculate withdrawal amounts
+        if (amount_ >= assetBalance) {
+            svData.amount = spBalance;
+            svData.outputAmount = _tolerance(isERC5115, assetBalance);
+        } else {
+            svData.outputAmount = _tolerance(isERC5115, amount_);
+            svData.amount = IBaseForm(superform).previewDepositTo(amount_);
+
+            if (svData.amount > spBalance) {
+                svData.amount = spBalance;
+            }
+        }
+
+        svData.maxSlippage = MAX_SLIPPAGE;
+        svData.hasDstSwap = false;
+        svData.retain4626 = false;
+        svData.receiverAddress = address(this);
+        svData.receiverAddressSP = address(this);
+
+        return svData;
+    }
+
     /// @notice Checks if a vault is ERC5115 and validates form implementation IDs
     /// @param superformId_ The superform ID to check
     /// @return isERC5115 True if the vault is ERC5115
@@ -574,6 +649,14 @@ contract SuperVault is BaseStrategy, ISuperVault {
         internal
     {
         ISuperPositions(_getAddress(keccak256("SUPER_POSITIONS"))).setApprovalForMany(router_, superformIds_, amounts_);
+    }
+
+    /// @notice Sets approval for a single SuperPosition
+    /// @param router_ The router address to approve
+    /// @param superformId_ The superform ID to approve
+    /// @param amount_ The amount to approve
+    function _setSuperPositionApproval(address router_, uint256 superformId_, uint256 amount_) internal {
+        ISuperPositions(_getAddress(keccak256("SUPER_POSITIONS"))).setApprovalForOne(router_, superformId_, amount_);
     }
 
     /// @notice Gets the current balance of the asset token held by this contract
