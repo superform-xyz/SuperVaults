@@ -52,7 +52,7 @@ contract SuperVaultTest is ProtocolActions {
     address SUPER_POSITIONS_SOURCE;
 
     uint64 SOURCE_CHAIN;
-
+    uint256 N_UNDERLYING_SFS;
     uint256 SUPER_VAULT_ID1;
     string[] underlyingSuperformNames;
     uint256[] underlyingSuperformIds;
@@ -95,28 +95,32 @@ contract SuperVaultTest is ProtocolActions {
         vm.startPrank(deployer);
         address morphoVault = 0x8eB67A509616cd6A7c1B3c8C21D48FF57df3d458;
         address aaveUsdcVault = 0x73edDFa87C71ADdC275c2b9890f5c3a8480bC9E6;
-        address eulerUsdcVault = 0x797DD80692c3b2dAdabCe8e30C07fDE5307D48a9;
+        address fluidUsdcVault = 0x9Fb7b4477576Fe5B32be4C1843aFB1e55F251B33;
         address sandclockUSDCVault = 0x096697720056886b905D0DEB0f06AfFB8e4665E5;
         address syFUSDCVault = 0xf94A3798B18140b9Bc322314bbD36BC8e245E29B;
+        address eulerUsdcVault = 0x797DD80692c3b2dAdabCe8e30C07fDE5307D48a9;
 
         address syFUSDCVaultWrapper = ERC5115To4626WrapperFactory(
             getContract(SOURCE_CHAIN, "ERC5115To4626WrapperFactory")
         ).createWrapper(syFUSDCVault, getContract(SOURCE_CHAIN, "USDC"), getContract(SOURCE_CHAIN, "USDC"));
 
-        address[] memory vaultAddresses = new address[](5);
+        address[] memory vaultAddresses = new address[](6);
         vaultAddresses[0] = morphoVault;
         vaultAddresses[1] = aaveUsdcVault;
-        vaultAddresses[2] = eulerUsdcVault;
+        vaultAddresses[2] = fluidUsdcVault;
         vaultAddresses[3] = sandclockUSDCVault;
         vaultAddresses[4] = syFUSDCVaultWrapper;
+        vaultAddresses[5] = eulerUsdcVault;
 
         underlyingSuperformNames.push("Morpho");
         underlyingSuperformNames.push("Aave");
-        underlyingSuperformNames.push("Euler");
+        underlyingSuperformNames.push("Fluid");
+
+        N_UNDERLYING_SFS = underlyingSuperformNames.length;
 
         // Get the SuperformFactory
         SuperformFactory superformFactory = SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory"));
-        underlyingSuperformIds = new uint256[](vaultAddresses.length - 2);
+        underlyingSuperformIds = new uint256[](vaultAddresses.length - N_UNDERLYING_SFS);
         allSuperformIds = new uint256[](vaultAddresses.length);
         address superformAddress;
         for (uint256 i = 0; i < vaultAddresses.length; i++) {
@@ -131,12 +135,12 @@ contract SuperVaultTest is ProtocolActions {
 
         sortAllSuperformIds();
 
-        for (uint256 i = 0; i < vaultAddresses.length - 2; i++) {
+        for (uint256 i = 0; i < vaultAddresses.length - N_UNDERLYING_SFS; i++) {
             underlyingSuperformIds[i] = allSuperformIds[i];
         }
 
-        uint256[] memory weights = new uint256[](vaultAddresses.length - 2);
-        for (uint256 i = 0; i < vaultAddresses.length - 2; i++) {
+        uint256[] memory weights = new uint256[](vaultAddresses.length - N_UNDERLYING_SFS);
+        for (uint256 i = 0; i < vaultAddresses.length - N_UNDERLYING_SFS; i++) {
             weights[i] = uint256(10_000) / 3;
             if (i == 2) {
                 weights[i] += 1;
@@ -149,7 +153,7 @@ contract SuperVaultTest is ProtocolActions {
             getContract(ETH, "USDC"),
             deployer,
             deployer,
-            "USDCSuperVaultMorphoEulerAave",
+            "USDCSuperVault",
             type(uint256).max,
             underlyingSuperformIds,
             weights
@@ -158,13 +162,15 @@ contract SuperVaultTest is ProtocolActions {
         superVault.setValid5115FormImplementationId(0);
 
         superVault.setValid5115FormImplementationId(FORM_IMPLEMENTATION_IDS[1]);
-        uint256[] memory superformIds = new uint256[](2);
+        uint256[] memory superformIds = new uint256[](3);
         superformIds[0] = allSuperformIds[3];
         superformIds[1] = allSuperformIds[4];
+        superformIds[2] = allSuperformIds[5];
 
-        bool[] memory isWhitelisted = new bool[](2);
+        bool[] memory isWhitelisted = new bool[](3);
         isWhitelisted[0] = true;
         isWhitelisted[1] = true;
+        isWhitelisted[2] = true;
 
         ISuperVault(superVault).setWhitelist(superformIds, isWhitelisted);
 
@@ -389,7 +395,7 @@ contract SuperVaultTest is ProtocolActions {
 
         uint256 amount = 500e6;
         // Perform a direct deposit to the SuperVault
-        _directDeposit(deployer, SUPER_VAULT_ID1, amount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, amount, "");
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
@@ -604,7 +610,7 @@ contract SuperVaultTest is ProtocolActions {
         vm.startPrank(deployer);
         uint256 depositAmount = 10_000e6; // 10,000 USDC
         deal(getContract(ETH, "USDC"), deployer, depositAmount);
-        _directDeposit(deployer, SUPER_VAULT_ID1, depositAmount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, depositAmount, "");
 
         uint256[] memory superformIdsRebalanceFrom = new uint256[](1);
         superformIdsRebalanceFrom[0] = underlyingSuperformIds[0];
@@ -642,7 +648,7 @@ contract SuperVaultTest is ProtocolActions {
 
         uint256 amount = 10_000e6;
         // Perform a direct deposit to the SuperVault
-        _directDeposit(deployer, SUPER_VAULT_ID1, amount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, amount, "");
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
@@ -687,7 +693,7 @@ contract SuperVaultTest is ProtocolActions {
 
         uint256 amount = 10_000e6;
         // Perform a direct deposit to the SuperVault
-        _directDeposit(deployer, SUPER_VAULT_ID1, amount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, amount, "");
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
@@ -729,7 +735,7 @@ contract SuperVaultTest is ProtocolActions {
 
         uint256 amount = 10_000e6;
         // Perform a direct deposit to the SuperVault
-        _directDeposit(deployer, SUPER_VAULT_ID1, amount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, amount, "");
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
@@ -777,7 +783,7 @@ contract SuperVaultTest is ProtocolActions {
 
         // Initial deposit
         uint256 amount = 50_000e6; // Larger initial deposit
-        _directDeposit(deployer, SUPER_VAULT_ID1, amount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, amount, "");
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
         for (uint256 i = 0; i < allSuperformIds.length; i++) {
@@ -810,7 +816,7 @@ contract SuperVaultTest is ProtocolActions {
 
         console.log("----additional deposit----");
         // Additional single deposit
-        _directDeposit(deployer, SUPER_VAULT_ID1, amount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, amount, "");
         // Partial single withdraw
         _directWithdraw(deployer, SUPER_VAULT_ID1, true);
 
@@ -884,7 +890,7 @@ contract SuperVaultTest is ProtocolActions {
         // First wave of deposits (users 0, 1, 2)
         for (uint256 i = 0; i < 3; i++) {
             vm.startPrank(users_[i]);
-            _directDeposit(users_[i], SUPER_VAULT_ID1, depositAmounts[i]);
+            _directDeposit(users_[i], SUPER_VAULT_ID1, depositAmounts[i], "");
             vm.stopPrank();
         }
 
@@ -916,7 +922,7 @@ contract SuperVaultTest is ProtocolActions {
 
         for (uint256 i = 3; i < 5; i++) {
             vm.startPrank(users_[i]);
-            _directDeposit(users_[i], SUPER_VAULT_ID1, depositAmounts[i]);
+            _directDeposit(users_[i], SUPER_VAULT_ID1, depositAmounts[i], "");
             vm.stopPrank();
         }
 
@@ -954,7 +960,7 @@ contract SuperVaultTest is ProtocolActions {
 
         vm.startPrank(users_[3]);
         deal(usdcToken, users_[3], depositAmounts[3]); // Give more USDC
-        _directDeposit(users_[3], SUPER_VAULT_ID1, depositAmounts[3]); // Additional deposit
+        _directDeposit(users_[3], SUPER_VAULT_ID1, depositAmounts[3], ""); // Additional deposit
         vm.stopPrank();
 
         console.log("----After final wave of actions----");
@@ -1138,7 +1144,7 @@ contract SuperVaultTest is ProtocolActions {
 
             // Perform direct deposit for the current user
             vm.startPrank(depositUsers[i]);
-            _directDeposit(depositUsers[i], SUPER_VAULT_ID1, depositAmount);
+            _directDeposit(depositUsers[i], SUPER_VAULT_ID1, depositAmount, "");
             vm.stopPrank();
 
             // Warp 1 day
@@ -1217,7 +1223,7 @@ contract SuperVaultTest is ProtocolActions {
         // Perform a direct deposit to the SuperVault
         (address superform,,) = SUPER_VAULT_ID1.getSuperform();
         deal(IBaseForm(superform).getVaultAsset(), deployer, amount);
-        _directDeposit(deployer, SUPER_VAULT_ID1, amount);
+        _directDeposit(deployer, SUPER_VAULT_ID1, amount, "");
 
         _assertSuperPositionsSplitAccordingToWeights(ETH);
 
@@ -1300,11 +1306,12 @@ contract SuperVaultTest is ProtocolActions {
 
         // Test single form combinations
         console.log("\n=== Testing Single Form Combinations ===");
+        string memory snapshotName;
         for (uint256 i = 0; i < 3; i++) {
             vars.oneSuperformIds[0] = underlyingSuperformIds[i];
             vars.oneWeights[0] = 10_000;
-
-            console.log(string.concat("Testing deposit with one underlying superform: ", underlyingSuperformNames[i]));
+            snapshotName = string.concat("Deposit with one underlying superform: ", underlyingSuperformNames[i]);
+            console.log(snapshotName);
 
             SuperVault superVaultOne = new SuperVault(
                 getContract(ETH, "SuperRegistry"),
@@ -1322,21 +1329,20 @@ contract SuperVaultTest is ProtocolActions {
             );
 
             deal(getContract(ETH, "USDC"), deployer, vars.depositAmount);
-            vars.oneFormGas[i] = _directDeposit(deployer, superVaultIdOne, vars.depositAmount);
+            vars.oneFormGas[i] = _directDeposit(deployer, superVaultIdOne, vars.depositAmount, snapshotName);
         }
 
         // Test two form combinations
         console.log("\n=== Testing Two Form Combinations ===");
         for (uint256 i = 0; i < 2; i++) {
             for (uint256 j = i + 1; j < 3; j++) {
-                console.log(
-                    string.concat(
-                        "Testing deposit with two underlying superforms: ",
-                        underlyingSuperformNames[i],
-                        " + ",
-                        underlyingSuperformNames[j]
-                    )
+                snapshotName = string.concat(
+                    "Deposit with two underlying superforms: ",
+                    underlyingSuperformNames[i],
+                    " + ",
+                    underlyingSuperformNames[j]
                 );
+                console.log(snapshotName);
 
                 vars.twoSuperformIds[0] = underlyingSuperformIds[i];
                 vars.twoSuperformIds[1] = underlyingSuperformIds[j];
@@ -1358,23 +1364,23 @@ contract SuperVaultTest is ProtocolActions {
                     .createSuperform(1, address(superVaultTwo));
 
                 deal(getContract(ETH, "USDC"), deployer, vars.depositAmount);
-                vars.twoFormGas[vars.twoFormIndex] = _directDeposit(deployer, superVaultIdTwo, vars.depositAmount);
+                vars.twoFormGas[vars.twoFormIndex] =
+                    _directDeposit(deployer, superVaultIdTwo, vars.depositAmount, snapshotName);
                 vars.twoFormIndex++;
             }
         }
 
         // Test three form combination
         console.log("\n=== Testing Three Form Combination ===");
-        console.log(
-            string.concat(
-                "Testing deposit with three underlying superforms: ",
-                underlyingSuperformNames[0],
-                " + ",
-                underlyingSuperformNames[1],
-                " + ",
-                underlyingSuperformNames[2]
-            )
+        snapshotName = string.concat(
+            "Deposit with three underlying superforms: ",
+            underlyingSuperformNames[0],
+            " + ",
+            underlyingSuperformNames[1],
+            " + ",
+            underlyingSuperformNames[2]
         );
+        console.log(snapshotName);
 
         vars.threeSuperformIds[0] = underlyingSuperformIds[0];
         vars.threeSuperformIds[1] = underlyingSuperformIds[1];
@@ -1398,7 +1404,7 @@ contract SuperVaultTest is ProtocolActions {
             SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory")).createSuperform(1, address(superVaultThree));
 
         deal(getContract(ETH, "USDC"), deployer, vars.depositAmount);
-        vars.threeFormGas[0] = _directDeposit(deployer, superVaultIdThree, vars.depositAmount);
+        vars.threeFormGas[0] = _directDeposit(deployer, superVaultIdThree, vars.depositAmount, snapshotName);
         vars.threeFormAvg = vars.threeFormGas[0];
 
         // Calculate averages
@@ -1464,7 +1470,15 @@ contract SuperVaultTest is ProtocolActions {
     //               INTERNAL HELPERS                           //
     //////////////////////////////////////////////////////////////
 
-    function _directDeposit(address user, uint256 superformId, uint256 amount) internal returns (uint256 gasLastCall) {
+    function _directDeposit(
+        address user,
+        uint256 superformId,
+        uint256 amount,
+        string memory snapshotName
+    )
+        internal
+        returns (uint256 gasLastCall)
+    {
         vm.selectFork(FORKS[SOURCE_CHAIN]);
         (address superform,,) = superformId.getSuperform();
 
@@ -1494,11 +1508,10 @@ contract SuperVaultTest is ProtocolActions {
         /// @dev msg sender is wallet, tx origin is deployer
         address router = getContract(SOURCE_CHAIN, "SuperformRouter");
         SuperformRouter(payable(router)).singleDirectSingleVaultDeposit{ value: 2 ether }(req);
-
-        gasLastCall = vm.snapshotGasLastCall(
-            string.concat("SuperVault Deposit with ", Strings.toString(sfIds.length), " superPositions")
-        );
-        console.log("---GAS USED IN DEPOSIT---", gasLastCall);
+        if (bytes(snapshotName).length > 0) {
+            gasLastCall = vm.snapshotGasLastCall(snapshotName);
+            console.log("---GAS USED IN DEPOSIT---", gasLastCall);
+        }
     }
 
     function _directWithdraw(address user, uint256 superformId, bool partialWithdraw) internal {
