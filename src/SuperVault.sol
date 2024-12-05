@@ -83,6 +83,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Array of weights for each Superform in the vault
     uint256[] public weights;
 
+    address private immutable _SUPER_POSITIONS;
+    address private immutable _SUPERFORM_ROUTER;
+    address private immutable _SUPERFORM_FACTORY;
+
     //////////////////////////////////////////////////////////////
     //                       MODIFIERS                          //
     //////////////////////////////////////////////////////////////
@@ -176,6 +180,12 @@ contract SuperVault is BaseStrategy, ISuperVault {
         superformIds = superformIds_;
         weights = startingWeights_;
         depositLimit = depositLimit_;
+
+        {
+            _SUPER_POSITIONS = _getAddress(keccak256("SUPER_POSITIONS"));
+            _SUPERFORM_ROUTER = _getAddress(keccak256("SUPERFORM_ROUTER"));
+            _SUPERFORM_FACTORY = _getAddress(keccak256("SUPERFORM_FACTORY"));
+        }
     }
 
     //////////////////////////////////////////////////////////////
@@ -259,7 +269,6 @@ contract SuperVault is BaseStrategy, ISuperVault {
         );
 
         address routerPlus = _getAddress(keccak256("SUPERFORM_ROUTER_PLUS"));
-        address superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
 
         /// @dev step 2: execute rebalance
         _setSuperPositionsApproval(routerPlus, args.ids, args.sharesToRedeem);
@@ -269,7 +278,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         /// @dev step 3: update SV data
         /// @notice no issue about reentrancy as the external contracts are trusted
         /// @notice updateSV emits rebalance event
-        _updateSVData(superPositions, rebalanceArgs_.finalSuperformIds);
+        _updateSVData(_SUPER_POSITIONS, rebalanceArgs_.finalSuperformIds);
     }
 
     /// @inheritdoc ISuperVault
@@ -389,20 +398,17 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Deploys funds to the underlying Superforms
     /// @param amount_ The amount of funds to deploy
     function _deployFunds(uint256 amount_) internal override {
-        bytes memory callData;
-        if (numberOfSuperforms == 1) {
-            callData = abi.encodeWithSelector(
+        bytes memory callData = numberOfSuperforms == 1
+            ? abi.encodeWithSelector(
                 IBaseRouter.singleDirectSingleVaultDeposit.selector,
                 SingleDirectSingleVaultStateReq(_prepareSingleVaultDepositData(amount_))
-            );
-        } else {
-            callData = abi.encodeWithSelector(
+            )
+            : abi.encodeWithSelector(
                 IBaseRouter.singleDirectMultiVaultDeposit.selector,
                 SingleDirectMultiVaultStateReq(_prepareMultiVaultDepositData(amount_))
             );
-        }
-        address router = _getAddress(keccak256("SUPERFORM_ROUTER"));
 
+        address router = _SUPERFORM_ROUTER;
         asset.safeIncreaseAllowance(router, amount_);
 
         /// @dev this call has to be enforced with 0 msg.value not to break the 4626 standard
@@ -417,7 +423,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @param amount_ The amount of funds to free
     function _freeFunds(uint256 amount_) internal override {
         bytes memory callData;
-        address router = _getAddress(keccak256("SUPERFORM_ROUTER"));
+        address router = _SUPERFORM_ROUTER;
 
         if (numberOfSuperforms == 1) {
             SingleVaultSFData memory svData = _prepareSingleVaultWithdrawData(amount_);
@@ -445,15 +451,18 @@ contract SuperVault is BaseStrategy, ISuperVault {
         uint256 totalAssetsInVaults;
         uint256 _numberOfSuperforms_ = numberOfSuperforms;
         uint256[] memory _superformIds_ = superformIds;
+        address superPositions = _SUPER_POSITIONS;
 
-        address superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
-
-        for (uint256 i; i < _numberOfSuperforms_; ++i) {
+        for (uint256 i; i < _numberOfSuperforms_;) {
             (address superform,,) = _superformIds_[i].getSuperform();
 
             /// @dev This contract holds superPositions, not shares
             uint256 spBalance = ISuperPositions(superPositions).balanceOf(address(this), _superformIds_[i]);
             totalAssetsInVaults += IBaseForm(superform).previewRedeemFrom(spBalance);
+
+            unchecked {
+                ++i;
+            }
         }
 
         totalAssets = totalAssetsInVaults + _getAssetBalance(asset);
@@ -478,7 +487,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         bytes[] memory dataToEncode = new bytes[](_numberOfSuperforms_);
 
-        for (uint256 i; i < _numberOfSuperforms_; ++i) {
+        uint256[] memory _weights_ = weights;
+        for (uint256 i; i < _numberOfSuperforms_;) {
             mvData.liqRequests[i].token = address(asset);
 
             (address superform,,) = mvData.superformIds[i].getSuperform();
@@ -486,9 +496,13 @@ contract SuperVault is BaseStrategy, ISuperVault {
             dataToEncode[i] = _prepareDepositExtraFormDataForSuperform(mvData.superformIds[i]);
 
             /// @notice rounding down to avoid one-off issue
-            mvData.amounts[i] = amount_.mulDiv(weights[i], TOTAL_WEIGHT, Math.Rounding.Down);
+            mvData.amounts[i] = amount_.mulDiv(_weights_[i], TOTAL_WEIGHT, Math.Rounding.Down);
             mvData.outputAmounts[i] = IBaseForm(superform).previewDepositTo(mvData.amounts[i]);
             mvData.maxSlippages[i] = MAX_SLIPPAGE;
+
+            unchecked {
+                ++i;
+            }
         }
 
         mvData.extraFormData = abi.encode(_numberOfSuperforms_, dataToEncode);
@@ -528,22 +542,26 @@ contract SuperVault is BaseStrategy, ISuperVault {
         mvData.receiverAddressSP = address(this);
         mvData.outputAmounts = new uint256[](_numberOfSuperforms_);
 
-        address superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
+        address superPositions = _SUPER_POSITIONS;
         uint256 totalAssetsInVaults;
         uint256[] memory spBalances = new uint256[](_numberOfSuperforms_);
         uint256[] memory assetBalances = new uint256[](_numberOfSuperforms_);
 
         // Snapshot assets and SP balances
-        for (uint256 i; i < _numberOfSuperforms_; ++i) {
+        for (uint256 i; i < _numberOfSuperforms_;) {
             (address superform,,) = mvData.superformIds[i].getSuperform();
 
             spBalances[i] = _getSuperPositionBalance(superPositions, mvData.superformIds[i]);
             assetBalances[i] = IBaseForm(superform).previewRedeemFrom(spBalances[i]);
             totalAssetsInVaults += assetBalances[i];
+
+            unchecked {
+                ++i;
+            }
         }
 
         // Calculate withdrawal amounts
-        for (uint256 i; i < _numberOfSuperforms_; ++i) {
+        for (uint256 i; i < _numberOfSuperforms_;) {
             mvData.liqRequests[i].token = address(asset);
 
             (address superform,,) = mvData.superformIds[i].getSuperform();
@@ -568,19 +586,21 @@ contract SuperVault is BaseStrategy, ISuperVault {
             }
 
             mvData.maxSlippages[i] = MAX_SLIPPAGE;
+
+            unchecked {
+                ++i;
+            }
         }
 
         return mvData;
     }
 
     function _prepareSingleVaultWithdrawData(uint256 amount_) internal view returns (SingleVaultSFData memory svData) {
-        address superPositions = _getAddress(keccak256("SUPER_POSITIONS"));
-
         svData.superformId = superformIds[0];
         (address superform,,) = svData.superformId.getSuperform();
 
         // Get current balances
-        uint256 spBalance = _getSuperPositionBalance(superPositions, svData.superformId);
+        uint256 spBalance = _getSuperPositionBalance(_SUPER_POSITIONS, svData.superformId);
         uint256 assetBalance = IBaseForm(superform).previewRedeemFrom(spBalance);
 
         // Set up basic data
@@ -617,7 +637,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @param superformId_ The superform ID to check
     /// @return isERC5115 True if the vault is ERC5115
     function _isERC5115Vault(uint256 superformId_) internal view returns (bool isERC5115) {
-        ISuperformFactoryMinimal factory = ISuperformFactoryMinimal(_getAddress(keccak256("SUPERFORM_FACTORY")));
+        ISuperformFactoryMinimal factory = ISuperformFactoryMinimal(_SUPERFORM_FACTORY);
 
         address erc5115Implementation = factory.getFormImplementation(ERC5115FormImplementationId);
 
@@ -648,7 +668,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     )
         internal
     {
-        ISuperPositions(_getAddress(keccak256("SUPER_POSITIONS"))).setApprovalForMany(router_, superformIds_, amounts_);
+        ISuperPositions(_SUPER_POSITIONS).setApprovalForMany(router_, superformIds_, amounts_);
     }
 
     /// @notice Sets approval for a single SuperPosition
@@ -656,7 +676,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @param superformId_ The superform ID to approve
     /// @param amount_ The amount to approve
     function _setSuperPositionApproval(address router_, uint256 superformId_, uint256 amount_) internal {
-        ISuperPositions(_getAddress(keccak256("SUPER_POSITIONS"))).setApprovalForOne(router_, superformId_, amount_);
+        ISuperPositions(_SUPER_POSITIONS).setApprovalForOne(router_, superformId_, amount_);
     }
 
     /// @notice Gets the current balance of the asset token held by this contract
@@ -740,7 +760,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
         data.liqRequests = new LiqRequest[](_numberOfSuperforms_);
         bytes[] memory dataToEncode = new bytes[](_numberOfSuperforms_);
 
-        for (uint256 i; i < _numberOfSuperforms_; ++i) {
+        for (uint256 i; i < _numberOfSuperforms_;) {
             (address superform,,) = superformIds_[i].getSuperform();
 
             if (isWithdraw_) {
@@ -764,6 +784,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
             data.maxSlippages[i] = slippage_;
             data.liqRequests[i].token = address(asset);
             data.liqRequests[i].liqDstChainId = CHAIN_ID;
+
+            unchecked {
+                ++i;
+            }
         }
 
         data.hasDstSwaps = new bool[](_numberOfSuperforms_);
@@ -783,14 +807,9 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @param superformId_ The superform ID
     /// @return bytes Encoded data for the superform
     function _prepareDepositExtraFormDataForSuperform(uint256 superformId_) internal view returns (bytes memory) {
-        bool isERC5115 = _isERC5115Vault(superformId_);
-
         // For ERC4626 vaults, no extra data needed
         // For ERC5115 vaults, include asset address
-        bytes memory extraData;
-        if (isERC5115) {
-            extraData = abi.encode(address(asset));
-        }
+        bytes memory extraData = _isERC5115Vault(superformId_) ? abi.encode(address(asset)) : bytes("");
 
         return abi.encode(superformId_, extraData);
     }
@@ -858,7 +877,8 @@ contract SuperVault is BaseStrategy, ISuperVault {
         uint256[] memory currentSuperformIds = superformIds;
 
         // For each current superform ID
-        for (uint256 i; i < currentSuperformIds.length; ++i) {
+        uint256 numSuperforms = currentSuperformIds.length;
+        for (uint256 i; i < numSuperforms;) {
             bool found;
             // Check if it exists in finalSuperformIds_
             for (uint256 j; j < finalSuperformIds_.length; ++j) {
@@ -873,6 +893,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
                     revert INVALID_SP_FULL_REBALANCE(currentSuperformIds[i]);
                 }
             }
+
+            unchecked {
+                ++i;
+            }
         }
 
         uint256 totalWeight;
@@ -882,13 +906,13 @@ contract SuperVault is BaseStrategy, ISuperVault {
         uint256[] memory newWeights = new uint256[](length);
 
         /// @dev check if finalSuperformIds are present in superform factory and support the asset
-        ISuperformFactory factory = ISuperformFactory(_getAddress(keccak256("SUPERFORM_FACTORY")));
+        ISuperformFactory factory = ISuperformFactory(_SUPERFORM_FACTORY);
         address superform;
         uint256 value;
         address assetCache = address(asset);
 
         /// @dev calculate total value and individual values
-        for (uint256 i; i < length; ++i) {
+        for (uint256 i; i < length;) {
             if (!factory.isSuperform(finalSuperformIds_[i])) {
                 revert SUPERFORM_DOES_NOT_EXIST(finalSuperformIds_[i]);
             }
@@ -904,13 +928,21 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
             newWeights[i] = value;
             totalWeight += value;
+
+            unchecked {
+                ++i;
+            }
         }
 
         /// @dev calculate new weights as percentages
         uint256 totalAssignedWeight;
-        for (uint256 i; i < length - 1; ++i) {
+        for (uint256 i; i < length - 1;) {
             newWeights[i] = newWeights[i].mulDiv(TOTAL_WEIGHT, totalWeight, Math.Rounding.Down);
             totalAssignedWeight += newWeights[i];
+
+            unchecked {
+                ++i;
+            }
         }
 
         /// @notice assign remaining weight to the last index
