@@ -270,7 +270,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             rebalanceArgs_.slippage
         );
 
-        TransientContext.set("0x5", _getAddress(keccak256("SUPERFORM_ROUTER_PLUS")));
+        address routerPlus = _getAddress(keccak256("SUPERFORM_ROUTER_PLUS"));
 
         /// @dev step 2: execute rebalance
         _setSuperPositionsApproval(routerPlus, args.ids, args.sharesToRedeem);
@@ -410,39 +410,40 @@ contract SuperVault is BaseStrategy, ISuperVault {
                 SingleDirectMultiVaultStateReq(_prepareMultiVaultDepositData(amount_))
             );
 
-        address router = _SUPERFORM_ROUTER;
-        asset.safeIncreaseAllowance(router, amount_);
+        //address router = _SUPERFORM_ROUTER;
+        TransientContext.set("0x4", uint256(uint160(_SUPERFORM_ROUTER)));
+        asset.safeIncreaseAllowance(address(uint160(TransientContext.get("0x4"))), amount_);
 
         /// @dev this call has to be enforced with 0 msg.value not to break the 4626 standard
-        (bool success, bytes memory returndata) = router.call(callData);
+        (bool success, bytes memory returndata) = address(uint160(TransientContext.get("0x4"))).call(callData);
 
         Address.verifyCallResult(success, returndata, "CallRevertWithNoReturnData");
 
-        if (asset.allowance(address(this), router) > 0) asset.forceApprove(router, 0);
+        if (asset.allowance(address(this), address(uint160(TransientContext.get("0x4")))) > 0) asset.forceApprove(address(uint160(TransientContext.get("0x4"))), 0);
     }
 
     /// @notice Frees funds from the underlying Superforms
     /// @param amount_ The amount of funds to free
     function _freeFunds(uint256 amount_) internal override {
         bytes memory callData;
-        address router = _SUPERFORM_ROUTER;
+        TransientContext.set("0x5", uint256(uint160(_SUPERFORM_ROUTER)));
 
         if (numberOfSuperforms == 1) {
             SingleVaultSFData memory svData = _prepareSingleVaultWithdrawData(amount_);
             callData = abi.encodeWithSelector(
                 IBaseRouter.singleDirectSingleVaultWithdraw.selector, SingleDirectSingleVaultStateReq(svData)
             );
-            _setSuperPositionApproval(router, svData.superformId, svData.amount);
+            _setSuperPositionApproval(address(uint160(TransientContext.get("0x5"))), svData.superformId, svData.amount);
         } else {
             MultiVaultSFData memory mvData = _prepareMultiVaultWithdrawData(amount_);
             callData = abi.encodeWithSelector(
                 IBaseRouter.singleDirectMultiVaultWithdraw.selector, SingleDirectMultiVaultStateReq(mvData)
             );
-            _setSuperPositionsApproval(router, mvData.superformIds, mvData.amounts);
+            _setSuperPositionsApproval(address(uint160(TransientContext.get("0x5"))), mvData.superformIds, mvData.amounts);
         }
 
         /// @dev this call has to be enforced with 0 msg.value not to break the 4626 standard
-        (bool success, bytes memory returndata) = router.call(callData);
+        (bool success, bytes memory returndata) = address(uint160(TransientContext.get("0x5"))).call(callData);
 
         Address.verifyCallResult(success, returndata, "CallRevertWithNoReturnData");
     }
