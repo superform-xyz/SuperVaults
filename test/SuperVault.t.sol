@@ -12,7 +12,11 @@ import { SuperVault } from "../src/SuperVault.sol";
 import { ISuperVault } from "../src/interfaces/ISuperVault.sol";
 import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 
+import { Strings } from "openzeppelin-contracts/contracts/utils/Strings.sol";
+
 contract SuperVaultHarness is SuperVault {
+    using Strings for string;
+
     constructor(
         address superRegistry_,
         address asset_,
@@ -50,7 +54,7 @@ contract SuperVaultTest is ProtocolActions {
     uint64 SOURCE_CHAIN;
 
     uint256 SUPER_VAULT_ID1;
-
+    string[] underlyingSuperformNames;
     uint256[] underlyingSuperformIds;
     uint256[] allSuperformIds;
 
@@ -105,6 +109,10 @@ contract SuperVaultTest is ProtocolActions {
         vaultAddresses[2] = eulerUsdcVault;
         vaultAddresses[3] = sandclockUSDCVault;
         vaultAddresses[4] = syFUSDCVaultWrapper;
+
+        underlyingSuperformNames.push("Morpho");
+        underlyingSuperformNames.push("Aave");
+        underlyingSuperformNames.push("Euler");
 
         // Get the SuperformFactory
         SuperformFactory superformFactory = SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory"));
@@ -1252,11 +1260,211 @@ contract SuperVaultTest is ProtocolActions {
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
     }
 
+    struct BatchTestVars {
+        uint256[] oneFormGas;
+        uint256[] twoFormGas;
+        uint256[] threeFormGas;
+        uint256 depositAmount;
+        uint256 oneFormAvg;
+        uint256 twoFormAvg;
+        uint256 threeFormAvg;
+        uint256 twoFormIndex;
+        uint256[] oneSuperformIds;
+        uint256[] oneWeights;
+        uint256[] twoSuperformIds;
+        uint256[] twoWeights;
+        uint256[] threeSuperformIds;
+        uint256[] threeWeights;
+    }
+
+    function test_gas_consumption() public {
+        vm.startPrank(deployer);
+        SOURCE_CHAIN = ETH;
+
+        BatchTestVars memory vars = BatchTestVars({
+            oneFormGas: new uint256[](3),
+            twoFormGas: new uint256[](3),
+            threeFormGas: new uint256[](1),
+            depositAmount: 10_000e6,
+            oneFormAvg: 0,
+            twoFormAvg: 0,
+            threeFormAvg: 0,
+            twoFormIndex: 0,
+            oneSuperformIds: new uint256[](1),
+            oneWeights: new uint256[](1),
+            twoSuperformIds: new uint256[](2),
+            twoWeights: new uint256[](2),
+            threeSuperformIds: new uint256[](3),
+            threeWeights: new uint256[](3)
+        });
+
+        // Test single form combinations
+        console.log("\n=== Testing Single Form Combinations ===");
+        for (uint256 i = 0; i < 3; i++) {
+            vars.oneSuperformIds[0] = underlyingSuperformIds[i];
+            vars.oneWeights[0] = 10_000;
+
+            console.log(string.concat("Testing deposit with one underlying superform: ", underlyingSuperformNames[i]));
+
+            SuperVault superVaultOne = new SuperVault(
+                getContract(ETH, "SuperRegistry"),
+                getContract(ETH, "USDC"),
+                deployer,
+                deployer,
+                string.concat("USDCSuperVaultOne", Strings.toString(i)),
+                type(uint256).max,
+                vars.oneSuperformIds,
+                vars.oneWeights
+            );
+
+            (uint256 superVaultIdOne,) = SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory")).createSuperform(
+                1, address(superVaultOne)
+            );
+
+            deal(getContract(ETH, "USDC"), deployer, vars.depositAmount);
+            vars.oneFormGas[i] = _directDeposit(deployer, superVaultIdOne, vars.depositAmount);
+        }
+
+        // Test two form combinations
+        console.log("\n=== Testing Two Form Combinations ===");
+        for (uint256 i = 0; i < 2; i++) {
+            for (uint256 j = i + 1; j < 3; j++) {
+                console.log(
+                    string.concat(
+                        "Testing deposit with two underlying superforms: ",
+                        underlyingSuperformNames[i],
+                        " + ",
+                        underlyingSuperformNames[j]
+                    )
+                );
+
+                vars.twoSuperformIds[0] = underlyingSuperformIds[i];
+                vars.twoSuperformIds[1] = underlyingSuperformIds[j];
+                vars.twoWeights[0] = 5000;
+                vars.twoWeights[1] = 5000;
+
+                SuperVault superVaultTwo = new SuperVault(
+                    getContract(ETH, "SuperRegistry"),
+                    getContract(ETH, "USDC"),
+                    deployer,
+                    deployer,
+                    string.concat("USDCSuperVaultTwo", Strings.toString(vars.twoFormIndex)),
+                    type(uint256).max,
+                    vars.twoSuperformIds,
+                    vars.twoWeights
+                );
+
+                (uint256 superVaultIdTwo,) = SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory"))
+                    .createSuperform(1, address(superVaultTwo));
+
+                deal(getContract(ETH, "USDC"), deployer, vars.depositAmount);
+                vars.twoFormGas[vars.twoFormIndex] = _directDeposit(deployer, superVaultIdTwo, vars.depositAmount);
+                vars.twoFormIndex++;
+            }
+        }
+
+        // Test three form combination
+        console.log("\n=== Testing Three Form Combination ===");
+        console.log(
+            string.concat(
+                "Testing deposit with three underlying superforms: ",
+                underlyingSuperformNames[0],
+                " + ",
+                underlyingSuperformNames[1],
+                " + ",
+                underlyingSuperformNames[2]
+            )
+        );
+
+        vars.threeSuperformIds[0] = underlyingSuperformIds[0];
+        vars.threeSuperformIds[1] = underlyingSuperformIds[1];
+        vars.threeSuperformIds[2] = underlyingSuperformIds[2];
+        vars.threeWeights[0] = 3334;
+        vars.threeWeights[1] = 3333;
+        vars.threeWeights[2] = 3333;
+
+        SuperVault superVaultThree = new SuperVault(
+            getContract(ETH, "SuperRegistry"),
+            getContract(ETH, "USDC"),
+            deployer,
+            deployer,
+            "USDCSuperVaultThree",
+            type(uint256).max,
+            vars.threeSuperformIds,
+            vars.threeWeights
+        );
+
+        (uint256 superVaultIdThree,) =
+            SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory")).createSuperform(1, address(superVaultThree));
+
+        deal(getContract(ETH, "USDC"), deployer, vars.depositAmount);
+        vars.threeFormGas[0] = _directDeposit(deployer, superVaultIdThree, vars.depositAmount);
+        vars.threeFormAvg = vars.threeFormGas[0];
+
+        // Calculate averages
+        for (uint256 i = 0; i < vars.oneFormGas.length; i++) {
+            vars.oneFormAvg += vars.oneFormGas[i];
+        }
+        vars.oneFormAvg = vars.oneFormAvg / vars.oneFormGas.length;
+
+        for (uint256 i = 0; i < vars.twoFormGas.length; i++) {
+            vars.twoFormAvg += vars.twoFormGas[i];
+        }
+        vars.twoFormAvg = vars.twoFormAvg / vars.twoFormGas.length;
+
+        // Print gas consumption summary
+        console.log("\n=== Gas Consumption Summary ===");
+        for (uint256 i = 0; i < vars.oneFormGas.length; i++) {
+            console.log(
+                string.concat(
+                    "Gas for single form (", underlyingSuperformNames[i], "): ", Strings.toString(vars.oneFormGas[i])
+                )
+            );
+        }
+
+        uint256 twoFormIndex2 = 0;
+        for (uint256 i = 0; i < 2; i++) {
+            for (uint256 j = i + 1; j < 3; j++) {
+                console.log(
+                    string.concat(
+                        "Gas for two forms (",
+                        underlyingSuperformNames[i],
+                        " + ",
+                        underlyingSuperformNames[j],
+                        "): ",
+                        Strings.toString(vars.twoFormGas[twoFormIndex2])
+                    )
+                );
+                twoFormIndex2++;
+            }
+        }
+
+        console.log(
+            string.concat(
+                "Gas for three forms (",
+                underlyingSuperformNames[0],
+                " + ",
+                underlyingSuperformNames[1],
+                " + ",
+                underlyingSuperformNames[2],
+                "): ",
+                Strings.toString(vars.threeFormGas[0])
+            )
+        );
+
+        console.log("\n=== Averages ===");
+        console.log("Average gas for 1 underlying superform:", vars.oneFormAvg);
+        console.log("Average gas for 2 underlying superforms:", vars.twoFormAvg);
+        console.log("Average gas for 3 underlying superforms:", vars.threeFormAvg);
+
+        vm.stopPrank();
+    }
+
     //////////////////////////////////////////////////////////////
     //               INTERNAL HELPERS                           //
     //////////////////////////////////////////////////////////////
 
-    function _directDeposit(address user, uint256 superformId, uint256 amount) internal {
+    function _directDeposit(address user, uint256 superformId, uint256 amount) internal returns (uint256 gasLastCall) {
         vm.selectFork(FORKS[SOURCE_CHAIN]);
         (address superform,,) = superformId.getSuperform();
 
@@ -1279,10 +1487,18 @@ contract SuperVaultTest is ProtocolActions {
             address(payable(getContract(SOURCE_CHAIN, "SuperformRouter"))), req.superformData.amount
         );
 
+        (uint256[] memory sfIds,) = ISuperVault(IBaseForm(superform).getVaultAddress()).getSuperVaultData();
+
+        console.log("---CURRENT NUMBER OF UNDERLYING SUPERPOSITIONS---", sfIds.length);
+        //vm.startSnapshotGas("Deposit to SuperVault");
         /// @dev msg sender is wallet, tx origin is deployer
-        SuperformRouter(payable(getContract(SOURCE_CHAIN, "SuperformRouter"))).singleDirectSingleVaultDeposit{
-            value: 2 ether
-        }(req);
+        address router = getContract(SOURCE_CHAIN, "SuperformRouter");
+        SuperformRouter(payable(router)).singleDirectSingleVaultDeposit{ value: 2 ether }(req);
+
+        gasLastCall = vm.snapshotGasLastCall(
+            string.concat("SuperVault Deposit with ", Strings.toString(sfIds.length), " superPositions")
+        );
+        console.log("---GAS USED IN DEPOSIT---", gasLastCall);
     }
 
     function _directWithdraw(address user, uint256 superformId, bool partialWithdraw) internal {
