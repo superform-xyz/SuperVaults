@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import { Address } from "openzeppelin/contracts/utils/Address.sol";
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
+import { Address } from "openzeppelin/contracts/utils/Address.sol";
 import { EnumerableSet } from "openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { SafeERC20 } from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ERC20 } from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
@@ -23,6 +23,7 @@ import { ISuperformRouterPlus } from "superform-core/src/interfaces/ISuperformRo
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
 import { ISuperVault, IERC1155Receiver } from "./interfaces/ISuperVault.sol";
 import { ISuperformFactory } from "superform-core/src/interfaces/ISuperformFactory.sol";
+import { TransientContext } from "transience/TransientContext.sol";
 import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
 import { ISuperformFactoryMinimal } from "./interfaces/ISuperformFactoryMinimal.sol";
 
@@ -215,42 +216,43 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
     /// @inheritdoc ISuperVault
     function rebalance(RebalanceArgs calldata rebalanceArgs_) external payable override onlySuperVaultsStrategist {
-        uint256 lenRebalanceFrom = rebalanceArgs_.superformIdsRebalanceFrom.length;
-        uint256 lenAmountsRebalanceFrom = rebalanceArgs_.amountsRebalanceFrom.length;
-        uint256 lenFinal = rebalanceArgs_.finalSuperformIds.length;
+        TransientContext.set(bytes32(0), rebalanceArgs_.superformIdsRebalanceFrom.length); // lenRebalanceFrom
+        TransientContext.set("0x1", rebalanceArgs_.amountsRebalanceFrom.length); // lenAmountsRebalanceFrom
+        TransientContext.set("0x2", rebalanceArgs_.finalSuperformIds.length); // lenFinal
 
-        if (lenAmountsRebalanceFrom == 0) revert EMPTY_AMOUNTS_REBALANCE_FROM();
-        if (lenFinal == 0) revert EMPTY_FINAL_SUPERFORM_IDS();
+        if (TransientContext.get("0x1") == 0) revert EMPTY_AMOUNTS_REBALANCE_FROM();
+
+        if (TransientContext.get("0x2") == 0) revert EMPTY_FINAL_SUPERFORM_IDS();
 
         /// @dev sanity check input arrays
-        if (lenRebalanceFrom != lenAmountsRebalanceFrom || lenFinal != rebalanceArgs_.weightsOfRedestribution.length) {
+        if (TransientContext.get(bytes32(uint256(0))) != TransientContext.get("0x1") || TransientContext.get("0x2") != rebalanceArgs_.weightsOfRedestribution.length) {
             revert ARRAY_LENGTH_MISMATCH();
         }
 
         {
-            /// @dev caching to avoid multiple SLOADs
-            uint256 foundCount;
+            /// @dev caching to avoid multiple loads
+            TransientContext.set("0x3", 0); //foundCount
 
-            for (uint256 i; i < lenRebalanceFrom; ++i) {
+            for (uint256 i; i < TransientContext.get(bytes32(0)); ++i) {
                 for (uint256 j; j < numberOfSuperforms; ++j) {
                     if (rebalanceArgs_.superformIdsRebalanceFrom[i] == superformIds[j]) {
-                        foundCount++;
+                        TransientContext.set("0x3", TransientContext.get("0x3") + 1); // increment foundCount
                         break;
                     }
                 }
             }
 
-            if (foundCount != lenRebalanceFrom) {
+            if (TransientContext.get("0x3") != TransientContext.get(bytes32(0))) {
                 revert INVALID_SUPERFORM_ID_REBALANCE_FROM();
             }
         }
-        for (uint256 i = 1; i < lenRebalanceFrom; ++i) {
+        for (uint256 i = 1; i < TransientContext.get(bytes32(0)); ++i) {
             if (rebalanceArgs_.superformIdsRebalanceFrom[i] <= rebalanceArgs_.superformIdsRebalanceFrom[i - 1]) {
                 revert DUPLICATE_SUPERFORM_IDS_REBALANCE_FROM();
             }
         }
 
-        for (uint256 i; i < lenFinal; ++i) {
+        for (uint256 i; i < TransientContext.get("0x2"); ++i) {
             if (i >= 1 && rebalanceArgs_.finalSuperformIds[i] <= rebalanceArgs_.finalSuperformIds[i - 1]) {
                 revert DUPLICATE_FINAL_SUPERFORM_IDS();
             }
@@ -268,7 +270,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             rebalanceArgs_.slippage
         );
 
-        address routerPlus = _getAddress(keccak256("SUPERFORM_ROUTER_PLUS"));
+        TransientContext.set("0x5", _getAddress(keccak256("SUPERFORM_ROUTER_PLUS")));
 
         /// @dev step 2: execute rebalance
         _setSuperPositionsApproval(routerPlus, args.ids, args.sharesToRedeem);
