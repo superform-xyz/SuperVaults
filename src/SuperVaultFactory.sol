@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.23;
+pragma solidity 0.8.28;
 
-import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 import { SuperVault } from "./SuperVault.sol";
 import { ISuperVault } from "./interfaces/ISuperVault.sol";
 import { ISuperVaultFactory } from "./interfaces/ISuperVaultFactory.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { ITokenizedStrategy } from "tokenized-strategy/interfaces/ITokenizedStrategy.sol";
 
 /// @title SuperVaultFactory
 /// @notice Factory for creating SuperVaults
