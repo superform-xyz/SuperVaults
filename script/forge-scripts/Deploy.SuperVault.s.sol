@@ -33,7 +33,7 @@ contract MainnetDeploySuperVault is Script {
         /// @notice Deploy SuperVault
         uint256[] memory superformIds = new uint256[](1);
         superformIds[0] = chainId == 1
-            ? 6_277_101_738_094_410_093_849_154_803_755_231_404_199_879_241_263_958_603_447 // (Euler USDC)
+            ? 6_277_101_737_254_839_006_396_113_557_627_089_406_881_862_780_813_070_776_090 // Gauntlet's USDC Core,
             : 53_060_340_969_225_424_123_272_122_895_191_053_251_498_236_784_870_936_252_229_868;
 
         uint256[] memory startingWeights = new uint256[](1);
@@ -50,8 +50,8 @@ contract MainnetDeploySuperVault is Script {
             VAULT_MANAGER = 0x6A5DD913fE3CB5193E09D1810a3b9ff1C0f9c0D6;
             MANAGEMENT = 0xc5c971e6B9F01dcf06bda896AEA3648eD6e3EFb3;
         } else if (env == 0) {
-            STRATEGIST = 0x01d9944787045A431DA61F3be137Ba07b5dd8d6C;
-            VAULT_MANAGER = 0x01d9944787045A431DA61F3be137Ba07b5dd8d6C;
+            STRATEGIST = 0xFa476C5ec7A43a68e081fD5a33f668f0BD09e126;
+            VAULT_MANAGER = 0x701aE9c540ba2144b669F22e650882e7e07cB11F;
             MANAGEMENT = 0x73009CE7cFFc6C4c5363734d1b429f0b848e0490;
         } else if (env == 2) {
             STRATEGIST = 0xde587D0C7773BD239fF1bE87d32C876dEd4f7879;
