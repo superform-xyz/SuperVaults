@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity ^0.8.24;
 
 import { SuperVault } from "./SuperVault.sol";
 import { ISuperVault } from "./interfaces/ISuperVault.sol";

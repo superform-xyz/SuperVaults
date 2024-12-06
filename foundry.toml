@@ -1,5 +1,5 @@
 [profile.default]
-solc_version = "0.8.28" # Override for the solc version (setting this ignores `auto_detect_solc`)
+solc_version = "0.8.24" # Override for the solc version (setting this ignores `auto_detect_solc`)
 evm_version = "cancun" # to prevent usage of PUSH0, which is not supported on all chains
 libraries = []
 optimizer = true

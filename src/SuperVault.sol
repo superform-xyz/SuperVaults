@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.24;
 
 import { Math } from "openzeppelin/contracts/utils/math/Math.sol";
 import { Address } from "openzeppelin/contracts/utils/Address.sol";
@@ -229,7 +229,10 @@ contract SuperVault is BaseStrategy, ISuperVault {
         if (TransientContext.get("0x2") == 0) revert EMPTY_FINAL_SUPERFORM_IDS();
 
         /// @dev sanity check input arrays
-        if (TransientContext.get(bytes32(uint256(0))) != TransientContext.get("0x1") || TransientContext.get("0x2") != rebalanceArgs_.weightsOfRedestribution.length) {
+        if (
+            TransientContext.get(bytes32(uint256(0))) != TransientContext.get("0x1")
+                || TransientContext.get("0x2") != rebalanceArgs_.weightsOfRedestribution.length
+        ) {
             revert ARRAY_LENGTH_MISMATCH();
         }
 
