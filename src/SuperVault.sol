@@ -400,50 +400,54 @@ contract SuperVault is BaseStrategy, ISuperVault {
     /// @notice Deploys funds to the underlying Superforms
     /// @param amount_ The amount of funds to deploy
     function _deployFunds(uint256 amount_) internal override {
+        TransientContext.set("0x0", amount_);
+
         bytes memory callData = numberOfSuperforms == 1
             ? abi.encodeWithSelector(
                 IBaseRouter.singleDirectSingleVaultDeposit.selector,
-                SingleDirectSingleVaultStateReq(_prepareSingleVaultDepositData(amount_))
+                SingleDirectSingleVaultStateReq(_prepareSingleVaultDepositData(TransientContext.get("0x0")))
             )
             : abi.encodeWithSelector(
                 IBaseRouter.singleDirectMultiVaultDeposit.selector,
-                SingleDirectMultiVaultStateReq(_prepareMultiVaultDepositData(amount_))
+                SingleDirectMultiVaultStateReq(_prepareMultiVaultDepositData(TransientContext.get("0x0")))
             );
 
         //address router = _SUPERFORM_ROUTER;
-        TransientContext.set("0x4", uint256(uint160(_SUPERFORM_ROUTER)));
-        asset.safeIncreaseAllowance(address(uint160(TransientContext.get("0x4"))), amount_);
+        TransientContext.set("0x1", uint256(uint160(_getAddress(keccak256("SUPERFORM_ROUTER"))))); // router address
+        
+        asset.safeIncreaseAllowance(address(uint160(TransientContext.get("0x1"))), TransientContext.get("0x0"));
 
         /// @dev this call has to be enforced with 0 msg.value not to break the 4626 standard
-        (bool success, bytes memory returndata) = address(uint160(TransientContext.get("0x4"))).call(callData);
+        (bool success, bytes memory returndata) = address(uint160(TransientContext.get("0x1"))).call(callData);
 
         Address.verifyCallResult(success, returndata, "CallRevertWithNoReturnData");
 
-        if (asset.allowance(address(this), address(uint160(TransientContext.get("0x4")))) > 0) asset.forceApprove(address(uint160(TransientContext.get("0x4"))), 0);
+        if (asset.allowance(address(this), address(uint160(TransientContext.get("0x1")))) > 0) asset.forceApprove(address(uint160(TransientContext.get("0x1"))), 0);
     }
 
     /// @notice Frees funds from the underlying Superforms
     /// @param amount_ The amount of funds to free
     function _freeFunds(uint256 amount_) internal override {
+        TransientContext.set("0x0", amount_);
         bytes memory callData;
-        TransientContext.set("0x5", uint256(uint160(_SUPERFORM_ROUTER)));
+        TransientContext.set("0x1", uint256(uint160(_getAddress(keccak256("SUPERFORM_ROUTER")))));
 
         if (numberOfSuperforms == 1) {
-            SingleVaultSFData memory svData = _prepareSingleVaultWithdrawData(amount_);
+            SingleVaultSFData memory svData = _prepareSingleVaultWithdrawData(TransientContext.get("0x0"));
             callData = abi.encodeWithSelector(
                 IBaseRouter.singleDirectSingleVaultWithdraw.selector, SingleDirectSingleVaultStateReq(svData)
             );
-            _setSuperPositionApproval(address(uint160(TransientContext.get("0x5"))), svData.superformId, svData.amount);
+            _setSuperPositionApproval(address(uint160(TransientContext.get("0x1"))), svData.superformId, svData.amount);
         } else {
-            MultiVaultSFData memory mvData = _prepareMultiVaultWithdrawData(amount_);
+            MultiVaultSFData memory mvData = _prepareMultiVaultWithdrawData(TransientContext.get("0x0"));
             callData = abi.encodeWithSelector(
                 IBaseRouter.singleDirectMultiVaultWithdraw.selector, SingleDirectMultiVaultStateReq(mvData)
             );
-            _setSuperPositionsApproval(address(uint160(TransientContext.get("0x5"))), mvData.superformIds, mvData.amounts);
+            _setSuperPositionsApproval(address(uint160(TransientContext.get("0x1"))), mvData.superformIds, mvData.amounts);
         }
 
         /// @dev this call has to be enforced with 0 msg.value not to break the 4626 standard
-        (bool success, bytes memory returndata) = address(uint160(TransientContext.get("0x5"))).call(callData);
+        (bool success, bytes memory returndata) = address(uint160(TransientContext.get("0x1"))).call(callData);
 
         Address.verifyCallResult(success, returndata, "CallRevertWithNoReturnData");
     }
