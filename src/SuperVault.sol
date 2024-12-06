@@ -413,7 +413,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
             );
 
         //address router = _SUPERFORM_ROUTER;
-        TransientContext.set("0x1", uint256(uint160(_getAddress(keccak256("SUPERFORM_ROUTER"))))); // router address
+        TransientContext.set("0x1", uint256(uint160(_SUPERFORM_ROUTER)))); // router address
         
         asset.safeIncreaseAllowance(address(uint160(TransientContext.get("0x1"))), TransientContext.get("0x0"));
 
@@ -430,7 +430,7 @@ contract SuperVault is BaseStrategy, ISuperVault {
     function _freeFunds(uint256 amount_) internal override {
         TransientContext.set("0x0", amount_);
         bytes memory callData;
-        TransientContext.set("0x1", uint256(uint160(_getAddress(keccak256("SUPERFORM_ROUTER")))));
+        TransientContext.set("0x1", uint256(uint160(_SUPERFORM_ROUTER))));
 
         if (numberOfSuperforms == 1) {
             SingleVaultSFData memory svData = _prepareSingleVaultWithdrawData(TransientContext.get("0x0"));
