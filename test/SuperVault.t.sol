@@ -1495,7 +1495,9 @@ contract SuperVaultTest is ProtocolActions {
             threeSuperformIds: new uint256[](3),
             threeWeights: new uint256[](3)
         });
-
+        uint256[] memory finalIndexes;
+        uint256[] memory finalWeightsTargets;
+        uint256[] memory indexesRebalanceFrom;
         // Test two form combinations
         console.log("\n=== Testing Two Form Rebalance Gas Consumption ===");
         string memory snapshotName;
@@ -1533,13 +1535,13 @@ contract SuperVaultTest is ProtocolActions {
                 _directDeposit(deployer, superVaultIdTwo, vars.depositAmount, "");
 
                 // Perform rebalance
-                uint256[] memory finalIndexes = new uint256[](2);
+                finalIndexes = new uint256[](2);
                 finalIndexes[0] = i;
                 finalIndexes[1] = j;
-                uint256[] memory finalWeightsTargets = new uint256[](2);
+                finalWeightsTargets = new uint256[](2);
                 finalWeightsTargets[0] = 6000; // 60%
                 finalWeightsTargets[1] = 4000; // 40%
-                uint256[] memory indexesRebalanceFrom = new uint256[](1);
+                indexesRebalanceFrom = new uint256[](1);
                 indexesRebalanceFrom[0] = j;
 
                 vars.twoFormGas[vars.twoFormIndex] = _performRebalance(
@@ -1588,15 +1590,15 @@ contract SuperVaultTest is ProtocolActions {
         _directDeposit(deployer, superVaultIdThree, vars.depositAmount, "");
 
         // Perform rebalance
-        uint256[] memory finalIndexes = new uint256[](3);
+        finalIndexes = new uint256[](3);
         finalIndexes[0] = 0;
         finalIndexes[1] = 1;
         finalIndexes[2] = 2;
-        uint256[] memory finalWeightsTargets = new uint256[](3);
+        finalWeightsTargets = new uint256[](3);
         finalWeightsTargets[0] = 5000; // 50%
         finalWeightsTargets[1] = 3000; // 30%
         finalWeightsTargets[2] = 2000; // 20%
-        uint256[] memory indexesRebalanceFrom = new uint256[](2);
+        indexesRebalanceFrom = new uint256[](2);
         indexesRebalanceFrom[0] = 1;
         indexesRebalanceFrom[1] = 2;
 

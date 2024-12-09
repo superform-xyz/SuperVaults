@@ -11,6 +11,3 @@
 	path = lib/superform-core
 	url = https://github.com/superform-xyz/superform-core
 	branch = v1.5
-[submodule "lib/transience"]
-	path = lib/transience
-	url = https://github.com/ethereum-optimism/transience

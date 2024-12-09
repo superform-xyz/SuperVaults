@@ -23,7 +23,6 @@ import { ISuperformRouterPlus } from "superform-core/src/interfaces/ISuperformRo
 import { ISuperRegistry } from "superform-core/src/interfaces/ISuperRegistry.sol";
 import { ISuperVault, IERC1155Receiver } from "./interfaces/ISuperVault.sol";
 import { ISuperformFactory } from "superform-core/src/interfaces/ISuperformFactory.sol";
-import { TransientContext } from "transience/TransientContext.sol";
 import { BaseStrategy } from "tokenized-strategy/BaseStrategy.sol";
 import { ISuperformFactoryMinimal } from "./interfaces/ISuperformFactoryMinimal.sol";
 
@@ -220,46 +219,42 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
     /// @inheritdoc ISuperVault
     function rebalance(RebalanceArgs calldata rebalanceArgs_) external payable override onlySuperVaultsStrategist {
-        TransientContext.set(bytes32(0), rebalanceArgs_.superformIdsRebalanceFrom.length); // lenRebalanceFrom
-        TransientContext.set("0x1", rebalanceArgs_.amountsRebalanceFrom.length); // lenAmountsRebalanceFrom
-        TransientContext.set("0x2", rebalanceArgs_.finalSuperformIds.length); // lenFinal
+        uint256 lenRebalanceFrom = rebalanceArgs_.superformIdsRebalanceFrom.length;
+        uint256 lenAmountsRebalanceFrom = rebalanceArgs_.amountsRebalanceFrom.length;
+        uint256 lenFinal = rebalanceArgs_.finalSuperformIds.length;
 
-        if (TransientContext.get("0x1") == 0) revert EMPTY_AMOUNTS_REBALANCE_FROM();
-
-        if (TransientContext.get("0x2") == 0) revert EMPTY_FINAL_SUPERFORM_IDS();
+        if (lenAmountsRebalanceFrom == 0) revert EMPTY_AMOUNTS_REBALANCE_FROM();
+        if (lenFinal == 0) revert EMPTY_FINAL_SUPERFORM_IDS();
 
         /// @dev sanity check input arrays
-        if (
-            TransientContext.get(bytes32(uint256(0))) != TransientContext.get("0x1")
-                || TransientContext.get("0x2") != rebalanceArgs_.weightsOfRedestribution.length
-        ) {
+        if (lenRebalanceFrom != lenAmountsRebalanceFrom || lenFinal != rebalanceArgs_.weightsOfRedestribution.length) {
             revert ARRAY_LENGTH_MISMATCH();
         }
 
         {
             /// @dev caching to avoid multiple loads
-            TransientContext.set("0x3", 0); //foundCount
-
-            for (uint256 i; i < TransientContext.get(bytes32(0)); ++i) {
-                for (uint256 j; j < numberOfSuperforms; ++j) {
+            uint256 foundCount;
+            uint256 nSuperforms = numberOfSuperforms;
+            for (uint256 i; i < lenRebalanceFrom; ++i) {
+                for (uint256 j; j < nSuperforms; ++j) {
                     if (rebalanceArgs_.superformIdsRebalanceFrom[i] == superformIds[j]) {
-                        TransientContext.set("0x3", TransientContext.get("0x3") + 1); // increment foundCount
+                        foundCount++;
                         break;
                     }
                 }
             }
 
-            if (TransientContext.get("0x3") != TransientContext.get(bytes32(0))) {
+            if (foundCount != lenRebalanceFrom) {
                 revert INVALID_SUPERFORM_ID_REBALANCE_FROM();
             }
         }
-        for (uint256 i = 1; i < TransientContext.get(bytes32(0)); ++i) {
+        for (uint256 i = 1; i < lenRebalanceFrom; ++i) {
             if (rebalanceArgs_.superformIdsRebalanceFrom[i] <= rebalanceArgs_.superformIdsRebalanceFrom[i - 1]) {
                 revert DUPLICATE_SUPERFORM_IDS_REBALANCE_FROM();
             }
         }
 
-        for (uint256 i; i < TransientContext.get("0x2"); ++i) {
+        for (uint256 i; i < lenFinal; ++i) {
             if (i >= 1 && rebalanceArgs_.finalSuperformIds[i] <= rebalanceArgs_.finalSuperformIds[i - 1]) {
                 revert DUPLICATE_FINAL_SUPERFORM_IDS();
             }
