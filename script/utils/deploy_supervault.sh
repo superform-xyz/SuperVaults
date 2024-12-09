@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# For accessing the secrets please create them in .env file as we use 1password
 
 export ETHEREUM_RPC_URL=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/ETHEREUM_RPC_URL/credential)
 export BSC_RPC_URL=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/BSC_RPC_URL/credential)
@@ -8,11 +9,32 @@ export ARBITRUM_RPC_URL=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/ARBITRUM_RPC_U
 export OPTIMISM_RPC_URL=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/OPTIMISM_RPC_URL/credential)
 export BASE_RPC_URL=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/BASE_RPC_URL/credential)
 export FANTOM_RPC_URL=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/FANTOM_RPC_URL/credential)
-<<c
-Run the script
-echo Deploying super vault: ...
+export SV_TENDERLY_VIRTUAL_MAINNET=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/SV_TENDERLY_VIRTUAL_MAINNET/credential)
+export TENDERLY_VERIFIER_URL_VNET=$SV_TENDERLY_VIRTUAL_MAINNET/verify/etherscan
+export TENDERLY_VERIFIER_URL_STAGING=https://api.tenderly.co/api/v1/account/superform/project/v1/etherscan/verify/network/8453
+export TENDERLY_ACCESS_TOKEN=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/TENDERLY_SUPER_THAI_PROJ_API_KEY/credential)
 
-forge script script/forge-scripts/Deploy.SuperVault.s.sol:MainnetDeploySuperVault --sig "deploySuperVault(bool,uint256)" true 8453 --rpc-url $BASE_RPC_URL --legacy --account default --sender 0x48aB8AdF869Ba9902Ad483FB1Ca2eFDAb6eabe92 --broadcast
-c
+# Run the script
+echo Deploying SV To Staging: ...
 
-forge script script/forge-scripts/Deploy.SuperVault.s.sol:MainnetDeploySuperVault --sig "setStrategist(bool,uint256)" true 8453 --rpc-url $BASE_RPC_URL --legacy --account default --sender 0x48aB8AdF869Ba9902Ad483FB1Ca2eFDAb6eabe92 --broadcast
+forge script script/forge-scripts/Deploy.SuperVault.s.sol:MainnetDeploySuperVault --sig "deploySuperVault(uint256,uint256)" 1 8453 \
+    --rpc-url $BASE_RPC_URL  \
+    --account default \
+    --sender 0x48aB8AdF869Ba9902Ad483FB1Ca2eFDAb6eabe92  \
+    --broadcast \
+    --verify \
+    --etherscan-api-key $TENDERLY_ACCESS_TOKEN \
+    --verifier-url $TENDERLY_VERIFIER_URL_STAGING 
+
+# forge script script/forge-scripts/Deploy.SuperVault.s.sol:MainnetDeploySuperVault --sig "deploySuperVault(uint256,uint256)" 0 8453 --rpc-url $BASE_RPC_URL --legacy --account default --sender 0x48aB8AdF869Ba9902Ad483FB1Ca2eFDAb6eabe92 --broadcast
+#  echo Deploying SV To Tenderly VNET: ...
+
+# forge script script/forge-scripts/Deploy.SuperVault.s.sol:MainnetDeploySuperVault --sig "deploySuperVault(uint256,uint256)" 2 1 \
+#     --rpc-url $SV_TENDERLY_VIRTUAL_MAINNET  \
+#     --account default \
+#     --sender 0x48aB8AdF869Ba9902Ad483FB1Ca2eFDAb6eabe92  \
+#     --broadcast \
+#     --verify \
+#     --etherscan-api-key $TENDERLY_ACCESS_TOKEN \
+#     --verifier-url $TENDERLY_VERIFIER_URL_VNET 
+

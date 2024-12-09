@@ -1,3 +1,4 @@
 {
-    "Moonwell": "0xd8ba05abcbe0baf1ee748104da11fb8f717fd291" /// 100% moonwell flagship supervault
+    "SuperVault": "0xBD34DB7ef42533A51eb0F53eD9D91D06880bcdf1",
+    "SuperVaultFactory": "0xC67e46C17f82f8f19C047661fcF9c7eBAce61402"
 }
