@@ -887,13 +887,17 @@ contract SuperVault is BaseStrategy, ISuperVault {
 
         // For each current superform ID
         uint256 numSuperforms = currentSuperformIds.length;
+        uint256 numFinalSuperforms = finalSuperformIds_.length;
         for (uint256 i; i < numSuperforms;) {
             bool found;
             // Check if it exists in finalSuperformIds_
-            for (uint256 j; j < finalSuperformIds_.length; ++j) {
+            for (uint256 j; j < numFinalSuperforms;) {
                 if (currentSuperformIds[i] == finalSuperformIds_[j]) {
                     found = true;
                     break;
+                }
+                unchecked {
+                    ++j;
                 }
             }
             // If not found in final IDs, it should be fully rebalanced
