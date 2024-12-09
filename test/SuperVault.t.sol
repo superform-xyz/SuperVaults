@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.24;
 
 import "superform-core/test/utils/ProtocolActions.sol";
 import { VaultMock } from "superform-core/test/mocks/VaultMock.sol";
