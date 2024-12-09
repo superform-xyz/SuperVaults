@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.23;
+pragma solidity ^0.8.24;
 
 import { IERC1155Receiver } from "openzeppelin-contracts/contracts/token/ERC1155/IERC1155Receiver.sol";
 
@@ -83,6 +83,9 @@ interface ISuperVault is IERC1155Receiver {
 
     /// @notice Error thrown when a superform ID is not whitelisted
     error SUPERFORM_NOT_WHITELISTED();
+
+    /// @notice Error thrown when a superform is fully rebalanced
+    error INVALID_SP_FULL_REBALANCE(uint256 superformId);
 
     //////////////////////////////////////////////////////////////
     //                  EVENTS                                   //
