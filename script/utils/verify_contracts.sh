@@ -12,24 +12,36 @@ export BASESCAN_API_KEY=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/BASESCAN_API_K
 # constructor_arg_vnet="$(cast abi-encode 'constructor((address,address,address,address,string,uint256,uint256[],uint256[]))' '(0x17A332dC7B40aE701485023b219E9D6f493a2514,0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48,0xde587D0C7773BD239fF1bE87d32C876dEd4f7879,0xde587D0C7773BD239fF1bE87d32C876dEd4f7879,SuperUSDC,1000000000000,[6277101738094410093849154803755231404199879241263958603447],[10000])')"
 
 
-# forge verify-contract 0x6515fCbB29891d7C62E0a83AD99C563d9e503114 "src/SuperVault.sol:SuperVault" --chain-id 95 \
+# forge verify-contract 0xeaebe7eaec84585cfd1b38cc6c5b74fc0de74af1 "src/SuperVault.sol:SuperVault" --chain-id 95 \
 #     --num-of-optimizations 200 \
 #     --watch \
-#     --compiler-version v0.8.23+commit.f704f362 \
+#     --compiler-version v0.8.23 \
 #     --constructor-args "$constructor_arg_vnet" \
 #     --rpc-url $SV_TENDERLY_VIRTUAL_MAINNET \
 #     --verifier-url $TENDERLY_VERIFIER_URL_VNET \
 #     --etherscan-api-key $TENDERLY_ACCESS_TOKEN
 
-constructor_arg_prod="$(cast abi-encode 'constructor((address,address,address,address,string,uint256,uint256[],uint256[]))' '(0x17A332dC7B40aE701485023b219E9D6f493a2514,0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913,0x01d9944787045A431DA61F3be137Ba07b5dd8d6C,0x01d9944787045A431DA61F3be137Ba07b5dd8d6C,SuperUSDC,1000000000000,[53060340969226327679691964126799737454608928190443144923035525],[10000])')"
+
+constructor_arg_staging="$(cast abi-encode 'constructor((address,address,address,address,string,uint256,uint256[],uint256[]))' '(0xB2C097ac459aFAc892ae5b35f6bd6a9Dd3071F47,0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913,0x1F05a8Ff6d895Ba04C84c5031c5d63FA1afCDA6F,0x6A5DD913fE3CB5193E09D1810a3b9ff1C0f9c0D6,SuperUSDC,1000000000000,[53060340969225424123272122895191053251498236784870936252229868],[10000])')"
 
 export NETWORK_ID=8453
-#export TENDERLY_VERIFIER_URL_PROD=https://api.tenderly.co/api/v1/account/superform/project/v1/etherscan/verify/network/$NETWORK_ID
+export TENDERLY_VERIFIER_URL_STAGING=https://api.tenderly.co/api/v1/account/superform/project/v1/etherscan/verify/network/8453
 
-forge verify-contract 0x369b2d0c701f791645ECF40F14d390F69A6023E3 "src/SuperVault.sol:SuperVault" --chain-id $NETWORK_ID \
+forge verify-contract 0xBD34DB7ef42533A51eb0F53eD9D91D06880bcdf1 "src/SuperVault.sol:SuperVault" --chain-id $NETWORK_ID \
     --num-of-optimizations 200 \
     --watch \
-    --compiler-version v0.8.23+commit.f704f362 \
-    --constructor-args "$constructor_arg_prod" \
+    --compiler-version v0.8.23 \
     --rpc-url $BASE_RPC_URL \
     --etherscan-api-key $BASESCAN_API_KEY
+
+# constructor_arg_prod="$(cast abi-encode 'constructor((address,address,address,address,string,uint256,uint256[],uint256[]))' '(0x17A332dC7B40aE701485023b219E9D6f493a2514,0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913,0x01d9944787045A431DA61F3be137Ba07b5dd8d6C,0x01d9944787045A431DA61F3be137Ba07b5dd8d6C,SuperUSDC,1000000000000,[53060340969226327679691964126799737454608928190443144923035525],[10000])')"
+
+# export NETWORK_ID=1
+# export TENDERLY_VERIFIER_URL_PROD=https://api.tenderly.co/api/v1/account/superform/project/v1/etherscan/verify/network/$NETWORK_ID
+
+# forge verify-contract 0x369b2d0c701f791645ECF40F14d390F69A6023E3 "src/SuperVault.sol:SuperVault" --chain-id $NETWORK_ID \
+#     --num-of-optimizations 200 \
+#     --watch \
+#     --rpc-url $ETHEREUM_RPC_URL \
+#     --verifier-url $TENDERLY_VERIFIER_URL_VNET \
+#     --etherscan-api-key $TENDERLY_ACCESS_TOKEN
