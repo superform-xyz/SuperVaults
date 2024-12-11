@@ -54,9 +54,10 @@ contract SuperVaultTest is ProtocolActions {
     uint64 SOURCE_CHAIN;
     uint256 N_UNDERLYING_SFS;
     uint256 SUPER_VAULT_ID1;
-    string[] underlyingSuperformNames;
     uint256[] underlyingSuperformIds;
     uint256[] allSuperformIds;
+    string[] gasTestSuperformNames;
+    uint256[] gasTestSuperformIds;
 
     SuperVault superVault;
     SuperVaultHarness superVaultHarness;
@@ -76,6 +77,25 @@ contract SuperVaultTest is ProtocolActions {
                     uint256 temp = allSuperformIds[j];
                     allSuperformIds[j] = allSuperformIds[j + 1];
                     allSuperformIds[j + 1] = temp;
+                }
+            }
+        }
+    }
+
+    function sortGasTestsArrays() internal {
+        uint256 n = gasTestSuperformIds.length;
+        for (uint256 i = 0; i < n - 1; i++) {
+            for (uint256 j = 0; j < n - i - 1; j++) {
+                if (gasTestSuperformIds[j] > gasTestSuperformIds[j + 1]) {
+                    // Swap IDs
+                    uint256 tempId = gasTestSuperformIds[j];
+                    gasTestSuperformIds[j] = gasTestSuperformIds[j + 1];
+                    gasTestSuperformIds[j + 1] = tempId;
+
+                    // Swap corresponding names
+                    string memory tempName = gasTestSuperformNames[j];
+                    gasTestSuperformNames[j] = gasTestSuperformNames[j + 1];
+                    gasTestSuperformNames[j + 1] = tempName;
                 }
             }
         }
@@ -112,15 +132,12 @@ contract SuperVaultTest is ProtocolActions {
         vaultAddresses[4] = syFUSDCVaultWrapper;
         vaultAddresses[5] = eulerUsdcVault;
 
-        underlyingSuperformNames.push("Morpho");
-        underlyingSuperformNames.push("Aave");
-        underlyingSuperformNames.push("Fluid");
-
-        N_UNDERLYING_SFS = underlyingSuperformNames.length;
+        N_UNDERLYING_SFS = 3;
 
         // Get the SuperformFactory
         SuperformFactory superformFactory = SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory"));
-        underlyingSuperformIds = new uint256[](vaultAddresses.length - N_UNDERLYING_SFS);
+        underlyingSuperformIds = new uint256[](N_UNDERLYING_SFS);
+        gasTestSuperformIds = new uint256[](N_UNDERLYING_SFS);
         allSuperformIds = new uint256[](vaultAddresses.length);
         address superformAddress;
         for (uint256 i = 0; i < vaultAddresses.length; i++) {
@@ -131,16 +148,23 @@ contract SuperVaultTest is ProtocolActions {
                 (allSuperformIds[i], superformAddress) =
                     superformFactory.createSuperform(FORM_IMPLEMENTATION_IDS[1], vaultAddresses[i]);
             }
+            if (i < 3) {
+                gasTestSuperformIds[i] = allSuperformIds[i];
+            }
         }
+        gasTestSuperformNames.push("Morpho");
+        gasTestSuperformNames.push("Aave");
+        gasTestSuperformNames.push("Fluid");
 
+        sortGasTestsArrays();
         sortAllSuperformIds();
 
-        for (uint256 i = 0; i < vaultAddresses.length - N_UNDERLYING_SFS; i++) {
+        for (uint256 i = 0; i < N_UNDERLYING_SFS; i++) {
             underlyingSuperformIds[i] = allSuperformIds[i];
         }
 
-        uint256[] memory weights = new uint256[](vaultAddresses.length - N_UNDERLYING_SFS);
-        for (uint256 i = 0; i < vaultAddresses.length - N_UNDERLYING_SFS; i++) {
+        uint256[] memory weights = new uint256[](N_UNDERLYING_SFS);
+        for (uint256 i = 0; i < N_UNDERLYING_SFS; i++) {
             weights[i] = uint256(10_000) / 3;
             if (i == 2) {
                 weights[i] += 1;
@@ -662,7 +686,7 @@ contract SuperVaultTest is ProtocolActions {
         uint256[] memory indexesRebalanceFrom = new uint256[](1);
         indexesRebalanceFrom[0] = 0;
 
-        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, "");
+        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, allSuperformIds, "");
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
 
         // Test case 2
@@ -676,7 +700,7 @@ contract SuperVaultTest is ProtocolActions {
         indexesRebalanceFrom[0] = 1;
         indexesRebalanceFrom[1] = 2;
 
-        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, "");
+        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, allSuperformIds, "");
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
     }
 
@@ -708,7 +732,7 @@ contract SuperVaultTest is ProtocolActions {
         indexesRebalanceFrom[0] = 1;
         indexesRebalanceFrom[1] = 2;
 
-        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, "");
+        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, allSuperformIds, "");
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
 
         finalIndexes = new uint256[](3);
@@ -725,7 +749,7 @@ contract SuperVaultTest is ProtocolActions {
         indexesRebalanceFrom[0] = 0;
         indexesRebalanceFrom[1] = 3;
 
-        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, "");
+        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, allSuperformIds, "");
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
     }
 
@@ -751,7 +775,7 @@ contract SuperVaultTest is ProtocolActions {
         indexesRebalanceFrom[1] = 1;
         indexesRebalanceFrom[2] = 2;
 
-        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, "");
+        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, allSuperformIds, "");
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
 
         finalIndexes = new uint256[](2);
@@ -763,7 +787,7 @@ contract SuperVaultTest is ProtocolActions {
         indexesRebalanceFrom = new uint256[](1);
         indexesRebalanceFrom[0] = 4;
 
-        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, "");
+        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, allSuperformIds, "");
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
 
         console.log("----withdrawing full balance----");
@@ -804,7 +828,7 @@ contract SuperVaultTest is ProtocolActions {
         indexesRebalanceFrom[2] = 2;
         console.log("----rebalancing to 100% in index 4----");
 
-        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, "");
+        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, allSuperformIds, "");
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
 
         for (uint256 i = 0; i < allSuperformIds.length; i++) {
@@ -831,7 +855,7 @@ contract SuperVaultTest is ProtocolActions {
         indexesRebalanceFrom[0] = 4;
         console.log("----rebalancing to 40% in index 0 and 60% in index 4----");
 
-        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, "");
+        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, allSuperformIds, "");
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
 
         for (uint256 i = 0; i < allSuperformIds.length; i++) {
@@ -852,7 +876,7 @@ contract SuperVaultTest is ProtocolActions {
         indexesRebalanceFrom = new uint256[](1);
         indexesRebalanceFrom[0] = 0;
         console.log("----rebalancing to 100% in index 4----");
-        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, "");
+        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, allSuperformIds, "");
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
 
         for (uint256 i = 0; i < allSuperformIds.length; i++) {
@@ -910,7 +934,7 @@ contract SuperVaultTest is ProtocolActions {
 
         console.log("----First rebalance: 60% index 0, 40% index 1----");
         vm.startPrank(deployer);
-        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, "");
+        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, allSuperformIds, "");
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
         vm.stopPrank();
         _logSuperPositionBalances(superVaultAddress);
@@ -944,7 +968,7 @@ contract SuperVaultTest is ProtocolActions {
 
         console.log("----Second rebalance: 40/30/30 split----");
         vm.startPrank(deployer);
-        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, "");
+        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, allSuperformIds, "");
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
         vm.stopPrank();
         _logSuperPositionBalances(superVaultAddress);
@@ -1262,7 +1286,7 @@ contract SuperVaultTest is ProtocolActions {
         finalWeightsTargets[1] = finalWeightsTwo;
 
         // perform rebalance and assert
-        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, "");
+        _performRebalance(SUPER_VAULT_ID1, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, allSuperformIds, "");
         _assertWeightsWithinTolerance(finalIndexes, finalWeightsTargets);
     }
 
@@ -1308,9 +1332,9 @@ contract SuperVaultTest is ProtocolActions {
         console.log("\n=== Testing Single Form Combinations ===");
         string memory snapshotName;
         for (uint256 i = 0; i < 3; i++) {
-            vars.oneSuperformIds[0] = underlyingSuperformIds[i];
+            vars.oneSuperformIds[0] = gasTestSuperformIds[i];
             vars.oneWeights[0] = 10_000;
-            snapshotName = string.concat("Deposit with one underlying superform: ", underlyingSuperformNames[i]);
+            snapshotName = string.concat("Deposit with one underlying superform: ", gasTestSuperformNames[i]);
             console.log(snapshotName);
 
             SuperVault superVaultOne = new SuperVault(
@@ -1338,14 +1362,14 @@ contract SuperVaultTest is ProtocolActions {
             for (uint256 j = i + 1; j < 3; j++) {
                 snapshotName = string.concat(
                     "Deposit with two underlying superforms: ",
-                    underlyingSuperformNames[i],
+                    gasTestSuperformNames[i],
                     " + ",
-                    underlyingSuperformNames[j]
+                    gasTestSuperformNames[j]
                 );
                 console.log(snapshotName);
 
-                vars.twoSuperformIds[0] = underlyingSuperformIds[i];
-                vars.twoSuperformIds[1] = underlyingSuperformIds[j];
+                vars.twoSuperformIds[0] = gasTestSuperformIds[i];
+                vars.twoSuperformIds[1] = gasTestSuperformIds[j];
                 vars.twoWeights[0] = 5000;
                 vars.twoWeights[1] = 5000;
 
@@ -1374,17 +1398,17 @@ contract SuperVaultTest is ProtocolActions {
         console.log("\n=== Testing Three Form Combination ===");
         snapshotName = string.concat(
             "Deposit with three underlying superforms: ",
-            underlyingSuperformNames[0],
+            gasTestSuperformNames[0],
             " + ",
-            underlyingSuperformNames[1],
+            gasTestSuperformNames[1],
             " + ",
-            underlyingSuperformNames[2]
+            gasTestSuperformNames[2]
         );
         console.log(snapshotName);
 
-        vars.threeSuperformIds[0] = underlyingSuperformIds[0];
-        vars.threeSuperformIds[1] = underlyingSuperformIds[1];
-        vars.threeSuperformIds[2] = underlyingSuperformIds[2];
+        vars.threeSuperformIds[0] = gasTestSuperformIds[0];
+        vars.threeSuperformIds[1] = gasTestSuperformIds[1];
+        vars.threeSuperformIds[2] = gasTestSuperformIds[2];
         vars.threeWeights[0] = 3334;
         vars.threeWeights[1] = 3333;
         vars.threeWeights[2] = 3333;
@@ -1423,7 +1447,7 @@ contract SuperVaultTest is ProtocolActions {
         for (uint256 i = 0; i < vars.oneFormGas.length; i++) {
             console.log(
                 string.concat(
-                    "Gas for single form (", underlyingSuperformNames[i], "): ", Strings.toString(vars.oneFormGas[i])
+                    "Gas for single form (", gasTestSuperformNames[i], "): ", Strings.toString(vars.oneFormGas[i])
                 )
             );
         }
@@ -1434,9 +1458,9 @@ contract SuperVaultTest is ProtocolActions {
                 console.log(
                     string.concat(
                         "Gas for two forms (",
-                        underlyingSuperformNames[i],
+                        gasTestSuperformNames[i],
                         " + ",
-                        underlyingSuperformNames[j],
+                        gasTestSuperformNames[j],
                         "): ",
                         Strings.toString(vars.twoFormGas[twoFormIndex2])
                     )
@@ -1448,11 +1472,11 @@ contract SuperVaultTest is ProtocolActions {
         console.log(
             string.concat(
                 "Gas for three forms (",
-                underlyingSuperformNames[0],
+                gasTestSuperformNames[0],
                 " + ",
-                underlyingSuperformNames[1],
+                gasTestSuperformNames[1],
                 " + ",
-                underlyingSuperformNames[2],
+                gasTestSuperformNames[2],
                 "): ",
                 Strings.toString(vars.threeFormGas[0])
             )
@@ -1505,14 +1529,14 @@ contract SuperVaultTest is ProtocolActions {
             for (uint256 j = i + 1; j < 3; j++) {
                 snapshotName = string.concat(
                     "Rebalance with two underlying superforms: ",
-                    underlyingSuperformNames[i],
+                    gasTestSuperformNames[i],
                     " + ",
-                    underlyingSuperformNames[j]
+                    gasTestSuperformNames[j]
                 );
                 console.log(snapshotName);
 
-                vars.twoSuperformIds[0] = underlyingSuperformIds[i];
-                vars.twoSuperformIds[1] = underlyingSuperformIds[j];
+                vars.twoSuperformIds[0] = gasTestSuperformIds[i];
+                vars.twoSuperformIds[1] = gasTestSuperformIds[j];
                 vars.twoWeights[0] = 5000;
                 vars.twoWeights[1] = 5000;
 
@@ -1545,7 +1569,12 @@ contract SuperVaultTest is ProtocolActions {
                 indexesRebalanceFrom[0] = j;
 
                 vars.twoFormGas[vars.twoFormIndex] = _performRebalance(
-                    superVaultIdTwo, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, snapshotName
+                    superVaultIdTwo,
+                    finalIndexes,
+                    finalWeightsTargets,
+                    indexesRebalanceFrom,
+                    gasTestSuperformIds,
+                    snapshotName
                 );
                 console.log(snapshotName, "Gas used:", vars.twoFormGas[vars.twoFormIndex]);
                 vars.twoFormIndex++;
@@ -1556,17 +1585,17 @@ contract SuperVaultTest is ProtocolActions {
         console.log("\n=== Testing Three Form Rebalance Gas Consumption ===");
         snapshotName = string.concat(
             "Rebalance with three underlying superforms: ",
-            underlyingSuperformNames[0],
+            gasTestSuperformNames[0],
             " + ",
-            underlyingSuperformNames[1],
+            gasTestSuperformNames[1],
             " + ",
-            underlyingSuperformNames[2]
+            gasTestSuperformNames[2]
         );
         console.log(snapshotName);
 
-        vars.threeSuperformIds[0] = underlyingSuperformIds[0];
-        vars.threeSuperformIds[1] = underlyingSuperformIds[1];
-        vars.threeSuperformIds[2] = underlyingSuperformIds[2];
+        vars.threeSuperformIds[0] = gasTestSuperformIds[0];
+        vars.threeSuperformIds[1] = gasTestSuperformIds[1];
+        vars.threeSuperformIds[2] = gasTestSuperformIds[2];
         vars.threeWeights[0] = 3334;
         vars.threeWeights[1] = 3333;
         vars.threeWeights[2] = 3333;
@@ -1602,8 +1631,14 @@ contract SuperVaultTest is ProtocolActions {
         indexesRebalanceFrom[0] = 1;
         indexesRebalanceFrom[1] = 2;
 
-        vars.threeFormGas[0] =
-            _performRebalance(superVaultIdThree, finalIndexes, finalWeightsTargets, indexesRebalanceFrom, snapshotName);
+        vars.threeFormGas[0] = _performRebalance(
+            superVaultIdThree,
+            finalIndexes,
+            finalWeightsTargets,
+            indexesRebalanceFrom,
+            gasTestSuperformIds,
+            snapshotName
+        );
         console.log(snapshotName, "Gas used:", vars.threeFormGas[0]);
 
         // Calculate averages
@@ -1621,9 +1656,9 @@ contract SuperVaultTest is ProtocolActions {
                 console.log(
                     string.concat(
                         "Gas for two forms rebalance (",
-                        underlyingSuperformNames[i],
+                        gasTestSuperformNames[i],
                         " + ",
-                        underlyingSuperformNames[j],
+                        gasTestSuperformNames[j],
                         "): ",
                         Strings.toString(vars.twoFormGas[twoFormIndex2])
                     )
@@ -1635,11 +1670,11 @@ contract SuperVaultTest is ProtocolActions {
         console.log(
             string.concat(
                 "Gas for three forms rebalance (",
-                underlyingSuperformNames[0],
+                gasTestSuperformNames[0],
                 " + ",
-                underlyingSuperformNames[1],
+                gasTestSuperformNames[1],
                 " + ",
-                underlyingSuperformNames[2],
+                gasTestSuperformNames[2],
                 "): ",
                 Strings.toString(vars.threeFormGas[0])
             )
@@ -2102,6 +2137,7 @@ contract SuperVaultTest is ProtocolActions {
         uint256[] memory finalSuperformIndexes,
         uint256[] memory finalWeights,
         uint256[] memory indexesRebalanceFrom,
+        uint256[] memory masterListSuperformIds,
         string memory snapshotName
     )
         internal
@@ -2114,12 +2150,12 @@ contract SuperVaultTest is ProtocolActions {
 
         // Calculate current weights and total USDC value
         vars.totalUSDCValue = 0;
-        uint256[] memory currentUSDC = new uint256[](allSuperformIds.length);
-        uint256[] memory currentWeights = new uint256[](allSuperformIds.length);
-        for (uint256 i = 0; i < allSuperformIds.length; i++) {
-            (address superform,,) = allSuperformIds[i].getSuperform();
+        uint256[] memory currentUSDC = new uint256[](masterListSuperformIds.length);
+        uint256[] memory currentWeights = new uint256[](masterListSuperformIds.length);
+        for (uint256 i = 0; i < masterListSuperformIds.length; i++) {
+            (address superform,,) = masterListSuperformIds[i].getSuperform();
             uint256 superformShares =
-                SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(vars.superVaultAddress, allSuperformIds[i]);
+                SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(vars.superVaultAddress, masterListSuperformIds[i]);
             currentUSDC[i] = IBaseForm(superform).previewRedeemFrom(superformShares);
             vars.totalUSDCValue += currentUSDC[i];
             console.log("Current USDC", i, ":", currentUSDC[i]);
@@ -2127,7 +2163,7 @@ contract SuperVaultTest is ProtocolActions {
         console.log("Total USDC Value:", vars.totalUSDCValue);
 
         // Then, calculate current weights
-        for (uint256 i = 0; i < allSuperformIds.length; i++) {
+        for (uint256 i = 0; i < masterListSuperformIds.length; i++) {
             currentWeights[i] = vars.totalUSDCValue > 0 ? currentUSDC[i] * 10_000 / vars.totalUSDCValue : 0;
             console.log("Current weight", i, ":", currentWeights[i]);
         }
@@ -2143,7 +2179,7 @@ contract SuperVaultTest is ProtocolActions {
         // Calculate amounts to rebalance from each source
         for (uint256 i = 0; i < indexesRebalanceFrom.length; i++) {
             uint256 index = indexesRebalanceFrom[i];
-            vars.superformIdsRebalanceFrom[i] = allSuperformIds[index];
+            vars.superformIdsRebalanceFrom[i] = masterListSuperformIds[index];
             uint256 finalWeight = 0;
             bool isInFinalIndexes = false;
             for (uint256 j = 0; j < finalSuperformIndexes.length; j++) {
@@ -2180,16 +2216,10 @@ contract SuperVaultTest is ProtocolActions {
 
         // Calculate weights for redistribution
         uint256 totalRedistributionWeight = 0;
-        // 1,2
         for (uint256 i = 0; i < finalSuperformIndexes.length; i++) {
             uint256 index = finalSuperformIndexes[i];
-            vars.superformIdsRebalanceTo[i] = allSuperformIds[index];
+            vars.superformIdsRebalanceTo[i] = masterListSuperformIds[index];
             uint256 currentWeight = currentWeights[index];
-            // index1 current weight = 33%
-            // final weight = 70%
-            // 36%
-            // index current weight == 33%
-            // final weight = 30% -> Not covered
             if (finalWeights[i] > currentWeight) {
                 vars.weightsOfRedistribution[i] = finalWeights[i] - currentWeight;
                 totalRedistributionWeight += vars.weightsOfRedistribution[i];
