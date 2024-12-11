@@ -1687,6 +1687,175 @@ contract SuperVaultTest is ProtocolActions {
         vm.stopPrank();
     }
 
+    struct CompareEarningsVars {
+        uint256 underlyingSfId;
+        uint256[] superformIds;
+        uint256[] weights;
+        uint256 newSuperVaultId;
+        uint256 depositAmount;
+        address superVaultAddress;
+        uint256 initialSuperVaultShares;
+        uint256 initialDirectShares;
+        uint256 yieldAmount;
+        address underlyingSuperform;
+        address underlyingVault;
+        uint256 superPositonsAmountSuperVault;
+        uint256 superPositonsAmountDirect;
+        address superVaultSuperform;
+        uint256 finalSuperVaultValue;
+        uint256 finalDirectValue;
+        uint256 superVaultEarnings;
+        uint256 directEarnings;
+    }
+
+    function test_superVault_compare_earnings() public {
+        vm.startPrank(deployer);
+        SOURCE_CHAIN = ETH;
+        vm.selectFork(FORKS[SOURCE_CHAIN]);
+
+        // Test each gasTestSuperformId
+        for (uint256 i = 0; i < gasTestSuperformIds.length; i++) {
+            console.log("\n=== Testing Superform:", gasTestSuperformNames[i], "===");
+
+            CompareEarningsVars memory vars;
+            vars.underlyingSfId = gasTestSuperformIds[i];
+
+            // Create a new SuperVault with a single underlying vault
+            vars.superformIds = new uint256[](1);
+            vars.superformIds[0] = vars.underlyingSfId;
+
+            vars.weights = new uint256[](1);
+            vars.weights[0] = 10_000; // 100% allocation to single vault
+
+            string memory vaultName = string.concat("TestCompareEarningsVault_", gasTestSuperformNames[i]);
+
+            SuperVault newSuperVault = new SuperVault(
+                getContract(ETH, "SuperRegistry"),
+                getContract(ETH, "USDC"),
+                deployer,
+                deployer,
+                vaultName,
+                type(uint256).max,
+                vars.superformIds,
+                vars.weights
+            );
+
+            vars.superVaultAddress = address(newSuperVault);
+
+            (bool successInitials,) =
+                vars.superVaultAddress.call(abi.encodeWithSignature("setProfitMaxUnlockTime(uint256)", 0));
+            require(successInitials, "setProfitMaxUnlockTime(uint256) call failed");
+
+            (successInitials,) = vars.superVaultAddress.call(abi.encodeWithSignature("setPerformanceFee(uint16)", 0));
+            require(successInitials, "setPerformanceFee(uint16) call failed");
+
+            // Create superform for the new vault
+            (vars.newSuperVaultId,) = SuperformFactory(getContract(SOURCE_CHAIN, "SuperformFactory")).createSuperform(
+                1, vars.superVaultAddress
+            );
+
+            // Initial setup
+            vars.depositAmount = 10_000e6; // 10,000 USDC
+            deal(getContract(ETH, "USDC"), deployer, vars.depositAmount * 2); // Double for both deposits
+
+            console.log("---FIRST DEPOSIT THROUGH SUPER VAULT---");
+            _directDeposit(deployer, vars.newSuperVaultId, vars.depositAmount, "");
+            {
+                (bool success, bytes memory returnData) =
+                    vars.superVaultAddress.call(abi.encodeWithSignature("totalSupply()"));
+                require(success, "totalSupply() call failed");
+                console.log("TotalSupply After Deposit:", abi.decode(returnData, (uint256)));
+            }
+
+            console.log("---SECOND DEPOSIT THROUGH SUPERFORM---");
+            _directDeposit(deployer, vars.underlyingSfId, vars.depositAmount, "");
+
+            console.log("---SIMULATING YIELD---");
+
+            // Simulate 1 day passing and vault earnings
+            vm.warp(block.timestamp + 1 days);
+
+            // Mock some yield for the underlying vault (e.g., 10% APY = ~0.026% daily)
+            (vars.underlyingSuperform,,) = vars.underlyingSfId.getSuperform();
+            vars.underlyingVault = IBaseForm(vars.underlyingSuperform).getVaultAddress();
+            vars.yieldAmount = (vars.depositAmount * 26) / 100_000; // 0.026% of deposit
+            deal(
+                getContract(ETH, "USDC"),
+                vars.underlyingVault,
+                IERC20(getContract(ETH, "USDC")).balanceOf(vars.underlyingVault) + vars.yieldAmount
+            );
+
+            console.log("---CALLING REPORT---");
+
+            {
+                (bool success, bytes memory returnData) =
+                    vars.superVaultAddress.call(abi.encodeWithSignature("totalAssets()"));
+                require(success, "totalAssets() call failed");
+
+                uint256 totalAssetsBefore = abi.decode(returnData, (uint256));
+                console.log("Total Assets Before Report:", totalAssetsBefore);
+
+                (success, returnData) = vars.superVaultAddress.call(abi.encodeWithSignature("totalSupply()"));
+                require(success, "totalSupply() call failed");
+                console.log("TotalSupply Before Report:", abi.decode(returnData, (uint256)));
+
+                // call report on the SuperVault
+                (success,) = vars.superVaultAddress.call(abi.encodeWithSignature("report()"));
+                if (!success) {
+                    revert("Report not successful");
+                }
+
+                (success, returnData) = vars.superVaultAddress.call(abi.encodeWithSignature("totalSupply()"));
+                require(success, "totalSupply() call failed");
+                console.log("TotalSupply After Report:", abi.decode(returnData, (uint256)));
+
+                (success, returnData) = vars.superVaultAddress.call(abi.encodeWithSignature("totalAssets()"));
+                require(success, "totalAssets() call failed");
+
+                uint256 totalAssetsAfter = abi.decode(returnData, (uint256));
+                console.log("Total Assets After Report:", totalAssetsAfter);
+            }
+
+            console.log("---LOGGING FINAL VALUES---");
+            vars.superPositonsAmountSuperVault =
+                SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(deployer, vars.newSuperVaultId);
+            vars.superPositonsAmountDirect =
+                SuperPositions(SUPER_POSITIONS_SOURCE).balanceOf(deployer, vars.underlyingSfId);
+
+            console.log("SuperPositions Amount SuperVault:", vars.superPositonsAmountSuperVault);
+            console.log("SuperPositions Amount Direct:", vars.superPositonsAmountDirect);
+
+            (vars.superVaultSuperform,,) = vars.newSuperVaultId.getSuperform();
+            // Calculate final values in USDC
+            vars.finalSuperVaultValue =
+                IBaseForm(vars.superVaultSuperform).previewRedeemFrom(vars.superPositonsAmountSuperVault);
+            vars.finalDirectValue =
+                IBaseForm(vars.underlyingSuperform).previewRedeemFrom(vars.superPositonsAmountDirect);
+
+            console.log("Final SuperVault Value (USDC):", vars.finalSuperVaultValue);
+            console.log("Final Direct Value (USDC):", vars.finalDirectValue);
+            console.log("Initial Deposit Amount (USDC):", vars.depositAmount);
+
+            // Calculate earnings
+            vars.superVaultEarnings = vars.finalSuperVaultValue - vars.depositAmount;
+            vars.directEarnings = vars.finalDirectValue - vars.depositAmount;
+
+            console.log("SuperVault earnings (USDC):", vars.superVaultEarnings);
+            console.log("Direct deposit earnings (USDC):", vars.directEarnings);
+
+            assertEq(
+                vars.superVaultEarnings,
+                vars.directEarnings,
+                string.concat("Earnings mismatch for ", gasTestSuperformNames[i])
+            );
+
+            // Reset state for next iteration
+            vm.warp(block.timestamp - 1 days);
+        }
+
+        vm.stopPrank();
+    }
+
     //////////////////////////////////////////////////////////////
     //               INTERNAL HELPERS                           //
     //////////////////////////////////////////////////////////////
@@ -1706,7 +1875,7 @@ contract SuperVaultTest is ProtocolActions {
         SingleVaultSFData memory data = SingleVaultSFData(
             superformId,
             amount,
-            amount,
+            IBaseForm(superform).previewDepositTo(amount),
             100,
             LiqRequest("", IBaseForm(superform).getVaultAsset(), address(0), 1, SOURCE_CHAIN, 0),
             "",
@@ -1722,10 +1891,6 @@ contract SuperVaultTest is ProtocolActions {
             address(payable(getContract(SOURCE_CHAIN, "SuperformRouter"))), req.superformData.amount
         );
 
-        (uint256[] memory sfIds,) = ISuperVault(IBaseForm(superform).getVaultAddress()).getSuperVaultData();
-
-        console.log("---CURRENT NUMBER OF UNDERLYING SUPERPOSITIONS---", sfIds.length);
-        //vm.startSnapshotGas("Deposit to SuperVault");
         /// @dev msg sender is wallet, tx origin is deployer
         address router = getContract(SOURCE_CHAIN, "SuperformRouter");
         SuperformRouter(payable(router)).singleDirectSingleVaultDeposit{ value: 2 ether }(req);

@@ -94,6 +94,13 @@ contract MainnetDeploySuperVault is Script {
             revert("Set performance fee failed");
         }
 
+        /// @dev set performance fee to 0
+        (success,) =
+            address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.setProfitMaxUnlockTime.selector, 0));
+        if (!success) {
+            revert("Set profit max unlock time failed");
+        }
+
         /// @dev set pending management to PAYMENT ADMIN
         (success,) = address(superVault).call(
             abi.encodeWithSelector(ITokenizedStrategy.setPendingManagement.selector, MANAGEMENT)
