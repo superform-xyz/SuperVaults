@@ -1742,6 +1742,7 @@ contract SuperVaultTest is ProtocolActions {
 
             vars.superVaultAddress = address(newSuperVault);
 
+            /// @dev warning dont do the following in production under the risk of sandwiching
             (bool successInitials,) =
                 vars.superVaultAddress.call(abi.encodeWithSignature("setProfitMaxUnlockTime(uint256)", 0));
             require(successInitials, "setProfitMaxUnlockTime(uint256) call failed");

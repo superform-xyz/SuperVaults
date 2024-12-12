@@ -94,9 +94,9 @@ contract MainnetDeploySuperVault is Script {
             revert("Set performance fee failed");
         }
 
-        /// @dev set performance fee to 0
+        /// @dev set profit max unlock time to 1 day to match ideal report frequency
         (success,) =
-            address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.setProfitMaxUnlockTime.selector, 0));
+            address(superVault).call(abi.encodeWithSelector(ITokenizedStrategy.setProfitMaxUnlockTime.selector, 1 days));
         if (!success) {
             revert("Set profit max unlock time failed");
         }
