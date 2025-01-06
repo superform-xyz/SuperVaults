@@ -32,9 +32,12 @@ contract MainnetDeploySuperVault is Script {
 
         /// @notice Deploy SuperVault
         uint256[] memory superformIds = new uint256[](1);
-        superformIds[0] = chainId == 1
-            ? 6_277_101_737_254_839_006_396_113_557_627_089_406_881_862_780_813_070_776_090 // Gauntlet's USDC Core,
-            : 53_060_340_969_225_424_123_272_122_895_191_053_251_498_236_784_870_936_252_229_868;
+
+        if (chainId == 1) {
+            superformIds[0] = 6_277_101_737_254_839_006_396_113_557_627_089_406_881_862_780_813_070_776_090;
+        } else if (chainId == 8453) {
+            superformIds[0] = 53_060_340_969_225_715_878_205_116_584_081_115_198_352_809_299_304_516_324_185_578;
+        }
 
         uint256[] memory startingWeights = new uint256[](1);
         startingWeights[0] = 10_000;
@@ -59,8 +62,12 @@ contract MainnetDeploySuperVault is Script {
             MANAGEMENT = 0xde587D0C7773BD239fF1bE87d32C876dEd4f7879;
         }
         // USDC on mainnet
-        address ASSET =
-            chainId == 1 ? 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48 : 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
+        address ASSET;
+        if (chainId == 1) {
+            ASSET = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+        } else if (chainId == 8453) {
+            ASSET = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
+        }
 
         assert(STRATEGIST != address(0));
         assert(VAULT_MANAGER != address(0));
