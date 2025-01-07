@@ -18,7 +18,7 @@ export TENDERLY_ACCESS_TOKEN=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/TENDERLY_
 echo Deploying SV To Production: ...
 
 forge script script/forge-scripts/Deploy.SuperVault.s.sol:MainnetDeploySuperVault --sig "deploySuperVault(uint256,uint256)" 0 8453 \
-    --rpc-url $BSC_RPC_URL  \
+    --rpc-url $BASE_RPC_URL  \
     --account default \
     --sender 0x48aB8AdF869Ba9902Ad483FB1Ca2eFDAb6eabe92  \
     --legacy \

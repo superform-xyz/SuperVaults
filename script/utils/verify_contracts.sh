@@ -26,7 +26,7 @@ export BASESCAN_API_KEY=$(op read op://5ylebqljbh3x6zomdxi3qd7tsa/BASESCAN_API_K
 
 export NETWORK_ID=8453
 
-forge verify-contract 0xBD34DB7ef42533A51eb0F53eD9D91D06880bcdf1 "src/SuperVault.sol:SuperVault" --chain-id $NETWORK_ID \
+forge verify-contract 0xe9F2a5F9f3c846f29066d7fB3564F8E6B6b2D65b "src/SuperVault.sol:SuperVault" --chain-id $NETWORK_ID \
     --num-of-optimizations 200 \
     --watch \
     --compiler-version v0.8.23 \
