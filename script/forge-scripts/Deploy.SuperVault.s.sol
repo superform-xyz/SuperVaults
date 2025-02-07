@@ -64,7 +64,7 @@ contract MainnetDeploySuperVault is Script {
         // USDC on mainnet
         address ASSET;
         if (chainId == 1) {
-            ASSET = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+            ASSET = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
         } else if (chainId == 8453) {
             ASSET = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
         }
@@ -83,7 +83,7 @@ contract MainnetDeploySuperVault is Script {
                 ASSET, // USDC
                 STRATEGIST,
                 VAULT_MANAGER,
-                "SuperUSDC",
+                "SuperETH",
                 depositLimit,
                 superformIds,
                 startingWeights
