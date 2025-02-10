@@ -21,7 +21,9 @@ forge script script/forge-scripts/Deploy.SuperVault.s.sol:MainnetDeploySuperVaul
     --rpc-url $ETHEREUM_RPC_URL  \
     --account default \
     --sender 0x48aB8AdF869Ba9902Ad483FB1Ca2eFDAb6eabe92  \
-    --legacy 
+    --legacy \
+    --broadcast
+
 # echo Deploying SV To Staging: ...
 
 # forge script script/forge-scripts/Deploy.SuperVault.s.sol:MainnetDeploySuperVault --sig "deploySuperVault(uint256,uint256)" 1 8453 \

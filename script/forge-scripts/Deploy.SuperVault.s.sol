@@ -34,7 +34,7 @@ contract MainnetDeploySuperVault is Script {
         uint256[] memory superformIds = new uint256[](1);
 
         if (chainId == 1) {
-            superformIds[0] = 6_277_101_737_254_839_006_396_113_557_627_089_406_881_862_780_813_070_776_090;
+            superformIds[0] = 6_277_101_738_130_015_576_282_939_932_717_591_455_924_719_452_034_249_162_154;
         } else if (chainId == 8453) {
             superformIds[0] = 53_060_340_969_225_715_878_205_116_584_081_115_198_352_809_299_304_516_324_185_578;
         }
@@ -74,19 +74,11 @@ contract MainnetDeploySuperVault is Script {
         assert(MANAGEMENT != address(0));
         assert(ASSET != address(0));
 
-        /// @dev deposit limit is 1 million USDC
-        uint256 depositLimit = 1_000_000 * 10 ** IERC20Metadata(ASSET).decimals();
+        uint256 depositLimit = type(uint256).max;
 
         address superVault = address(
             new SuperVault(
-                superRegistry,
-                ASSET, // USDC
-                STRATEGIST,
-                VAULT_MANAGER,
-                "SuperETH",
-                depositLimit,
-                superformIds,
-                startingWeights
+                superRegistry, ASSET, STRATEGIST, VAULT_MANAGER, "SuperETH", depositLimit, superformIds, startingWeights
             )
         );
         console2.log("SuperVault deployed at:", superVault);
